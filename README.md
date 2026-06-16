@@ -1,73 +1,82 @@
-# React + TypeScript + Vite
+# claude-ground
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A personal **project gallery**. The home screen is a grid of works I've built;
+clicking a card opens that work — and the work only loads and runs *when you
+click in*, never on the home screen.
 
-Currently, two official plugins are available:
+🔗 Live: `https://<user>.github.io/claude-ground/`
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## How it works
 
-## React Compiler
+- **Home (`#/`)** — a grid of cards driven by `src/projects/registry.ts`.
+- **Open a project (`#/p/<id>`)** — renders that work full-screen.
+  - **React projects** are code-split with `React.lazy`, so their JavaScript is
+    downloaded on demand. Heavy works (e.g. the three.js scene) don't load until
+    opened.
+  - **Static projects** (plain HTML, p5.js, canvas games, …) live under
+    `public/projects/<id>/` and are shown in a sandboxed `<iframe>`, also only
+    when opened.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Routing is hash-based (`#/...`), so deep links survive refreshes on GitHub
+Pages without any server config.
 
-## Expanding the ESLint configuration
+## Adding a new work
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### A React work
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+1. Create `src/projects/<id>/index.tsx` (or a folder) with a **default export**
+   React component.
+2. Register it in `src/projects/registry.ts`:
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+   ```ts
+   {
+     id: 'my-work',
+     title: 'My Work',
+     description: 'One line about it.',
+     emoji: '✨',
+     tags: ['react'],
+     kind: 'react',
+     load: () => import('./my-work'),
+   }
+   ```
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### A static work (HTML / p5.js / game / …)
+
+1. Drop a self-contained page at `public/projects/<id>/index.html` (plus any
+   assets it needs alongside it).
+2. Register it:
+
+   ```ts
+   {
+     id: 'my-work',
+     title: 'My Work',
+     description: 'One line about it.',
+     emoji: '🎮',
+     tags: ['html'],
+     kind: 'iframe',
+     path: 'projects/my-work/index.html',
+   }
+   ```
+
+That's it — the gallery picks it up automatically.
+
+## Develop
+
+```bash
+npm install
+npm run dev      # local dev server
+npm run build    # type-check + production build
+npm run lint
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Deploy
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Pushing to `main` triggers `.github/workflows/deploy.yml`, which builds and
+publishes `dist/` to GitHub Pages.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## Projects
+
+| Project | Kind | Description |
+| --- | --- | --- |
+| 🍃 Cozy Cove | react / three.js | A hand-held 3D diorama you can orbit around. |
+| 🟣 Bouncing Orbs | html / canvas | A zero-dependency canvas physics toy. |
