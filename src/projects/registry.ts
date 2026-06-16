@@ -45,7 +45,7 @@ export type Project = ReactProject | IframeProject
 export const projects: Project[] = [
   {
     id: 'cozy-cove',
-    title: 'Cozy Cove',
+    title: 'Opus 4.8 높음 모델',
     description: 'A hand-held 3D diorama you can orbit around — cottage, trees, mushrooms and a little stream.',
     emoji: '🍃',
     tags: ['react', 'three.js', '3d'],
