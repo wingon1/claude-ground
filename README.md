@@ -4,79 +4,116 @@ A personal **project gallery**. The home screen is a grid of works I've built;
 clicking a card opens that work — and the work only loads and runs *when you
 click in*, never on the home screen.
 
-🔗 Live: `https://<user>.github.io/claude-ground/`
+🔗 Live: `https://wingon1.github.io/claude-ground/`
 
-## How it works
+---
 
-- **Home (`#/`)** — a grid of cards driven by `src/projects/registry.ts`.
-- **Open a project (`#/p/<id>`)** — renders that work full-screen.
-  - **React projects** are code-split with `React.lazy`, so their JavaScript is
-    downloaded on demand. Heavy works (e.g. the three.js scene) don't load until
-    opened.
-  - **Static projects** (plain HTML, p5.js, canvas games, …) live under
-    `public/projects/<id>/` and are shown in a sandboxed `<iframe>`, also only
-    when opened.
+## 폴더 구조
 
-Routing is hash-based (`#/...`), so deep links survive refreshes on GitHub
-Pages without any server config.
+```
+claude-ground/
+│
+├── src/
+│   └── projects/
+│       ├── registry.ts          ← ✅ 모든 작업물을 여기에 등록
+│       │
+│       ├── cozy-cove/           ← React 작업물 예시
+│       │   ├── CozyCove.tsx
+│       │   └── components/
+│       │
+│       └── <내-작업-이름>/      ← 새 React 작업물은 여기 만들기
+│           └── index.tsx
+│
+└── public/
+    └── projects/
+        ├── bouncing-orbs/       ← 정적(HTML) 작업물 예시
+        │   └── index.html
+        │
+        └── <내-작업-이름>/      ← 새 HTML/게임/p5.js 작업물은 여기 만들기
+            └── index.html
+```
 
-## Adding a new work
+---
 
-### A React work
+## 새 작업물 추가하는 법
 
-1. Create `src/projects/<id>/index.tsx` (or a folder) with a **default export**
-   React component.
-2. Register it in `src/projects/registry.ts`:
+### React 컴포넌트 작업물 (Three.js, 애니메이션 등)
 
-   ```ts
-   {
-     id: 'my-work',
-     title: 'My Work',
-     description: 'One line about it.',
-     emoji: '✨',
-     tags: ['react'],
-     kind: 'react',
-     load: () => import('./my-work'),
-   }
-   ```
+**1단계 — 폴더 만들기**
 
-### A static work (HTML / p5.js / game / …)
+`src/projects/<id>/index.tsx` 파일 생성. 반드시 **default export** 컴포넌트.
 
-1. Drop a self-contained page at `public/projects/<id>/index.html` (plus any
-   assets it needs alongside it).
-2. Register it:
+```tsx
+// src/projects/my-art/index.tsx
+export default function MyArt() {
+  return <div>내 작업물</div>
+}
+```
 
-   ```ts
-   {
-     id: 'my-work',
-     title: 'My Work',
-     description: 'One line about it.',
-     emoji: '🎮',
-     tags: ['html'],
-     kind: 'iframe',
-     path: 'projects/my-work/index.html',
-   }
-   ```
+**2단계 — registry에 등록**
 
-That's it — the gallery picks it up automatically.
+`src/projects/registry.ts` 파일 열어서 `projects` 배열에 추가:
 
-## Develop
+```ts
+{
+  id: 'my-art',           // URL에 쓰임: #/p/my-art
+  title: 'My Art',        // 카드 제목
+  description: '짧은 설명.', 
+  emoji: '✨',            // 카드 커버 이미지 대신 쓰는 이모지
+  tags: ['react'],        // 카드에 표시되는 태그 (없어도 됨)
+  kind: 'react',
+  load: () => import('./my-art'),
+},
+```
+
+---
+
+### 정적 작업물 (순수 HTML / p5.js / 캔버스 게임 / 외부 라이브러리 등)
+
+**1단계 — 파일 놓기**
+
+`public/projects/<id>/index.html` 에 자기완결적 HTML 파일 넣기.  
+(CSS, JS, 이미지 등 에셋은 같은 폴더에 같이 두면 됨)
+
+**2단계 — registry에 등록**
+
+```ts
+{
+  id: 'my-game',
+  title: 'My Game',
+  description: '짧은 설명.',
+  emoji: '🎮',
+  tags: ['html', 'game'],
+  kind: 'iframe',
+  path: 'projects/my-game/index.html',
+},
+```
+
+**그게 전부.** registry에 추가하면 갤러리 카드가 자동으로 생깁니다.
+
+---
+
+## 배포
+
+`main` 브랜치에 push하면 `.github/workflows/deploy.yml` 이 자동으로 빌드해서 GitHub Pages에 올립니다.  
+보통 1~2분 이내에 사이트에 반영됩니다.
+
+---
+
+## 로컬 개발
 
 ```bash
 npm install
-npm run dev      # local dev server
-npm run build    # type-check + production build
+npm run dev      # 로컬 개발 서버 (http://localhost:5173/claude-ground/)
+npm run build    # 빌드 (타입 체크 포함)
 npm run lint
 ```
 
-## Deploy
+---
 
-Pushing to `main` triggers `.github/workflows/deploy.yml`, which builds and
-publishes `dist/` to GitHub Pages.
+## 등록된 작업물
 
-## Projects
-
-| Project | Kind | Description |
-| --- | --- | --- |
-| 🍃 Cozy Cove | react / three.js | A hand-held 3D diorama you can orbit around. |
-| 🟣 Bouncing Orbs | html / canvas | A zero-dependency canvas physics toy. |
+| 이모지 | 이름 | 종류 | 설명 |
+| --- | --- | --- | --- |
+| 🍃 | Cozy Cove | react / three.js | 3D 디오라마. 드래그로 돌려보기. |
+| 🟣 | Bouncing Orbs | html / canvas | 클릭하면 공이 떨어지는 물리 장난감. |
