@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bouncing Orbs</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: radial-gradient(circle at 50% 30%, #1e293b, #020617);
+        font-family: system-ui, sans-serif;
+      }
+      canvas {
+        display: block;
+      }
+      .hint {
+        position: fixed;
+        left: 50%;
+        bottom: 20px;
+        transform: translateX(-50%);
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 14px;
+        pointer-events: none;
+        user-select: none;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="c"></canvas>
+    <div class="hint">click anywhere to add an orb</div>
+    <script>
+      const canvas = document.getElementById('c')
+      const ctx = canvas.getContext('2d')
+      let W, H
+      const COLORS = ['#f472b6', '#818cf8', '#34d399', '#fbbf24', '#22d3ee', '#fb7185']
+
+      function resize() {
+        W = canvas.width = window.innerWidth
+        H = canvas.height = window.innerHeight
+      }
+      window.addEventListener('resize', resize)
+      resize()
+
+      const GRAVITY = 0.35
+      const DAMP = 0.82
+      const orbs = []
+
+      function spawn(x, y) {
+        const r = 14 + Math.random() * 26
+        orbs.push({
+          x,
+          y,
+          vx: (Math.random() - 0.5) * 12,
+          vy: (Math.random() - 0.5) * 6,
+          r,
+          color: COLORS[(Math.random() * COLORS.length) | 0],
+        })
+        if (orbs.length > 120) orbs.shift()
+      }
+
+      // Seed a few so it isn't empty on open.
+      for (let i = 0; i < 12; i++) {
+        spawn(Math.random() * window.innerWidth, Math.random() * window.innerHeight * 0.5)
+      }
+
+      canvas.addEventListener('pointerdown', (e) => spawn(e.clientX, e.clientY))
+
+      function step() {
+        ctx.clearRect(0, 0, W, H)
+        for (const o of orbs) {
+          o.vy += GRAVITY
+          o.x += o.vx
+          o.y += o.vy
+
+          if (o.x - o.r < 0) {
+            o.x = o.r
+            o.vx = -o.vx * DAMP
+          } else if (o.x + o.r > W) {
+            o.x = W - o.r
+            o.vx = -o.vx * DAMP
+          }
+          if (o.y + o.r > H) {
+            o.y = H - o.r
+            o.vy = -o.vy * DAMP
+            o.vx *= 0.99
+          }
+
+          const grad = ctx.createRadialGradient(
+            o.x - o.r * 0.3,
+            o.y - o.r * 0.3,
+            o.r * 0.1,
+            o.x,
+            o.y,
+            o.r,
+          )
+          grad.addColorStop(0, '#ffffff')
+          grad.addColorStop(0.25, o.color)
+          grad.addColorStop(1, o.color)
+          ctx.beginPath()
+          ctx.arc(o.x, o.y, o.r, 0, Math.PI * 2)
+          ctx.fillStyle = grad
+          ctx.fill()
+        }
+        requestAnimationFrame(step)
+      }
+      step()
+    </script>
+  </body>
+</html>
