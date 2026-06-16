@@ -1,8 +1,10 @@
 name: Deploy to GitHub Pages
 
+# The github-pages environment only permits deployments from the repository's
+# default branch, which here is claude/zen-feynman-yfs0gx — so we deploy from it.
 on:
   push:
-    branches: [main]
+    branches: [main, claude/zen-feynman-yfs0gx]
   workflow_dispatch:
 
 # Allow this workflow to publish to GitHub Pages
