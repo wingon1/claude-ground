@@ -53,6 +53,15 @@ export const projects: Project[] = [
     load: () => import('./cozy-cove/CozyCove'),
   },
   {
+    id: 'pixel-village',
+    title: 'Pixel Village',
+    description: 'A cozy Animal-Crossing-style village rendered entirely in procedural pixel art: isometric tiles, dithered shading, an animated stream, and drag-to-pan.',
+    emoji: '🏡',
+    tags: ['react', 'canvas', 'pixel-art'],
+    kind: 'react',
+    load: () => import('./pixel-village'),
+  },
+  {
     id: 'bouncing-orbs',
     title: 'Bouncing Orbs',
     description: 'A tiny zero-dependency canvas toy: colorful orbs bouncing with gravity. Plain HTML + JS.',

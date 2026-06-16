@@ -114,4 +114,5 @@ npm run lint
 | 이모지 | 이름 | 종류 | 설명 |
 | --- | --- | --- | --- |
 | 🍃 | Cozy Cove | react / three.js | 3D 디오라마. 드래그로 돌려보기. |
+| 🏡 | Pixel Village | react / canvas | 절차적 픽셀아트 마을. 아이소 타일·디더링·물결 애니·드래그 패닝. |
 | 🟣 | Bouncing Orbs | html / canvas | 클릭하면 공이 떨어지는 물리 장난감. |
