@@ -1,8 +1,6 @@
 # claude-ground
 
-A personal **project gallery**. The home screen is a grid of works I've built;
-clicking a card opens that work — and the work only loads and runs *when you
-click in*, never on the home screen.
+ai 테스트 및 성능 확인 작업물들 모음
 
 🔗 Live: `https://wingon1.github.io/claude-ground/`
 
