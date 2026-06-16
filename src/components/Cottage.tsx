@@ -166,9 +166,10 @@ export function Cottage({ position = [0, 0, 0] as [number, number, number] }) {
       {/* ---- Door ---- */}
       <Door />
 
-      {/* ---- Front windows flanking the door ---- */}
-      <Window position={[-0.82, 0.92, BODY_D / 2]} />
-      <Window position={[0.82, 0.92, BODY_D / 2]} />
+      {/* ---- Front windows flanking the door (smaller + inset so they clear
+             the corner posts) ---- */}
+      <Window position={[-0.72, 0.95, BODY_D / 2]} scale={0.78} />
+      <Window position={[0.72, 0.95, BODY_D / 2]} scale={0.78} />
 
       {/* ---- Side windows ---- */}
       <Window position={[BODY_W / 2, 1.0, 0.45]} rotation={[0, Math.PI / 2, 0]} />
@@ -220,12 +221,14 @@ function Door() {
 function Window({
   position,
   rotation = [0, 0, 0],
+  scale = 1,
 }: {
   position: [number, number, number]
   rotation?: [number, number, number]
+  scale?: number
 }) {
   return (
-    <group position={position} rotation={rotation}>
+    <group position={position} rotation={rotation} scale={scale}>
       {/* Frame */}
       <RoundedBox args={[0.52, 0.52, 0.1]} radius={0.05} smoothness={5} castShadow>
         <meshStandardMaterial color={C.frame} roughness={0.85} metalness={0} />
@@ -261,17 +264,45 @@ function Window({
         <meshStandardMaterial color={C.timber} roughness={0.85} metalness={0} />
       </RoundedBox>
       {([['#FF9EAF', -0.15], ['#FFD966', 0], ['#FF8FA3', 0.15]] as const).map(([col, x], i) => (
-        <group key={i} position={[x, -0.24, 0.12]}>
-          <mesh castShadow>
-            <sphereGeometry args={[0.055, 14, 14]} />
-            <meshStandardMaterial color={col} roughness={0.8} metalness={0} />
-          </mesh>
-          <mesh position={[0, 0.01, 0.02]}>
-            <sphereGeometry args={[0.022, 10, 10]} />
-            <meshStandardMaterial color="#FFE44A" roughness={0.75} metalness={0} />
-          </mesh>
-        </group>
+        <Flower key={i} color={col} position={[x, -0.2, 0.13]} />
       ))}
+    </group>
+  )
+}
+
+// ---------------------------------------------------------------------------
+/** A little daisy: petals radiating around a yellow center, facing the viewer. */
+function Flower({
+  color,
+  position,
+}: {
+  color: string
+  position: [number, number, number]
+}) {
+  const petals = 6
+  return (
+    <group position={position}>
+      {Array.from({ length: petals }).map((_, i) => {
+        const a = (i / petals) * Math.PI * 2
+        const r = 0.05
+        return (
+          <mesh
+            key={i}
+            position={[Math.cos(a) * r, Math.sin(a) * r, 0]}
+            rotation={[0, 0, a - Math.PI / 2]}
+            scale={[0.032, 0.06, 0.022]}
+            castShadow
+          >
+            <sphereGeometry args={[1, 12, 12]} />
+            <meshStandardMaterial color={color} roughness={0.8} metalness={0} />
+          </mesh>
+        )
+      })}
+      {/* Pollen center */}
+      <mesh position={[0, 0, 0.025]} castShadow>
+        <sphereGeometry args={[0.032, 14, 14]} />
+        <meshStandardMaterial color="#FFE44A" roughness={0.7} metalness={0} />
+      </mesh>
     </group>
   )
 }
