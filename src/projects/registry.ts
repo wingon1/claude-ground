@@ -45,8 +45,8 @@ export type Project = ReactProject | IframeProject
 export const projects: Project[] = [
   {
     id: 'cozy-cove',
-    title: 'Opus 4.8 높음 모델',
-    description: 'A hand-held 3D diorama you can orbit around — cottage, trees, mushrooms and a little stream.',
+    title: '3D - Opus 4.8 높음 cozy-cove',
+    description: '오브젝트 2번 수정',
     emoji: '🍃',
     tags: ['react', 'three.js', '3d'],
     kind: 'react',
@@ -54,8 +54,8 @@ export const projects: Project[] = [
   },
   {
     id: 'pixel-village',
-    title: 'Pixel Village',
-    description: 'A cozy Animal-Crossing-style village rendered entirely in procedural pixel art: isometric tiles, dithered shading, an animated stream, and drag-to-pan.',
+    title: '2D - Opus 4.8 높음 pixel-village',
+    description: '픽셀 퀄리티 테스트..... 1회 요청 다듬으면 사용할만할지도',
     emoji: '🏡',
     tags: ['react', 'canvas', 'pixel-art'],
     kind: 'react',
