@@ -1,0 +1,3 @@
+Revert "Car Jam: tilt to a gentle quarter view so car shapes read"
+
+This reverts commit e4e5fcb214d6122997bee22585f40db701c3c3f4.
