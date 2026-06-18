@@ -1,0 +1,869 @@
+// All Three.js: procedural meshes, isometric camera framing, animations, FX.
+
+import * as THREE from 'three'
+import {
+  COLOR_HEX,
+  COLOR_DARK,
+  COLOR_MARKER,
+  type ColorKey,
+  type Facing,
+  type MarkerKind,
+  type Vehicle,
+} from './types'
+import { TweenManager, easeOutCubic, easeInOutCubic, easeOutBack, easeOutQuad, linear } from './tween'
+import type { GameState } from './GameState'
+
+const QUEUE_WINDOW = 7
+const SLOT_COUNT = 4
+
+interface VehicleView {
+  group: THREE.Group
+  body: THREE.Mesh
+  capFill: THREE.Mesh
+  capBarWidth: number
+  vehicle: Vehicle
+}
+
+interface Particle {
+  mesh: THREE.Mesh
+  vel: THREE.Vector3
+  life: number
+  ttl: number
+}
+
+export class Renderer {
+  readonly scene = new THREE.Scene()
+  readonly camera: THREE.OrthographicCamera
+  readonly renderer: THREE.WebGLRenderer
+  readonly tween = new TweenManager()
+  private host: HTMLElement
+
+  private gradient: THREE.Texture
+  private shadowTex: THREE.Texture
+  private bodyMat = new Map<ColorKey, THREE.MeshToonMaterial>()
+  private darkMat = new Map<ColorKey, THREE.MeshToonMaterial>()
+  private glassMat: THREE.MeshToonMaterial
+  private tireMat: THREE.MeshToonMaterial
+  private markerMat: THREE.MeshToonMaterial
+  private capBgMat: THREE.MeshBasicMaterial
+  private capFillMat: THREE.MeshToonMaterial
+  private markerGeo = new Map<MarkerKind, THREE.BufferGeometry>()
+
+  private boardGroup = new THREE.Group()
+  private vehicleGroup = new THREE.Group()
+  private fxGroup = new THREE.Group()
+
+  private views = new Map<number, VehicleView>()
+  private queueMeshes: THREE.Group[] = []
+  private passengerPool: THREE.Group[] = []
+  private slotMarkers: THREE.Mesh[] = []
+  private particles: Particle[] = []
+  private particlePool: THREE.Mesh[] = []
+
+  private size = 6
+  private zoneZ = 0
+  private queueZ = 0
+  private slotSpacing = 2.4
+
+  private contentBox = new THREE.Box3()
+  private camBasePos = new THREE.Vector3()
+  private camTarget = new THREE.Vector3()
+  private shakeTime = 0
+  private shakeMag = 0
+  private clock = new THREE.Clock()
+  private hintId: number | null = null
+
+  constructor(host: HTMLElement) {
+    this.host = host
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false })
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
+    this.renderer.setSize(host.clientWidth, host.clientHeight, false)
+    this.renderer.setClearColor(0x10142e, 1)
+    this.renderer.domElement.style.display = 'block'
+    this.renderer.domElement.style.width = '100%'
+    this.renderer.domElement.style.height = '100%'
+    host.appendChild(this.renderer.domElement)
+
+    this.camera = new THREE.OrthographicCamera(-5, 5, 5, -5, 0.1, 200)
+
+    this.gradient = this.makeGradient()
+    this.shadowTex = this.makeShadowTexture()
+    this.glassMat = new THREE.MeshToonMaterial({ color: 0x213049, gradientMap: this.gradient })
+    this.tireMat = new THREE.MeshToonMaterial({ color: 0x2a2f3a, gradientMap: this.gradient })
+    this.markerMat = new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap: this.gradient })
+    this.capBgMat = new THREE.MeshBasicMaterial({ color: 0x14203a })
+    this.capFillMat = new THREE.MeshToonMaterial({ color: 0x8affc0, gradientMap: this.gradient, emissive: 0x123a26 })
+
+    this.setupSceneBasics()
+  }
+
+  // ---- shared resources -------------------------------------------------
+
+  private makeGradient(): THREE.Texture {
+    const data = new Uint8Array([90, 90, 90, 255, 175, 175, 175, 255, 255, 255, 255, 255])
+    const tex = new THREE.DataTexture(data, 3, 1, THREE.RGBAFormat)
+    tex.minFilter = THREE.NearestFilter
+    tex.magFilter = THREE.NearestFilter
+    tex.needsUpdate = true
+    return tex
+  }
+
+  private makeShadowTexture(): THREE.Texture {
+    const s = 64
+    const cv = document.createElement('canvas')
+    cv.width = s
+    cv.height = s
+    const ctx = cv.getContext('2d')!
+    const grd = ctx.createRadialGradient(s / 2, s / 2, 2, s / 2, s / 2, s / 2)
+    grd.addColorStop(0, 'rgba(0,0,0,0.45)')
+    grd.addColorStop(1, 'rgba(0,0,0,0)')
+    ctx.fillStyle = grd
+    ctx.fillRect(0, 0, s, s)
+    const tex = new THREE.CanvasTexture(cv)
+    tex.needsUpdate = true
+    return tex
+  }
+
+  private bodyMaterial(c: ColorKey): THREE.MeshToonMaterial {
+    let m = this.bodyMat.get(c)
+    if (!m) {
+      m = new THREE.MeshToonMaterial({ color: COLOR_HEX[c], gradientMap: this.gradient })
+      this.bodyMat.set(c, m)
+    }
+    return m
+  }
+
+  private darkMaterial(c: ColorKey): THREE.MeshToonMaterial {
+    let m = this.darkMat.get(c)
+    if (!m) {
+      m = new THREE.MeshToonMaterial({ color: COLOR_DARK[c], gradientMap: this.gradient })
+      this.darkMat.set(c, m)
+    }
+    return m
+  }
+
+  private markerGeometry(kind: MarkerKind): THREE.BufferGeometry {
+    let g = this.markerGeo.get(kind)
+    if (g) return g
+    if (kind === 'star') {
+      const shape = new THREE.Shape()
+      const spikes = 5
+      const outer = 0.17
+      const inner = 0.075
+      for (let i = 0; i < spikes * 2; i++) {
+        const r = i % 2 === 0 ? outer : inner
+        const a = (i / (spikes * 2)) * Math.PI * 2 - Math.PI / 2
+        const x = Math.cos(a) * r
+        const y = Math.sin(a) * r
+        if (i === 0) shape.moveTo(x, y)
+        else shape.lineTo(x, y)
+      }
+      shape.closePath()
+      g = new THREE.ExtrudeGeometry(shape, { depth: 0.05, bevelEnabled: false })
+      g.rotateX(-Math.PI / 2)
+    } else if (kind === 'circle') {
+      g = new THREE.CylinderGeometry(0.15, 0.15, 0.06, 22)
+    } else if (kind === 'triangle') {
+      g = new THREE.CylinderGeometry(0.18, 0.18, 0.06, 3)
+      g.rotateY(Math.PI / 6)
+    } else {
+      // diamond: thin square rotated 45°
+      g = new THREE.BoxGeometry(0.22, 0.06, 0.22)
+      g.rotateY(Math.PI / 4)
+    }
+    this.markerGeo.set(kind, g)
+    return g
+  }
+
+  // ---- scene setup ------------------------------------------------------
+
+  private setupSceneBasics(): void {
+    const hemi = new THREE.HemisphereLight(0xdde6ff, 0x2a2440, 0.9)
+    this.scene.add(hemi)
+    const dir = new THREE.DirectionalLight(0xffffff, 1.1)
+    dir.position.set(-6, 12, 8)
+    this.scene.add(dir)
+    const fill = new THREE.DirectionalLight(0x88aaff, 0.35)
+    fill.position.set(8, 6, -6)
+    this.scene.add(fill)
+    this.scene.add(this.boardGroup)
+    this.scene.add(this.vehicleGroup)
+    this.scene.add(this.fxGroup)
+  }
+
+  // ---- layout helpers ---------------------------------------------------
+
+  private cellWorld(r: number, c: number): { x: number; z: number } {
+    const half = (this.size - 1) / 2
+    return { x: c - half, z: r - half }
+  }
+
+  private vehicleCenter(v: Vehicle): { x: number; z: number } {
+    if (v.orientation === 'h') {
+      return this.cellWorld(v.row, v.col + (v.length - 1) / 2)
+    }
+    return this.cellWorld(v.row + (v.length - 1) / 2, v.col)
+  }
+
+  private rotForFacing(f: Facing): number {
+    switch (f) {
+      case 'right': return 0
+      case 'left': return Math.PI
+      case 'down': return -Math.PI / 2
+      case 'up': return Math.PI / 2
+    }
+  }
+
+  private forwardDir(f: Facing): THREE.Vector3 {
+    switch (f) {
+      case 'right': return new THREE.Vector3(1, 0, 0)
+      case 'left': return new THREE.Vector3(-1, 0, 0)
+      case 'down': return new THREE.Vector3(0, 0, 1)
+      case 'up': return new THREE.Vector3(0, 0, -1)
+    }
+  }
+
+  private slotWorld(i: number): THREE.Vector3 {
+    const x = (i - (SLOT_COUNT - 1) / 2) * this.slotSpacing
+    return new THREE.Vector3(x, 0, this.zoneZ)
+  }
+
+  private queueWorld(i: number): THREE.Vector3 {
+    const x = (i - (QUEUE_WINDOW - 1) / 2) * 0.66
+    return new THREE.Vector3(x, 0, this.queueZ)
+  }
+
+  // ---- level build ------------------------------------------------------
+
+  buildLevel(state: GameState): void {
+    this.disposeLevel()
+    this.size = state.size
+    const half = (this.size - 1) / 2
+    this.slotSpacing = Math.max(1.7, Math.min(2.5, this.size * 0.32))
+    this.zoneZ = -half - 3.2
+    this.queueZ = this.zoneZ - 3.0
+
+    this.buildBoard()
+    this.buildZoneMarkers()
+
+    for (const v of state.vehicles.values()) {
+      const view = this.makeVehicle(v)
+      const c = this.vehicleCenter(v)
+      view.group.position.set(c.x, 0, c.z)
+      view.group.rotation.y = this.rotForFacing(v.facing)
+      this.vehicleGroup.add(view.group)
+      this.views.set(v.id, view)
+    }
+
+    // Already-parked vehicles (none at start, but keep correct on rebuild).
+    state.zone.forEach((slot, i) => {
+      if (!slot) return
+      const view = this.makeVehicle(slot.vehicle)
+      const p = this.slotWorld(i)
+      view.group.position.copy(p)
+      view.group.rotation.y = this.rotForFacing('up')
+      this.vehicleGroup.add(view.group)
+      this.views.set(slot.vehicle.id, view)
+      this.updateCapacity(slot.vehicle)
+    })
+
+    this.buildQueue(state.queue)
+    this.frameContent()
+  }
+
+  private buildBoard(): void {
+    const half = (this.size - 1) / 2
+    const pad = 0.5
+    const w = this.size + pad * 2
+    // Base slab
+    const slab = new THREE.Mesh(
+      new THREE.BoxGeometry(w, 0.5, w),
+      new THREE.MeshToonMaterial({ color: 0x2c3358, gradientMap: this.gradient }),
+    )
+    slab.position.set(0, -0.27, 0)
+    this.boardGroup.add(slab)
+
+    // Top surface with painted grid lines (procedural canvas texture).
+    const top = new THREE.Mesh(
+      new THREE.PlaneGeometry(this.size, this.size),
+      new THREE.MeshToonMaterial({ map: this.makeBoardTexture(), gradientMap: this.gradient }),
+    )
+    top.rotation.x = -Math.PI / 2
+    top.position.set(0, 0.001, 0)
+    this.boardGroup.add(top)
+
+    // Zone platform
+    const zoneW = this.slotSpacing * SLOT_COUNT + 0.6
+    const zonePlat = new THREE.Mesh(
+      new THREE.BoxGeometry(zoneW, 0.3, 2.0),
+      new THREE.MeshToonMaterial({ color: 0x37406b, gradientMap: this.gradient }),
+    )
+    zonePlat.position.set(0, -0.15, this.zoneZ)
+    this.boardGroup.add(zonePlat)
+
+    // Queue platform
+    const queueW = QUEUE_WINDOW * 0.66 + 1.0
+    const qPlat = new THREE.Mesh(
+      new THREE.BoxGeometry(queueW, 0.2, 1.2),
+      new THREE.MeshToonMaterial({ color: 0x252b4d, gradientMap: this.gradient }),
+    )
+    qPlat.position.set(0, -0.1, this.queueZ)
+    this.boardGroup.add(qPlat)
+
+    void half
+  }
+
+  private makeBoardTexture(): THREE.Texture {
+    const cells = this.size
+    const px = 64
+    const s = cells * px
+    const cv = document.createElement('canvas')
+    cv.width = s
+    cv.height = s
+    const ctx = cv.getContext('2d')!
+    ctx.fillStyle = '#3a4170'
+    ctx.fillRect(0, 0, s, s)
+    for (let r = 0; r < cells; r++) {
+      for (let c = 0; c < cells; c++) {
+        ctx.fillStyle = (r + c) % 2 === 0 ? '#414978' : '#3a4170'
+        ctx.fillRect(c * px + 2, r * px + 2, px - 4, px - 4)
+      }
+    }
+    const tex = new THREE.CanvasTexture(cv)
+    tex.needsUpdate = true
+    return tex
+  }
+
+  private buildZoneMarkers(): void {
+    for (let i = 0; i < SLOT_COUNT; i++) {
+      const ring = new THREE.Mesh(
+        new THREE.RingGeometry(0.7, 0.82, 28),
+        new THREE.MeshBasicMaterial({ color: 0x6f7bd0, transparent: true, opacity: 0.7, side: THREE.DoubleSide }),
+      )
+      ring.rotation.x = -Math.PI / 2
+      const p = this.slotWorld(i)
+      ring.position.set(p.x, 0.02, p.z)
+      this.boardGroup.add(ring)
+      this.slotMarkers.push(ring)
+    }
+  }
+
+  // ---- vehicle mesh -----------------------------------------------------
+
+  private makeVehicle(v: Vehicle): VehicleView {
+    const group = new THREE.Group()
+    const len = v.length - 0.16
+    const wid = 0.84
+    const bodyH = 0.46
+    const bodyY = 0.16 + bodyH / 2
+
+    const body = new THREE.Mesh(new THREE.BoxGeometry(len, bodyH, wid), this.bodyMaterial(v.color))
+    body.position.y = bodyY
+    group.add(body)
+
+    // Cabin / roof (a bit taller for buses & long)
+    const cabH = v.size === 'car' ? 0.26 : 0.34
+    const cab = new THREE.Mesh(
+      new THREE.BoxGeometry(len * 0.82, cabH, wid * 0.86),
+      this.darkMaterial(v.color),
+    )
+    cab.position.y = bodyY + bodyH / 2 + cabH / 2 - 0.02
+    group.add(cab)
+
+    // Windows along both sides
+    const windowCount = v.length // 2/3/4
+    const winMat = this.glassMat
+    for (let s = -1; s <= 1; s += 2) {
+      for (let w = 0; w < windowCount; w++) {
+        const win = new THREE.Mesh(new THREE.BoxGeometry(len / (windowCount + 0.4) * 0.7, cabH * 0.6, 0.04), winMat)
+        const xx = -len / 2 + (len * (w + 0.7)) / (windowCount + 0.4)
+        win.position.set(xx, cab.position.y + 0.02, (s * wid * 0.86) / 2)
+        group.add(win)
+      }
+    }
+    // Windshield at the front (+x)
+    const wind = new THREE.Mesh(new THREE.BoxGeometry(0.04, cabH * 0.6, wid * 0.7), winMat)
+    wind.position.set(len / 2 - 0.02, cab.position.y + 0.02, 0)
+    group.add(wind)
+
+    // Wheels
+    const wheelGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.1, 14)
+    const wheelPositions = v.length >= 4 ? [-0.34, -0.1, 0.14, 0.36] : v.length === 3 ? [-0.32, 0, 0.32] : [-0.28, 0.28]
+    for (const fx of wheelPositions) {
+      for (let s = -1; s <= 1; s += 2) {
+        const wheel = new THREE.Mesh(wheelGeo, this.tireMat)
+        wheel.rotation.x = Math.PI / 2
+        wheel.position.set(fx * len, 0.15, (s * wid) / 2)
+        group.add(wheel)
+      }
+    }
+
+    // Roof marker (color-blind shape)
+    const marker = new THREE.Mesh(this.markerGeometry(COLOR_MARKER[v.color]), this.markerMat)
+    marker.position.set(len * 0.12, cab.position.y + cabH / 2 + 0.05, 0)
+    group.add(marker)
+
+    // Capacity bar on the roof (back portion)
+    const capBarWidth = len * 0.5
+    const barX = -len * 0.22
+    const barZ = 0
+    const bg = new THREE.Mesh(new THREE.BoxGeometry(capBarWidth, 0.04, 0.12), this.capBgMat)
+    bg.position.set(barX, cab.position.y + cabH / 2 + 0.04, barZ)
+    group.add(bg)
+    const capFill = new THREE.Mesh(new THREE.BoxGeometry(capBarWidth, 0.06, 0.13), this.capFillMat)
+    capFill.position.set(barX - capBarWidth / 2, cab.position.y + cabH / 2 + 0.05, barZ)
+    capFill.scale.x = 0.001
+    group.add(capFill)
+
+    // Blob shadow
+    const shadow = new THREE.Mesh(
+      new THREE.PlaneGeometry(len + 0.5, wid + 0.5),
+      new THREE.MeshBasicMaterial({ map: this.shadowTex, transparent: true, depthWrite: false }),
+    )
+    shadow.rotation.x = -Math.PI / 2
+    shadow.position.y = 0.015
+    group.add(shadow)
+
+    return { group, body, capFill, capBarWidth, vehicle: v }
+  }
+
+  updateCapacity(v: Vehicle): void {
+    const view = this.views.get(v.id)
+    if (!view) return
+    const ratio = Math.max(0.001, v.boarded / v.capacity)
+    const w = view.capBarWidth
+    view.capFill.scale.x = ratio
+    view.capFill.position.x = -w * 0.22 - w / 2 + (w * ratio) / 2
+  }
+
+  // ---- passengers / queue ----------------------------------------------
+
+  private makePassenger(): THREE.Group {
+    const pooled = this.passengerPool.pop()
+    if (pooled) {
+      pooled.visible = true
+      this.fxGroup.add(pooled)
+      return pooled
+    }
+    const g = new THREE.Group()
+    const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.2, 4, 10), this.bodyMaterial('red'))
+    body.position.y = 0.28
+    body.name = 'body'
+    g.add(body)
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 10), new THREE.MeshToonMaterial({ color: 0xffe0bd, gradientMap: this.gradient }))
+    head.position.y = 0.56
+    g.add(head)
+    const marker = new THREE.Mesh(this.markerGeometry('circle'), this.markerMat)
+    marker.name = 'marker'
+    marker.position.y = 0.34
+    marker.scale.set(0.7, 0.7, 0.7)
+    g.add(marker)
+    const shadow = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.6, 0.6),
+      new THREE.MeshBasicMaterial({ map: this.shadowTex, transparent: true, depthWrite: false }),
+    )
+    shadow.rotation.x = -Math.PI / 2
+    shadow.position.y = 0.01
+    g.add(shadow)
+    this.fxGroup.add(g)
+    return g
+  }
+
+  private paintPassenger(g: THREE.Group, color: ColorKey): void {
+    const body = g.getObjectByName('body') as THREE.Mesh
+    body.material = this.bodyMaterial(color)
+    const marker = g.getObjectByName('marker') as THREE.Mesh
+    marker.geometry = this.markerGeometry(COLOR_MARKER[color])
+  }
+
+  private recyclePassenger(g: THREE.Group): void {
+    g.visible = false
+    this.fxGroup.remove(g)
+    this.passengerPool.push(g)
+  }
+
+  private buildQueue(colors: ColorKey[]): void {
+    for (const m of this.queueMeshes) this.recyclePassenger(m)
+    this.queueMeshes = []
+    const n = Math.min(QUEUE_WINDOW, colors.length)
+    for (let i = 0; i < n; i++) {
+      const p = this.makePassenger()
+      this.paintPassenger(p, colors[i])
+      const w = this.queueWorld(i)
+      p.position.copy(w)
+      this.queueMeshes.push(p)
+    }
+  }
+
+  // Animate the front passenger boarding the vehicle in the given slot.
+  async animateBoard(vehicleId: number): Promise<void> {
+    const passenger = this.queueMeshes.shift()
+    const view = this.views.get(vehicleId)
+    if (!passenger || !view) return
+    const start = passenger.position.clone()
+    const target = view.group.position.clone()
+    target.y = 1.05
+    const peak = Math.max(start.y, target.y) + 1.1
+    const ctrl = new THREE.Vector3((start.x + target.x) / 2, peak, (start.z + target.z) / 2)
+    await this.anim(300, (k) => {
+      const a = start.clone().lerp(ctrl, k)
+      const b = ctrl.clone().lerp(target, k)
+      passenger.position.copy(a.lerp(b, k))
+      passenger.rotation.y = k * Math.PI * 2
+      const s = 1 - 0.4 * Math.sin(k * Math.PI)
+      passenger.scale.setScalar(s)
+    }, easeInOutCubic)
+    passenger.scale.setScalar(1)
+    passenger.rotation.y = 0
+    this.recyclePassenger(passenger)
+    // little squash on the vehicle as the rider lands
+    await this.anim(140, (k) => {
+      const s = 1 - 0.12 * Math.sin(k * Math.PI)
+      view.body.scale.y = s
+    }, linear)
+    view.body.scale.y = 1
+  }
+
+  // After a board, slide remaining passengers forward and reveal a new one.
+  relayoutQueue(colors: ColorKey[]): Promise<void> {
+    // Spawn newly-visible passenger at the tail if needed.
+    if (colors.length >= QUEUE_WINDOW && this.queueMeshes.length < QUEUE_WINDOW) {
+      const p = this.makePassenger()
+      this.paintPassenger(p, colors[QUEUE_WINDOW - 1])
+      const w = this.queueWorld(QUEUE_WINDOW)
+      p.position.copy(w)
+      this.queueMeshes.push(p)
+    }
+    const starts = this.queueMeshes.map((m) => m.position.clone())
+    const targets = this.queueMeshes.map((_, i) => this.queueWorld(i))
+    return this.anim(180, (k) => {
+      this.queueMeshes.forEach((m, i) => {
+        m.position.lerpVectors(starts[i], targets[i], k)
+      })
+    }, easeOutQuad)
+  }
+
+  // ---- vehicle animations ----------------------------------------------
+
+  async animateBump(vehicleId: number, distance: number): Promise<void> {
+    const view = this.views.get(vehicleId)
+    if (!view) return
+    const v = view.vehicle
+    const dir = this.forwardDir(v.facing)
+    const base = view.group.position.clone()
+    const amt = Math.min(0.32, 0.18 + distance * 0.08)
+    await this.anim(110, (k) => {
+      view.group.position.copy(base).addScaledVector(dir, amt * k)
+    }, easeOutQuad)
+    await this.anim(170, (k) => {
+      view.group.position.copy(base).addScaledVector(dir, amt * (1 - k))
+    }, easeOutBack)
+    view.group.position.copy(base)
+  }
+
+  async animateBlocked(vehicleId: number): Promise<void> {
+    const view = this.views.get(vehicleId)
+    if (!view) return
+    const base = view.group.position.clone()
+    await this.anim(260, (k) => {
+      view.group.position.x = base.x + Math.sin(k * Math.PI * 6) * 0.08
+    }, linear)
+    view.group.position.copy(base)
+  }
+
+  async animateDriveToZone(vehicleId: number, slotIndex: number): Promise<void> {
+    const view = this.views.get(vehicleId)
+    if (!view) return
+    const v = view.vehicle
+    const dir = this.forwardDir(v.facing)
+    const start = view.group.position.clone()
+    const startRot = view.group.rotation.y
+
+    // Phase 1: squash then drive forward off the grid.
+    const exitPoint = start.clone().addScaledVector(dir, this.size + 1.5)
+    await this.anim(120, (k) => {
+      view.group.scale.set(1 + 0.12 * k, 1 - 0.08 * k, 1)
+    }, easeOutQuad)
+    await this.anim(360, (k) => {
+      view.group.position.lerpVectors(start, exitPoint, k)
+      view.group.scale.set(1 + 0.12 * (1 - k), 1 - 0.08 * (1 - k), 1)
+    }, easeOutCubic)
+    view.group.scale.set(1, 1, 1)
+
+    // Phase 2: arc into the boarding slot, turning to face the queue.
+    const target = this.slotWorld(slotIndex)
+    const endRot = this.rotForFacing('up')
+    const mid = new THREE.Vector3((exitPoint.x + target.x) / 2, 0, exitPoint.z - 0.6)
+    await this.anim(440, (k) => {
+      const a = exitPoint.clone().lerp(mid, k)
+      const b = mid.clone().lerp(target, k)
+      view.group.position.copy(a.lerp(b, k))
+      view.group.rotation.y = startRot + (endRot - startRot) * k
+    }, easeInOutCubic)
+    view.group.position.copy(target)
+    view.group.rotation.y = endRot
+    this.pulseSlot(slotIndex)
+  }
+
+  async animateDepart(vehicleId: number, slotIndex: number): Promise<void> {
+    const view = this.views.get(vehicleId)
+    if (!view) return
+    this.spawnSparkles(view.group.position.clone(), view.vehicle.color)
+    const start = view.group.position.clone()
+    const dir = new THREE.Vector3(0, 0, -1) // drive forward off the top
+    const end = start.clone().addScaledVector(dir, this.size + 4)
+    await this.anim(120, (k) => {
+      view.group.scale.set(1 - 0.1 * k, 1 + 0.15 * k, 1 - 0.1 * k)
+    }, easeOutQuad)
+    await this.anim(420, (k) => {
+      view.group.position.lerpVectors(start, end, k)
+      view.group.scale.setScalar(1 - 0.4 * k)
+    }, easeInOutCubic)
+    this.removeVehicleView(vehicleId)
+    void slotIndex
+  }
+
+  pulseVehicle(vehicleId: number | null): void {
+    this.hintId = vehicleId
+  }
+
+  private pulseSlot(i: number): void {
+    const ring = this.slotMarkers[i]
+    if (!ring) return
+    const mat = ring.material as THREE.MeshBasicMaterial
+    this.anim(360, (k) => {
+      mat.opacity = 0.7 + 0.3 * Math.sin(k * Math.PI)
+      ring.scale.setScalar(1 + 0.25 * Math.sin(k * Math.PI))
+    }, linear)
+  }
+
+  screenShake(mag = 0.4, time = 0.4): void {
+    this.shakeMag = mag
+    this.shakeTime = time
+  }
+
+  // ---- FX particles -----------------------------------------------------
+
+  private spawnSparkles(at: THREE.Vector3, color: ColorKey): void {
+    const count = 14
+    for (let i = 0; i < count; i++) {
+      let mesh = this.particlePool.pop()
+      if (!mesh) {
+        mesh = new THREE.Mesh(new THREE.OctahedronGeometry(0.1), this.bodyMaterial(color))
+      } else {
+        mesh.visible = true
+      }
+      mesh.material = i % 2 === 0 ? this.bodyMaterial(color) : this.markerMat
+      mesh.position.copy(at).add(new THREE.Vector3(0, 0.6, 0))
+      mesh.scale.setScalar(1)
+      this.fxGroup.add(mesh)
+      const ang = Math.random() * Math.PI * 2
+      const sp = 2 + Math.random() * 3
+      this.particles.push({
+        mesh,
+        vel: new THREE.Vector3(Math.cos(ang) * sp, 3 + Math.random() * 3, Math.sin(ang) * sp),
+        life: 0,
+        ttl: 0.7 + Math.random() * 0.3,
+      })
+    }
+  }
+
+  private updateParticles(dt: number): void {
+    for (let i = this.particles.length - 1; i >= 0; i--) {
+      const p = this.particles[i]
+      p.life += dt
+      p.vel.y -= 12 * dt
+      p.mesh.position.addScaledVector(p.vel, dt)
+      p.mesh.rotation.x += dt * 6
+      p.mesh.rotation.y += dt * 4
+      const k = 1 - p.life / p.ttl
+      p.mesh.scale.setScalar(Math.max(0.001, k))
+      if (p.life >= p.ttl) {
+        p.mesh.visible = false
+        this.fxGroup.remove(p.mesh)
+        this.particlePool.push(p.mesh)
+        this.particles.splice(i, 1)
+      }
+    }
+  }
+
+  // ---- camera framing ---------------------------------------------------
+
+  private frameContent(): void {
+    const half = (this.size - 1) / 2
+    const margin = 1.2
+    this.contentBox.min.set(-half - margin, 0, this.queueZ - 1.2)
+    this.contentBox.max.set(half + margin, 1.4, half + margin)
+    const zoneHalfW = (this.slotSpacing * SLOT_COUNT) / 2 + 0.8
+    if (zoneHalfW > this.contentBox.max.x) {
+      this.contentBox.min.x = -zoneHalfW
+      this.contentBox.max.x = zoneHalfW
+    }
+    const center = new THREE.Vector3()
+    this.contentBox.getCenter(center)
+    this.camTarget.copy(center)
+
+    const pitch = (56 * Math.PI) / 180
+    const dir = new THREE.Vector3(0, Math.sin(pitch), Math.cos(pitch)).normalize()
+    this.camBasePos.copy(center).addScaledVector(dir, 45)
+    this.camera.position.copy(this.camBasePos)
+    this.camera.lookAt(center)
+    this.camera.updateMatrixWorld(true)
+    this.applyFrustum()
+  }
+
+  private applyFrustum(): void {
+    // Project content box corners into camera space, fit ortho frustum.
+    const inv = this.camera.matrixWorldInverse
+    const b = this.contentBox
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
+    const corner = new THREE.Vector3()
+    for (let xi = 0; xi < 2; xi++) {
+      for (let yi = 0; yi < 2; yi++) {
+        for (let zi = 0; zi < 2; zi++) {
+          corner.set(xi ? b.max.x : b.min.x, yi ? b.max.y : b.min.y, zi ? b.max.z : b.min.z)
+          corner.applyMatrix4(inv)
+          minX = Math.min(minX, corner.x)
+          maxX = Math.max(maxX, corner.x)
+          minY = Math.min(minY, corner.y)
+          maxY = Math.max(maxY, corner.y)
+        }
+      }
+    }
+    let halfW = (maxX - minX) / 2
+    let halfH = (maxY - minY) / 2
+    halfW *= 1.06
+    halfH *= 1.06
+    const w = this.host.clientWidth || 1
+    const h = this.host.clientHeight || 1
+    const aspect = w / h
+    if (halfW / halfH < aspect) halfW = halfH * aspect
+    else halfH = halfW / aspect
+    const cx = (minX + maxX) / 2
+    const cy = (minY + maxY) / 2
+    this.camera.left = cx - halfW
+    this.camera.right = cx + halfW
+    this.camera.top = cy + halfH
+    this.camera.bottom = cy - halfH
+    this.camera.updateProjectionMatrix()
+  }
+
+  resize(): void {
+    const w = this.host.clientWidth
+    const h = this.host.clientHeight
+    if (w === 0 || h === 0) return
+    this.renderer.setSize(w, h, false)
+    this.applyFrustum()
+  }
+
+  // ---- picking ----------------------------------------------------------
+
+  private raycaster = new THREE.Raycaster()
+  private ndc = new THREE.Vector2()
+
+  pickVehicle(clientX: number, clientY: number): number | null {
+    const rect = this.renderer.domElement.getBoundingClientRect()
+    this.ndc.x = ((clientX - rect.left) / rect.width) * 2 - 1
+    this.ndc.y = -((clientY - rect.top) / rect.height) * 2 + 1
+    this.raycaster.setFromCamera(this.ndc, this.camera)
+    const hits = this.raycaster.intersectObjects(this.vehicleGroup.children, true)
+    if (hits.length === 0) return null
+    let obj: THREE.Object3D | null = hits[0].object
+    while (obj && obj.parent !== this.vehicleGroup) obj = obj.parent
+    if (!obj) return null
+    for (const [id, view] of this.views) {
+      if (view.group === obj) return id
+    }
+    return null
+  }
+
+  // ---- loop / cleanup ---------------------------------------------------
+
+  private anim(duration: number, update: (k: number) => void, easing = easeOutCubic): Promise<void> {
+    return this.tween.add(duration, update, easing)
+  }
+
+  update(): void {
+    const dt = Math.min(0.05, this.clock.getDelta())
+    this.tween.step(dt * 1000)
+    this.updateParticles(dt)
+
+    // idle bob for the queue
+    const t = this.clock.elapsedTime
+    this.queueMeshes.forEach((m, i) => {
+      m.position.y = Math.abs(Math.sin(t * 2 + i * 0.6)) * 0.06
+    })
+
+    // hint pulse
+    if (this.hintId !== null) {
+      const view = this.views.get(this.hintId)
+      if (view) {
+        const s = 1 + Math.sin(t * 8) * 0.06
+        view.group.scale.setScalar(s)
+      }
+    }
+
+    // screen shake
+    if (this.shakeTime > 0) {
+      this.shakeTime -= dt
+      const m = this.shakeMag * Math.max(0, this.shakeTime)
+      this.camera.position.set(
+        this.camBasePos.x + (Math.random() - 0.5) * m,
+        this.camBasePos.y + (Math.random() - 0.5) * m,
+        this.camBasePos.z + (Math.random() - 0.5) * m,
+      )
+      this.camera.lookAt(this.camTarget)
+    } else if (!this.camera.position.equals(this.camBasePos)) {
+      this.camera.position.copy(this.camBasePos)
+      this.camera.lookAt(this.camTarget)
+    }
+
+    this.renderer.render(this.scene, this.camera)
+  }
+
+  clearHint(): void {
+    if (this.hintId !== null) {
+      const view = this.views.get(this.hintId)
+      if (view) view.group.scale.setScalar(1)
+    }
+    this.hintId = null
+  }
+
+  private removeVehicleView(id: number): void {
+    const view = this.views.get(id)
+    if (!view) return
+    this.vehicleGroup.remove(view.group)
+    view.group.traverse((o) => {
+      if (o instanceof THREE.Mesh) {
+        o.geometry.dispose()
+      }
+    })
+    this.views.delete(id)
+  }
+
+  private disposeLevel(): void {
+    this.tween.clear()
+    for (const id of [...this.views.keys()]) this.removeVehicleView(id)
+    for (const m of this.queueMeshes) this.recyclePassenger(m)
+    this.queueMeshes = []
+    for (const p of this.particles) {
+      p.mesh.visible = false
+      this.fxGroup.remove(p.mesh)
+      this.particlePool.push(p.mesh)
+    }
+    this.particles = []
+    this.boardGroup.traverse((o) => {
+      if (o instanceof THREE.Mesh) o.geometry.dispose()
+    })
+    this.boardGroup.clear()
+    this.slotMarkers = []
+  }
+
+  dispose(): void {
+    this.disposeLevel()
+    this.renderer.dispose()
+    if (this.renderer.domElement.parentElement === this.host) {
+      this.host.removeChild(this.renderer.domElement)
+    }
+  }
+}
