@@ -7,6 +7,8 @@ export interface ZoneSlot {
   vehicle: Vehicle
   // `vehicle.boarded` holds the count; seq is the order it entered the zone.
   seq: number
+  // false while the vehicle is still driving into the slot — it can't board yet.
+  arrived: boolean
 }
 
 export type Status = 'playing' | 'win' | 'fail'
@@ -107,7 +109,7 @@ export class GameState {
     const color = this.queue[0]
     let best: ZoneSlot | null = null
     for (const s of this.zone) {
-      if (!s) continue
+      if (!s || !s.arrived) continue
       const v = s.vehicle
       if (v.color !== color || v.boarded >= v.capacity) continue
       if (

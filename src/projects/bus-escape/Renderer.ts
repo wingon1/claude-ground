@@ -350,15 +350,24 @@ export class Renderer {
     zonePlat.position.set(0, -0.15, this.zoneZ)
     this.boardGroup.add(zonePlat)
 
-    // Queue platform — an L: horizontal row + vertical tail on the right.
+    // Queue platform — a clean L: the two arms share the same width and meet
+    // exactly at the corner (no overhang). PW = lane width.
     const qMat = new THREE.MeshToonMaterial({ color: 0x252b4d, gradientMap: this.gradient })
-    const hLen = QUEUE_H * QUEUE_HSPACING + 0.9
-    const qH = new THREE.Mesh(new RoundedBoxGeometry(hLen, 0.2, 1.1, 2, 0.09), qMat)
-    qH.position.set(0, -0.1, this.queueZ)
+    const PW = 1.0
+    const cornerX = this.queueRightX
+    const xLeft = -cornerX - 0.55 // a little before the front (index 0)
+    const xRight = cornerX + PW / 2 // reach the corner's outer edge
+    // Horizontal arm
+    const hLen = xRight - xLeft
+    const qH = new THREE.Mesh(new RoundedBoxGeometry(hLen, 0.2, PW, 2, 0.09), qMat)
+    qH.position.set((xLeft + xRight) / 2, -0.1, this.queueZ)
     this.boardGroup.add(qH)
-    const vLen = QUEUE_V * QUEUE_VSPACING + 0.9
-    const qV = new THREE.Mesh(new RoundedBoxGeometry(1.1, 0.2, vLen, 2, 0.09), qMat)
-    qV.position.set(this.queueRightX, -0.1, this.queueZ - ((QUEUE_V + 1) / 2) * QUEUE_VSPACING)
+    // Vertical arm — from the corner up to just past the last vertical slot
+    const topZ = this.queueZ - QUEUE_V * QUEUE_VSPACING - 0.5
+    const bottomZ = this.queueZ - PW / 2 // butts against the horizontal arm
+    const vLen = bottomZ - topZ
+    const qV = new THREE.Mesh(new RoundedBoxGeometry(PW, 0.2, vLen, 2, 0.09), qMat)
+    qV.position.set(cornerX, -0.1, (topZ + bottomZ) / 2)
     this.boardGroup.add(qV)
 
     void half
@@ -530,7 +539,7 @@ export class Renderer {
     const ratio = Math.max(0.001, v.boarded / v.capacity)
     const w = view.capBarWidth
     view.capFill.scale.x = ratio
-    view.capFill.position.x = -w * 0.22 - w / 2 + (w * ratio) / 2
+    view.capFill.position.x = -w * 0.44 - w / 2 + (w * ratio) / 2
   }
 
   // ---- passengers / queue ----------------------------------------------
@@ -614,7 +623,7 @@ export class Renderer {
     const r = Math.max(0.001, Math.min(1, ratio))
     const w = view.capBarWidth
     view.capFill.scale.x = r
-    view.capFill.position.x = -w * 0.22 - w / 2 + (w * r) / 2
+    view.capFill.position.x = -w * 0.44 - w / 2 + (w * r) / 2
   }
 
   // Board a whole batch of passengers in a fast, overlapping burst. State is

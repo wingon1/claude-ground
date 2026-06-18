@@ -12,7 +12,7 @@ export function parkInZone(state: GameState, vehicle: Vehicle): number {
   remove(state.grid, vehicle)
   state.vehicles.delete(vehicle.id)
   vehicle.boarded = 0
-  state.zone[slotIndex] = { vehicle, seq: state.zoneSeq++ }
+  state.zone[slotIndex] = { vehicle, seq: state.zoneSeq++, arrived: false }
   return slotIndex
 }
 
