@@ -11,8 +11,14 @@ import {
 import { TweenManager, easeOutCubic, easeInOutCubic, easeOutBack, easeOutQuad, linear } from './tween'
 import type { GameState } from './GameState'
 
-const QUEUE_WINDOW = 10
-const QUEUE_SPACING = 0.62
+// Queue is an L: a horizontal row (front on the left, by the traffic light)
+// turning up into a vertical tail on the right. People enter top-right, come
+// down the vertical, round the corner and slide left to the front.
+const QUEUE_H = 10 // horizontal slots (incl. the corner)
+const QUEUE_V = 8 // vertical slots above the corner
+const QUEUE_WINDOW = QUEUE_H + QUEUE_V // 18 visible
+const QUEUE_HSPACING = 0.48
+const QUEUE_VSPACING = 0.4 // tighter; descending people may visually overlap
 const SLOT_COUNT = 4
 
 interface VehicleView {
@@ -213,17 +219,25 @@ export class Renderer {
     return new THREE.Vector3(x, 0, this.zoneZ)
   }
 
-  private queueWorld(i: number): THREE.Vector3 {
-    const x = (i - (QUEUE_WINDOW - 1) / 2) * QUEUE_SPACING
-    return new THREE.Vector3(x, 0, this.queueZ)
+  private get queueRightX(): number {
+    return ((QUEUE_H - 1) / 2) * QUEUE_HSPACING
   }
 
-  // Off-frame point at the top-right where passengers appear before descending
-  // and sliding left into the row. Outside the content box, so framing is
-  // unaffected.
+  // Resting position of queue index i along the L (0 = front/left).
+  private queueWorld(i: number): THREE.Vector3 {
+    if (i < QUEUE_H) {
+      const x = (i - (QUEUE_H - 1) / 2) * QUEUE_HSPACING
+      return new THREE.Vector3(x, 0, this.queueZ)
+    }
+    // vertical tail above the right corner, steps 1..QUEUE_V
+    const step = i - (QUEUE_H - 1)
+    return new THREE.Vector3(this.queueRightX, 0, this.queueZ - step * QUEUE_VSPACING)
+  }
+
+  // Off-frame point above the top of the vertical tail where passengers appear
+  // before descending and rounding the corner toward the front.
   private queueEntryStart(): THREE.Vector3 {
-    const rightX = ((QUEUE_WINDOW - 1) - (QUEUE_WINDOW - 1) / 2) * QUEUE_SPACING
-    return new THREE.Vector3(rightX + 1.4, 1.8, this.queueZ - 1.8)
+    return new THREE.Vector3(this.queueRightX, 1.7, this.queueZ - (QUEUE_V + 1) * QUEUE_VSPACING)
   }
 
   // ---- level build ------------------------------------------------------
@@ -295,14 +309,16 @@ export class Renderer {
     zonePlat.position.set(0, -0.15, this.zoneZ)
     this.boardGroup.add(zonePlat)
 
-    // Queue platform
-    const queueW = QUEUE_WINDOW * QUEUE_SPACING + 1.6
-    const qPlat = new THREE.Mesh(
-      new THREE.BoxGeometry(queueW, 0.2, 1.2),
-      new THREE.MeshToonMaterial({ color: 0x252b4d, gradientMap: this.gradient }),
-    )
-    qPlat.position.set(0, -0.1, this.queueZ)
-    this.boardGroup.add(qPlat)
+    // Queue platform — an L: horizontal row + vertical tail on the right.
+    const qMat = new THREE.MeshToonMaterial({ color: 0x252b4d, gradientMap: this.gradient })
+    const hLen = QUEUE_H * QUEUE_HSPACING + 0.9
+    const qH = new THREE.Mesh(new THREE.BoxGeometry(hLen, 0.2, 1.1), qMat)
+    qH.position.set(0, -0.1, this.queueZ)
+    this.boardGroup.add(qH)
+    const vLen = QUEUE_V * QUEUE_VSPACING + 0.9
+    const qV = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.2, vLen), qMat)
+    qV.position.set(this.queueRightX, -0.1, this.queueZ - ((QUEUE_V + 1) / 2) * QUEUE_VSPACING)
+    this.boardGroup.add(qV)
 
     void half
   }
@@ -768,11 +784,13 @@ export class Renderer {
   private frameContent(): void {
     const half = (this.size - 1) / 2
     const margin = 1.2
-    this.contentBox.min.set(-half - margin, 0, this.queueZ - 1.4)
-    this.contentBox.max.set(half + margin, 1.8, half + margin)
+    // Fit the L: vertical tail extends up to here, horizontal + light extend in x.
+    const queueTopZ = this.queueZ - QUEUE_V * QUEUE_VSPACING - 1.0
+    this.contentBox.min.set(-half - margin, 0, queueTopZ)
+    this.contentBox.max.set(half + margin, 1.9, half + margin)
     const zoneHalfW = (this.slotSpacing * SLOT_COUNT) / 2 + 0.8
-    // queue line (+ traffic light at the head) can be wider than the grid
-    const queueHalfW = ((QUEUE_WINDOW - 1) / 2) * QUEUE_SPACING + 1.3
+    // left edge includes the traffic light beside the front of the row
+    const queueHalfW = ((QUEUE_H - 1) / 2) * QUEUE_HSPACING + 1.3
     const halfW = Math.max(zoneHalfW, queueHalfW)
     if (halfW > this.contentBox.max.x) {
       this.contentBox.min.x = -halfW
