@@ -44,6 +44,16 @@ export type Project = ReactProject | IframeProject
  */
 export const projects: Project[] = [
   {
+    id: 'bus-escape',
+    title: '🚌 Bus Escape: Traffic Jam',
+    description:
+      'A polished 3D portrait puzzle: slide forward-only buses out of a jam into a 4-slot boarding zone, then board colour-matched passengers from the queue. 100 procedurally generated, solver-verified levels.',
+    emoji: '🚌',
+    tags: ['react', 'three.js', '3d', 'puzzle', 'mobile'],
+    kind: 'react',
+    load: () => import('./bus-escape'),
+  },
+  {
     id: 'car-jam',
     title: '🚗 Car Jam — Slide & Board Puzzle',
     description:
