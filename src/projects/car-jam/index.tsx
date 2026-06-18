@@ -40,12 +40,12 @@ export default function CarJam() {
   const progress = s.total > 0 ? cleared / s.total : 0
 
   return (
-    <div className="absolute inset-0 select-none overflow-hidden bg-[#3a4368]">
+    <div className="absolute inset-0 touch-none select-none overflow-hidden bg-[#3a4368]">
       {/* The three.js canvas fills the whole screen; HUD floats above it. */}
       <div ref={mountRef} className="absolute inset-0" />
 
       {/* ---- Top band: level + progress (≈20%) ---- */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 flex h-[20%] flex-col items-center justify-center gap-3 px-6 pt-3">
+      <div className="pointer-events-none absolute inset-x-0 top-0 flex h-[22%] flex-col items-center justify-center gap-3 px-6 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <div className="flex items-baseline gap-2 drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)]">
           <span className="text-sm font-bold uppercase tracking-[0.3em] text-white/70">
             Level
@@ -65,7 +65,7 @@ export default function CarJam() {
       </div>
 
       {/* ---- Bottom band: controls (≈20%) ---- */}
-      <div className="absolute inset-x-0 bottom-0 flex h-[20%] items-center justify-center gap-4 px-6 pb-4">
+      <div className="absolute inset-x-0 bottom-0 flex h-[22%] items-center justify-center gap-4 px-6 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <HudButton onClick={() => gameRef.current?.undo()} disabled={!s.canUndo} icon="↩" label="Undo" />
         <HudButton onClick={() => gameRef.current?.restart()} icon="⟳" label="Restart" />
         <HudButton
