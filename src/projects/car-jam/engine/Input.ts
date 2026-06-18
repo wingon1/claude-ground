@@ -1,84 +1,55 @@
 /* ===========================================================================
- * Input.ts — pointer → world mapping. Translates raw pointer events into the
- * two things the game cares about: which car was grabbed, and where on the
- * ground plane (y=0) the pointer currently is. The drag state machine itself
- * lives in Main, which implements these handlers.
+ * Input.ts — taps only. Raycasts the pointer against car bodies and reports
+ * which vehicle was tapped. The boarding game needs no dragging.
  * ========================================================================= */
 
 import * as THREE from 'three'
-import type { Car } from './Car'
-
-export type InputHandlers = {
-  /** Returns the body meshes that can be grabbed. */
-  pickables: () => THREE.Mesh[]
-  onGrab: (car: Car, groundAlong: THREE.Vector3) => void
-  onDrag: (groundAlong: THREE.Vector3) => void
-  onRelease: () => void
-}
+import type { Vehicle } from './Vehicle'
 
 export class Input {
   private ray = new THREE.Raycaster()
-  private plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
   private ndc = new THREE.Vector2()
-  private hit = new THREE.Vector3()
-  private dragging = false
+  private downX = 0
+  private downY = 0
   private dom: HTMLElement
   private camera: THREE.Camera
-  private handlers: InputHandlers
+  private pickables: () => THREE.Mesh[]
+  private onTap: (v: Vehicle) => void
 
-  constructor(dom: HTMLElement, camera: THREE.Camera, handlers: InputHandlers) {
+  constructor(
+    dom: HTMLElement,
+    camera: THREE.Camera,
+    pickables: () => THREE.Mesh[],
+    onTap: (v: Vehicle) => void,
+  ) {
     this.dom = dom
     this.camera = camera
-    this.handlers = handlers
+    this.pickables = pickables
+    this.onTap = onTap
     dom.addEventListener('pointerdown', this.onDown)
-    dom.addEventListener('pointermove', this.onMove)
-    window.addEventListener('pointerup', this.onUp)
-    dom.addEventListener('pointercancel', this.onUp)
-  }
-
-  private toGround(e: PointerEvent): THREE.Vector3 | null {
-    const rect = this.dom.getBoundingClientRect()
-    this.ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1
-    this.ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1
-    this.ray.setFromCamera(this.ndc, this.camera)
-    const p = this.ray.ray.intersectPlane(this.plane, this.hit)
-    return p ? this.hit.clone() : null
+    dom.addEventListener('pointerup', this.onUp)
   }
 
   private onDown = (e: PointerEvent) => {
+    this.downX = e.clientX
+    this.downY = e.clientY
+  }
+
+  private onUp = (e: PointerEvent) => {
+    // ignore drags / scrolls — only treat near-stationary taps as a click
+    if (Math.hypot(e.clientX - this.downX, e.clientY - this.downY) > 12) return
     const rect = this.dom.getBoundingClientRect()
     this.ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1
     this.ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1
     this.ray.setFromCamera(this.ndc, this.camera)
-    const hits = this.ray.intersectObjects(this.handlers.pickables(), false)
+    const hits = this.ray.intersectObjects(this.pickables(), false)
     if (hits.length === 0) return
-    const car = hits[0].object.userData.car as Car | undefined
-    if (!car) return
-    const ground = this.toGround(e)
-    if (!ground) return
-    this.dragging = true
-    ;(this.dom as HTMLElement).setPointerCapture?.(e.pointerId)
-    this.handlers.onGrab(car, ground)
-    e.preventDefault()
-  }
-
-  private onMove = (e: PointerEvent) => {
-    if (!this.dragging) return
-    const ground = this.toGround(e)
-    if (ground) this.handlers.onDrag(ground)
-    e.preventDefault()
-  }
-
-  private onUp = () => {
-    if (!this.dragging) return
-    this.dragging = false
-    this.handlers.onRelease()
+    const v = hits[0].object.userData.vehicle as Vehicle | undefined
+    if (v) this.onTap(v)
   }
 
   dispose() {
     this.dom.removeEventListener('pointerdown', this.onDown)
-    this.dom.removeEventListener('pointermove', this.onMove)
-    window.removeEventListener('pointerup', this.onUp)
-    this.dom.removeEventListener('pointercancel', this.onUp)
+    this.dom.removeEventListener('pointerup', this.onUp)
   }
 }
