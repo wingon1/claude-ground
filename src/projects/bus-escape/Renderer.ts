@@ -4,10 +4,8 @@ import * as THREE from 'three'
 import {
   COLOR_HEX,
   COLOR_DARK,
-  COLOR_MARKER,
   type ColorKey,
   type Facing,
-  type MarkerKind,
   type Vehicle,
 } from './types'
 import { TweenManager, easeOutCubic, easeInOutCubic, easeOutBack, easeOutQuad, linear } from './tween'
@@ -47,7 +45,7 @@ export class Renderer {
   private markerMat: THREE.MeshToonMaterial
   private capBgMat: THREE.MeshBasicMaterial
   private capFillMat: THREE.MeshToonMaterial
-  private markerGeo = new Map<MarkerKind, THREE.BufferGeometry>()
+  private arrowGeo: THREE.BufferGeometry | null = null
 
   private boardGroup = new THREE.Group()
   private vehicleGroup = new THREE.Group()
@@ -142,36 +140,22 @@ export class Renderer {
     return m
   }
 
-  private markerGeometry(kind: MarkerKind): THREE.BufferGeometry {
-    let g = this.markerGeo.get(kind)
-    if (g) return g
-    if (kind === 'star') {
-      const shape = new THREE.Shape()
-      const spikes = 5
-      const outer = 0.17
-      const inner = 0.075
-      for (let i = 0; i < spikes * 2; i++) {
-        const r = i % 2 === 0 ? outer : inner
-        const a = (i / (spikes * 2)) * Math.PI * 2 - Math.PI / 2
-        const x = Math.cos(a) * r
-        const y = Math.sin(a) * r
-        if (i === 0) shape.moveTo(x, y)
-        else shape.lineTo(x, y)
-      }
-      shape.closePath()
-      g = new THREE.ExtrudeGeometry(shape, { depth: 0.05, bevelEnabled: false })
-      g.rotateX(-Math.PI / 2)
-    } else if (kind === 'circle') {
-      g = new THREE.CylinderGeometry(0.15, 0.15, 0.06, 22)
-    } else if (kind === 'triangle') {
-      g = new THREE.CylinderGeometry(0.18, 0.18, 0.06, 3)
-      g.rotateY(Math.PI / 6)
-    } else {
-      // diamond: thin square rotated 45°
-      g = new THREE.BoxGeometry(0.22, 0.06, 0.22)
-      g.rotateY(Math.PI / 4)
-    }
-    this.markerGeo.set(kind, g)
+  // Flat arrow lying on the roof, pointing toward the vehicle's local +x (its
+  // front). The vehicle group is rotated by facing, so it points the real way.
+  private arrowGeometry(): THREE.BufferGeometry {
+    if (this.arrowGeo) return this.arrowGeo
+    const s = new THREE.Shape()
+    s.moveTo(0.26, 0)
+    s.lineTo(0.04, 0.18)
+    s.lineTo(0.04, 0.07)
+    s.lineTo(-0.22, 0.07)
+    s.lineTo(-0.22, -0.07)
+    s.lineTo(0.04, -0.07)
+    s.lineTo(0.04, -0.18)
+    s.closePath()
+    const g = new THREE.ExtrudeGeometry(s, { depth: 0.05, bevelEnabled: false })
+    g.rotateX(-Math.PI / 2) // lay flat, normal up
+    this.arrowGeo = g
     return g
   }
 
@@ -398,10 +382,10 @@ export class Renderer {
       }
     }
 
-    // Roof marker (color-blind shape)
-    const marker = new THREE.Mesh(this.markerGeometry(COLOR_MARKER[v.color]), this.markerMat)
-    marker.position.set(len * 0.12, cab.position.y + cabH / 2 + 0.05, 0)
-    group.add(marker)
+    // Direction arrow on the roof, pointing toward the front (+x).
+    const arrow = new THREE.Mesh(this.arrowGeometry(), this.markerMat)
+    arrow.position.set(len * 0.16, cab.position.y + cabH / 2 + 0.04, 0)
+    group.add(arrow)
 
     // Capacity bar on the roof (back portion)
     const capBarWidth = len * 0.5
@@ -453,11 +437,6 @@ export class Renderer {
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 10), new THREE.MeshToonMaterial({ color: 0xffe0bd, gradientMap: this.gradient }))
     head.position.y = 0.56
     g.add(head)
-    const marker = new THREE.Mesh(this.markerGeometry('circle'), this.markerMat)
-    marker.name = 'marker'
-    marker.position.y = 0.34
-    marker.scale.set(0.7, 0.7, 0.7)
-    g.add(marker)
     const shadow = new THREE.Mesh(
       new THREE.PlaneGeometry(0.6, 0.6),
       new THREE.MeshBasicMaterial({ map: this.shadowTex, transparent: true, depthWrite: false }),
@@ -472,8 +451,6 @@ export class Renderer {
   private paintPassenger(g: THREE.Group, color: ColorKey): void {
     const body = g.getObjectByName('body') as THREE.Mesh
     body.material = this.bodyMaterial(color)
-    const marker = g.getObjectByName('marker') as THREE.Mesh
-    marker.geometry = this.markerGeometry(COLOR_MARKER[color])
   }
 
   private recyclePassenger(g: THREE.Group): void {

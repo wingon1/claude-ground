@@ -3,13 +3,6 @@
 import { COLOR_HEX, type ColorKey } from './types'
 import { MAX_LEVEL, type Progress } from './GameState'
 
-const MARKER_GLYPH: Record<ColorKey, string> = {
-  red: '★',
-  blue: '●',
-  green: '▲',
-  yellow: '◆',
-}
-
 function cssColor(c: ColorKey): string {
   return '#' + COLOR_HEX[c].toString(16).padStart(6, '0')
 }
@@ -242,7 +235,7 @@ export class UI {
     this.queueBar.innerHTML = ''
     const preview = queue.slice(0, 14)
     for (const c of preview) {
-      const d = this.el('div', 'be-dot', MARKER_GLYPH[c])
+      const d = this.el('div', 'be-dot')
       d.style.background = cssColor(c)
       this.queueBar.appendChild(d)
     }
