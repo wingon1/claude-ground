@@ -73,8 +73,15 @@ export class Main {
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping
     this.renderer.toneMappingExposure = 1.05
     container.appendChild(this.renderer.domElement)
-    this.renderer.domElement.style.touchAction = 'none'
-    this.renderer.domElement.style.display = 'block'
+    // Size the *drawing buffer* via setSize(w,h,false); pin the *display* size
+    // to the container with CSS so the canvas can't overflow on high-DPR phones
+    // (without this the canvas renders at w*devicePixelRatio CSS px = 2–3x too
+    // big on iPhone, spilling off-screen).
+    const cv = this.renderer.domElement
+    cv.style.touchAction = 'none'
+    cv.style.display = 'block'
+    cv.style.width = '100%'
+    cv.style.height = '100%'
 
     this.scene = new THREE.Scene()
     this.scene.background = this.makeSkyTexture()
