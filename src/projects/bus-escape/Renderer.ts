@@ -218,6 +218,14 @@ export class Renderer {
     return new THREE.Vector3(x, 0, this.queueZ)
   }
 
+  // Off-frame point at the top-right where passengers appear before descending
+  // and sliding left into the row. Outside the content box, so framing is
+  // unaffected.
+  private queueEntryStart(): THREE.Vector3 {
+    const rightX = ((QUEUE_WINDOW - 1) - (QUEUE_WINDOW - 1) / 2) * QUEUE_SPACING
+    return new THREE.Vector3(rightX + 1.4, 1.8, this.queueZ - 1.8)
+  }
+
   // ---- level build ------------------------------------------------------
 
   buildLevel(state: GameState): void {
@@ -507,17 +515,42 @@ export class Renderer {
     this.passengerPool.push(g)
   }
 
+  // Spawn a passenger at the top-right entry point; update() eases it into the
+  // row. `order` staggers arrivals so the line forms one-by-one.
+  private spawnQueuePassenger(color: ColorKey, order: number): THREE.Group {
+    const p = this.makePassenger()
+    this.paintPassenger(p, color)
+    p.scale.setScalar(1)
+    p.rotation.set(0, 0, 0)
+    const s = this.queueEntryStart()
+    p.position.copy(s)
+    p.userData.gy = s.y
+    p.userData.activateAt = this.clock.elapsedTime + order * 0.055
+    return p
+  }
+
   private buildQueue(colors: ColorKey[]): void {
     for (const m of this.queueMeshes) this.recyclePassenger(m)
     this.queueMeshes = []
     const n = Math.min(QUEUE_WINDOW, colors.length)
     for (let i = 0; i < n; i++) {
-      const p = this.makePassenger()
-      this.paintPassenger(p, colors[i])
-      const w = this.queueWorld(i)
-      p.position.copy(w)
-      this.queueMeshes.push(p)
+      this.queueMeshes.push(this.spawnQueuePassenger(colors[i], i))
     }
+  }
+
+  // Reconcile the visible queue to `colors` after boarding: keep/repaint the
+  // survivors (they slide left via update()), drop extras, and let new tail
+  // passengers descend in from the top-right.
+  private syncQueueColors(colors: ColorKey[]): void {
+    const n = Math.min(QUEUE_WINDOW, colors.length)
+    while (this.queueMeshes.length > n) {
+      this.recyclePassenger(this.queueMeshes.pop()!)
+    }
+    let order = 0
+    while (this.queueMeshes.length < n) {
+      this.queueMeshes.push(this.spawnQueuePassenger(colors[this.queueMeshes.length], order++))
+    }
+    this.queueMeshes.forEach((m, i) => this.paintPassenger(m, colors[i]))
   }
 
   private setCapacityRatio(view: VehicleView, ratio: number): void {
@@ -579,12 +612,11 @@ export class Renderer {
         })(),
       )
 
-      // keep the remaining queue tidy as the front empties
-      this.queueMeshes.forEach((m, idx) => m.position.lerp(this.queueWorld(idx), 0.6))
+      // remaining passengers slide left automatically via update()'s easing
     }
 
     await Promise.all(flights)
-    this.buildQueue(finalQueue)
+    this.syncQueueColors(finalQueue)
   }
 
   // ---- vehicle animations ----------------------------------------------
@@ -835,10 +867,22 @@ export class Renderer {
     this.tween.step(dt * 1000)
     this.updateParticles(dt)
 
-    // idle bob for the queue
+    // Queue passengers ease toward their slot (slide-left as the line advances)
+    // and descend from the top-right entry point; plus a gentle idle bob.
     const t = this.clock.elapsedTime
+    const ef = 1 - Math.pow(0.001, dt)
     this.queueMeshes.forEach((m, i) => {
-      m.position.y = Math.abs(Math.sin(t * 2 + i * 0.6)) * 0.06
+      const bob = Math.abs(Math.sin(t * 2 + i * 0.6)) * 0.06
+      if (t < (m.userData.activateAt ?? 0)) {
+        m.position.y = (m.userData.gy ?? 0) + bob
+        return
+      }
+      const tgt = this.queueWorld(i)
+      m.position.x += (tgt.x - m.position.x) * ef
+      m.position.z += (tgt.z - m.position.z) * ef
+      const gy = (m.userData.gy ?? 0) * (1 - ef)
+      m.userData.gy = gy
+      m.position.y = gy + bob
     })
 
     // hint pulse
