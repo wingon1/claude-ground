@@ -1,0 +1,3 @@
+Revert "Car Jam: distinct vehicle designs, smaller scale, face-up bays, plan for 6 bays"
+
+This reverts commit f2cc6add9270d0f29b1d8ccb3fccaff5755bf672.
