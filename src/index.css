@@ -10,9 +10,13 @@ html,
 body {
   min-height: 100%;
   background: #020617;
+  /* Stop iOS Safari rubber-band scroll from revealing area outside the app. */
+  overscroll-behavior: none;
 }
 
 #root {
   width: 100%;
-  min-height: 100vh;
+  /* Dynamic viewport height: tracks the visible area as Safari's toolbar
+     shows/hides, so a full-screen project isn't taller than the screen. */
+  min-height: 100dvh;
 }

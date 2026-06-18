@@ -46,7 +46,7 @@ export function ProjectView({ id }: { id: string }) {
   const LazyComponent = lazyComponents[id]
 
   return (
-    <div className="relative h-[100dvh] w-[100vw] overflow-hidden overscroll-none bg-slate-950">
+    <div className="fixed inset-0 overflow-hidden overscroll-none bg-slate-950">
       {/* Floating "back to gallery" control, above whatever the project renders */}
       <a
         href="#/"
