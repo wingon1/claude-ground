@@ -26,8 +26,12 @@ import { Vehicle, VehiclePool, CAR_COLORS, CELL } from './Vehicle'
 
 const MAX_LEVEL = 100
 const STORAGE_KEY = 'carjam.level'
-const QUEUE_GAP = 0.82
+const QUEUE_GAP = 0.8
 const VISIBLE = 8
+// Lay out / scale the scene as if up to this many boarding bays exist, so the
+// view doesn't have to re-scale when more bays are added later.
+const PLANNED_BAYS = 6
+const BAY_PITCH = CELL * 1.12 // bay spacing; > a car's (face-up) width
 
 type Bounds = { minX: number; maxX: number; minZ: number; maxZ: number }
 
@@ -169,14 +173,16 @@ export class Main {
   }
 
   private bounds(): Bounds {
-    const q0 = this.queueSpot(0)[0]
-    const q1 = this.queueSpot(VISIBLE - 1)[0]
-    const lotR = this.cellX(this.cols - 1) + CELL / 2
-    const lotL = this.leftEdge()
+    // Reserve width for the planned max bay row so the scale is future-proof.
+    const half = Math.max(
+      (PLANNED_BAYS / 2) * BAY_PITCH,
+      (this.cols * CELL) / 2,
+      ((VISIBLE - 1) * QUEUE_GAP) / 2,
+    )
     return {
-      minX: Math.min(lotL, q0, this.bayX[0] ?? 0) - 0.6,
-      maxX: Math.max(lotR, q1, this.bayX[this.bayX.length - 1] ?? 0) + 0.6,
-      minZ: this.bayZ - 1.1,
+      minX: -half - 0.5,
+      maxX: half + 0.5,
+      minZ: this.bayZ - 1.9, // room for a face-up bus standing in a bay
       maxZ: this.queueZ + 0.8,
     }
   }
@@ -278,14 +284,14 @@ export class Main {
     this.rows = spec.rows
     this.grid = new Int16Array(this.cols * this.rows).fill(-1)
 
-    // bays: a horizontal row in the strip above the lot
-    this.bayZ = this.topEdge() - 1.7
+    // bays: a horizontal row in the strip above the lot, centred and pitched
+    // so up to PLANNED_BAYS fit without their (face-up) cars overlapping.
+    this.bayZ = this.topEdge() - 2.2
     this.bays = new Array(spec.bays).fill(null)
     this.bayX = []
-    const span = this.cols * CELL
-    for (let i = 0; i < spec.bays; i++) this.bayX.push(-span / 2 + (span * (i + 0.5)) / spec.bays)
+    for (let i = 0; i < spec.bays; i++) this.bayX.push((i - (spec.bays - 1) / 2) * BAY_PITCH)
 
-    this.queueZ = this.bottomEdge() + 1.6
+    this.queueZ = this.bottomEdge() + 1.5
 
     this.buildPlatform()
 
@@ -390,19 +396,24 @@ export class Main {
     this.vehicles.unpick(v)
     this.bays[bay] = v
 
-    const len = v.length * CELL * 0.9
+    const len = v.length * CELL * 0.82
     const [cx, cz] = this.carWorld(v)
     const bx = this.bayX[bay]
+    const stageZ = this.bayZ + 1.4 // staging lane just below the bay row
     const wps: THREE.Vector3[] = []
     if (v.orient === 'v') {
-      wps.push(new THREE.Vector3(cx, 0, this.topEdge() - len / 2 - 0.4))
-      wps.push(new THREE.Vector3(bx, 0, this.bayZ))
+      // slide up out of the lot, shift across under the bay, then up into it
+      wps.push(new THREE.Vector3(cx, 0, stageZ))
     } else {
-      const offX = this.leftEdge() - len / 2 - 0.4
+      // slide left out of the lot, then up the left margin (clear of the lot)
+      const offX = this.leftEdge() - len / 2 - 0.3
       wps.push(new THREE.Vector3(offX, 0, cz))
-      wps.push(new THREE.Vector3(offX, 0, this.bayZ))
-      wps.push(new THREE.Vector3(bx, 0, this.bayZ))
+      wps.push(new THREE.Vector3(offX, 0, stageZ))
     }
+    wps.push(new THREE.Vector3(bx, 0, stageZ))
+    // final approach is straight up → the car comes to rest facing UP (narrow),
+    // so it never overlaps a neighbouring bay
+    wps.push(new THREE.Vector3(bx, 0, this.bayZ))
     v.dispatch(bay, wps)
     this.moving.push(v)
     this.audio.tick()

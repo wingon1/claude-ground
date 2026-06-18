@@ -1,25 +1,28 @@
 /* ===========================================================================
- * Vehicle.ts — procedural low-poly cars whose size/design scales with capacity:
- *   length 2 → compact car, 3 → van, 4+ → bus (taller, boxier cabin).
+ * Vehicle.ts — procedural low-poly cars whose silhouette changes with capacity:
+ *   length 2 → compact car (hood + trunk, sloped cabin)
+ *   length 3 → van / SUV (tall boxy greenhouse, roof rack)
+ *   length 4 → bus (long, flat roof, window band, destination sign)
  *
- * Built from merged BoxGeometry (body/cabin/hood) + CylinderGeometry wheels.
- * Floating roof pips show seats still to fill. Motion is waypoint based:
- * dispatch() slides the car out of the lot and routes it to a boarding bay;
- * depart() drives it straight up off the top once full. Pooled per (length).
+ * Each is built from merged BoxGeometry plus CylinderGeometry wheels, with
+ * little emissive head/tail lights for charm. Floating roof pips show seats
+ * still to fill. Motion is waypoint based: dispatch() slides the car out of the
+ * lot and routes it to a bay (ending facing UP so it stays narrow and never
+ * overlaps a neighbouring bay); depart() drives it straight up off the top.
  * ========================================================================= */
 
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import type { Orient } from './types'
 
-export const CELL = 1.3 // world size of one grid cell
+export const CELL = 1.02 // world size of one grid cell (kept small + tidy)
 
 export const CAR_COLORS = [
   0xff5a5f, 0x3da5ff, 0xffc93c, 0x4cd97b, 0xb085f5, 0xff8c42, 0x2ec4b6, 0xf06595,
 ]
 
-const WHEEL_R = 0.17
-const WHEEL_W = 0.13
+const WHEEL_R = 0.15
+const WHEEL_W = 0.11
 const BASE_Y = WHEEL_R
 
 const wheelGeo = new THREE.CylinderGeometry(WHEEL_R, WHEEL_R, WHEEL_W, 12)
@@ -27,64 +30,91 @@ wheelGeo.rotateX(Math.PI / 2)
 const wheelMat = new THREE.MeshStandardMaterial({ color: 0x20242b, roughness: 0.85 })
 const hubGeo = new THREE.CylinderGeometry(WHEEL_R * 0.5, WHEEL_R * 0.5, WHEEL_W + 0.02, 8)
 hubGeo.rotateX(Math.PI / 2)
-const hubMat = new THREE.MeshStandardMaterial({ color: 0xcfd6df, roughness: 0.4, metalness: 0.5 })
-const windowMat = new THREE.MeshStandardMaterial({
-  color: 0x16202b,
-  roughness: 0.15,
+const hubMat = new THREE.MeshStandardMaterial({ color: 0xd6dde6, roughness: 0.4, metalness: 0.5 })
+const glassMat = new THREE.MeshStandardMaterial({
+  color: 0x1a2733,
+  roughness: 0.12,
+  metalness: 0.3,
   emissive: 0x0a1018,
-  emissiveIntensity: 0.4,
+  emissiveIntensity: 0.5,
 })
-const pipGeo = new THREE.SphereGeometry(0.11, 12, 8)
+const headMat = new THREE.MeshStandardMaterial({ color: 0xfff3c0, emissive: 0xfff0b0, emissiveIntensity: 0.9, roughness: 0.4 })
+const tailMat = new THREE.MeshStandardMaterial({ color: 0xff4030, emissive: 0xff2818, emissiveIntensity: 0.9, roughness: 0.4 })
+const signMat = new THREE.MeshStandardMaterial({ color: 0x2c3340, roughness: 0.6 })
+const lightGeo = new THREE.BoxGeometry(0.06, 0.07, 0.1)
+const pipGeo = new THREE.SphereGeometry(0.1, 12, 8)
 
-/** Outer dimensions of a car of a given length (in world units). */
-function carDims(length: number) {
-  const len = length * CELL * 0.9
-  const wid = CELL * 0.62
-  return { len, wid }
+type Kind = 'car' | 'van' | 'bus'
+function kindOf(length: number): Kind {
+  return length <= 2 ? 'car' : length === 3 ? 'van' : 'bus'
 }
 
-type Built = { body: THREE.BufferGeometry; glass: THREE.BufferGeometry }
+/** Outer dimensions of a car of a given length. */
+function carDims(length: number) {
+  return { len: length * CELL * 0.82, wid: CELL * 0.56 }
+}
+/** Roof height (for pip placement). */
+function roofTop(length: number) {
+  const k = kindOf(length)
+  return k === 'bus' ? 0.62 : k === 'van' ? 0.56 : 0.44
+}
+
+type Built = { body: THREE.BufferGeometry; glass: THREE.BufferGeometry; sign?: THREE.BufferGeometry }
 const builtCache = new Map<number, Built>()
 
 function build(length: number): Built {
   const { len, wid } = carDims(length)
-  const bus = length >= 4
+  const k = kindOf(length)
   const parts: THREE.BufferGeometry[] = []
+  let glass: THREE.BufferGeometry
+  let sign: THREE.BufferGeometry | undefined
 
-  const chassisH = bus ? 0.5 : 0.28
-  const chassis = new THREE.BoxGeometry(len, chassisH, wid)
-  chassis.translate(0, chassisH / 2 + 0.02, 0)
-  parts.push(chassis)
-
-  if (bus) {
-    // bus: tall roof box spanning most of the length
-    const roof = new THREE.BoxGeometry(len * 0.96, 0.12, wid * 0.96)
-    roof.translate(0, chassisH + 0.08, 0)
-    parts.push(roof)
-  } else {
-    const cabinLen = length === 2 ? len * 0.5 : len * 0.46
-    const cabin = new THREE.BoxGeometry(cabinLen, 0.24, wid * 0.86)
-    cabin.translate(-len * 0.05, chassisH + 0.12, 0)
+  if (k === 'car') {
+    const ch = 0.2
+    const chassis = new THREE.BoxGeometry(len, ch, wid)
+    chassis.translate(0, ch / 2 + 0.02, 0)
+    parts.push(chassis)
+    const cabin = new THREE.BoxGeometry(len * 0.46, 0.2, wid * 0.84)
+    cabin.translate(-len * 0.02, ch + 0.12, 0)
     parts.push(cabin)
-    const hood = new THREE.BoxGeometry(len * 0.28, 0.14, wid * 0.9)
-    hood.translate(len * 0.34, chassisH - 0.02, 0)
+    const hood = new THREE.BoxGeometry(len * 0.26, 0.13, wid * 0.94)
+    hood.translate(len * 0.36, ch * 0.7 + 0.04, 0)
     parts.push(hood)
+    const trunk = new THREE.BoxGeometry(len * 0.16, 0.12, wid * 0.92)
+    trunk.translate(-len * 0.42, ch * 0.6 + 0.04, 0)
+    parts.push(trunk)
+    glass = new THREE.BoxGeometry(len * 0.42, 0.15, wid * 0.9)
+    glass.translate(-len * 0.02, ch + 0.13, 0)
+  } else if (k === 'van') {
+    const ch = 0.42
+    const body = new THREE.BoxGeometry(len, ch, wid)
+    body.translate(0, ch / 2 + 0.02, 0)
+    parts.push(body)
+    const hood = new THREE.BoxGeometry(len * 0.22, 0.2, wid * 0.96)
+    hood.translate(len * 0.42, 0.16, 0)
+    parts.push(hood)
+    const roof = new THREE.BoxGeometry(len * 0.7, 0.06, wid * 0.84)
+    roof.translate(-len * 0.06, ch + 0.06, 0)
+    parts.push(roof) // roof rack hint
+    glass = new THREE.BoxGeometry(len * 0.62, 0.22, wid * 0.98)
+    glass.translate(-len * 0.04, ch * 0.66, 0)
+  } else {
+    const ch = 0.6
+    const body = new THREE.BoxGeometry(len, ch, wid)
+    body.translate(0, ch / 2 + 0.02, 0)
+    parts.push(body)
+    const roof = new THREE.BoxGeometry(len * 0.97, 0.08, wid * 0.92)
+    roof.translate(0, ch + 0.06, 0)
+    parts.push(roof)
+    glass = new THREE.BoxGeometry(len * 0.82, 0.2, wid * 1.0)
+    glass.translate(len * 0.02, ch * 0.66, 0)
+    sign = new THREE.BoxGeometry(len * 0.34, 0.12, wid * 0.5)
+    sign.translate(len * 0.5 - 0.02, ch * 0.78, 0)
   }
 
   const body = mergeGeometries(parts, false)!
   parts.forEach((p) => p.dispose())
-
-  // glass strip
-  let glass: THREE.BufferGeometry
-  if (bus) {
-    glass = new THREE.BoxGeometry(len * 0.84, 0.18, wid * 0.98)
-    glass.translate(0, chassisH * 0.62, 0)
-  } else {
-    const cabinLen = length === 2 ? len * 0.46 : len * 0.42
-    glass = new THREE.BoxGeometry(cabinLen, 0.16, wid * 0.92)
-    glass.translate(-len * 0.05, chassisH + 0.13, 0)
-  }
-  return { body, glass }
+  return { body, glass, sign }
 }
 
 function built(length: number): Built {
@@ -115,6 +145,9 @@ export class Vehicle {
 
   readonly group = new THREE.Group()
   readonly body: THREE.Mesh
+  private glass: THREE.Mesh
+  private sign: THREE.Mesh
+  private lights: THREE.Mesh[] = []
   private wheels: THREE.Group[] = []
   private bodyMat: THREE.MeshStandardMaterial
   private pipGroup = new THREE.Group()
@@ -126,19 +159,26 @@ export class Vehicle {
   private faceAngle = 0
 
   constructor() {
-    this.bodyMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.45, metalness: 0.12 })
+    this.bodyMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.42, metalness: 0.12 })
     this.body = new THREE.Mesh(undefined as unknown as THREE.BufferGeometry, this.bodyMat)
     this.body.castShadow = true
     this.body.position.y = BASE_Y
     this.group.add(this.body)
-    this.glass = new THREE.Mesh(undefined as unknown as THREE.BufferGeometry, windowMat)
+    this.glass = new THREE.Mesh(undefined as unknown as THREE.BufferGeometry, glassMat)
     this.glass.position.y = BASE_Y
     this.group.add(this.glass)
+    this.sign = new THREE.Mesh(undefined as unknown as THREE.BufferGeometry, signMat)
+    this.sign.position.y = BASE_Y
+    this.group.add(this.sign)
+    for (let i = 0; i < 4; i++) {
+      const m = new THREE.Mesh(lightGeo, i < 2 ? headMat : tailMat)
+      this.lights.push(m)
+      this.group.add(m)
+    }
     this.group.add(this.pipGroup)
     this.body.userData.vehicle = this
     this.group.visible = false
   }
-  private glass: THREE.Mesh
 
   private color() {
     return CAR_COLORS[this.colorIndex % CAR_COLORS.length]
@@ -150,13 +190,15 @@ export class Vehicle {
     const b = built(length)
     this.body.geometry = b.body
     this.glass.geometry = b.glass
-    // wheels
+    this.sign.visible = !!b.sign
+    if (b.sign) this.sign.geometry = b.sign
+
     for (const w of this.wheels) this.group.remove(w)
     this.wheels = []
     const { len, wid } = carDims(length)
     const pairs = length >= 4 ? 3 : 2
     for (let p = 0; p < pairs; p++) {
-      const fx = len * (pairs === 3 ? 0.34 - p * 0.34 : 0.3 - p * 0.6)
+      const fx = pairs === 3 ? len * (0.34 - p * 0.34) : len * (0.3 - p * 0.6)
       for (const sz of [wid * 0.5, -wid * 0.5]) {
         const wg = new THREE.Group()
         const tire = new THREE.Mesh(wheelGeo, wheelMat)
@@ -167,6 +209,13 @@ export class Vehicle {
         this.group.add(wg)
       }
     }
+    // head/tail lights at the ends
+    const ly = BASE_Y + (kindOf(length) === 'bus' ? 0.18 : 0.12)
+    const fxFront = len * 0.5 - 0.02
+    this.lights[0].position.set(fxFront, ly, wid * 0.32)
+    this.lights[1].position.set(fxFront, ly, -wid * 0.32)
+    this.lights[2].position.set(-fxFront, ly, wid * 0.32)
+    this.lights[3].position.set(-fxFront, ly, -wid * 0.32)
   }
 
   private buildPips(n: number) {
@@ -175,14 +224,13 @@ export class Vehicle {
     const mat = new THREE.MeshStandardMaterial({
       color: this.color(),
       emissive: this.color(),
-      emissiveIntensity: 0.4,
+      emissiveIntensity: 0.45,
       roughness: 0.4,
     })
     const { len } = carDims(this.length)
-    const spread = Math.min(0.3, (len * 0.7) / Math.max(1, n))
+    const spread = Math.min(0.26, (len * 0.72) / Math.max(1, n))
     const start = -((n - 1) * spread) / 2
-    const top = (this.length >= 4 ? 0.62 : 0.5) + BASE_Y + 0.18
-    this.pipGroup.position.y = top
+    this.pipGroup.position.y = BASE_Y + roofTop(this.length) + 0.18
     for (let i = 0; i < n; i++) {
       const m = new THREE.Mesh(pipGeo, mat)
       m.position.set(start + i * spread, 0, 0)
@@ -209,8 +257,7 @@ export class Vehicle {
     this.rebuild(length)
     this.bodyMat.color.setHex(this.color())
     this.buildPips(length)
-    // face the exit direction: h → -X (left), v → -Z (up)
-    this.faceAngle = orient === 'h' ? Math.PI : Math.PI / 2
+    this.faceAngle = orient === 'h' ? Math.PI : Math.PI / 2 // h → -X, v → -Z
     this.group.position.set(x, 0, z)
     this.group.rotation.y = this.faceAngle
     this.group.scale.setScalar(1)
@@ -224,7 +271,6 @@ export class Vehicle {
   freeSeats() {
     return this.seats
   }
-
   dispatch(slot: number, waypoints: THREE.Vector3[]) {
     this.dispatched = true
     this.slot = slot
@@ -232,13 +278,11 @@ export class Vehicle {
     this.path = waypoints.map((w) => w.clone())
     this.speed = 4
   }
-
   depart(exit: THREE.Vector3) {
     this.state = 'departing'
     this.path = [exit.clone()]
     this.speed = 3
   }
-
   tail(out: THREE.Vector3) {
     const { len } = carDims(this.length)
     out.set(-len * 0.5 - 0.1, BASE_Y + 0.1, 0).applyMatrix4(this.group.matrixWorld)
