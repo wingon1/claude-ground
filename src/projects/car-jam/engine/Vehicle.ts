@@ -149,8 +149,8 @@ export class Vehicle {
     this.faceAngle = 0
     this.bodyMat.color.setHex(this.color())
     this.group.position.set(x, 0, z)
-    // face +Z (toward the boarding lane at the front of the lot)
-    this.faceAngle = -Math.PI / 2
+    // face -Z (nose toward the boarding lane, which sits above the lot)
+    this.faceAngle = Math.PI / 2
     this.group.rotation.y = this.faceAngle
     this.group.scale.setScalar(1)
     this.group.visible = true

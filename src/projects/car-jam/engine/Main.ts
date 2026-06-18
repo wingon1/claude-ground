@@ -1,16 +1,15 @@
 /* ===========================================================================
  * Main.ts — scene/camera/loop + the color-boarding game state machine.
  *
- * Layout (portrait, isometric):
- *   • parking lot of colour-coded cars at the back (rows behind columns)
- *   • a row of boarding slots in front of the lot
- *   • a queue of colour-coded passengers down the left
+ * Portrait layout (a vertical stack, centred on screen):
+ *   • TOP    — queue of colour-coded passengers (far from camera, -Z)
+ *   • MIDDLE — a row of boarding slots
+ *   • BOTTOM — the jammed parking lot of colour-coded cars (near camera, +Z)
  *
  * Tap a car → if nothing is parked in front of it in its column and a slot is
- * free, it drives out to the slot. The passenger at the front of the queue
+ * free, it drives up to the slot. The passenger at the front of the queue
  * boards any slotted car of its colour; when a car's seats are full it drives
- * off and frees its slot. Clear the whole queue to win. Get all slots stuck
- * with cars the front passenger can't board → no moves (restart).
+ * off and frees its slot. Clear the whole queue to win.
  * ========================================================================= */
 
 import * as THREE from 'three'
@@ -25,11 +24,15 @@ import { Vehicle, VehiclePool, CAR_COLORS } from './Vehicle'
 const MAX_LEVEL = 100
 const STORAGE_KEY = 'carjam.level'
 
-const LOT_GAP = 1.35
-const LANE_Z = 2.1
-const SLOT_GAP = 1.7
-const QUEUE_GAP = 0.66
-const VISIBLE = 8
+const LOT_GAP = 1.4 // spacing between cars in the lot
+const SLOT_Z = 0 // boarding lane sits at z = 0 (screen middle)
+const SLOT_GAP = 1.75
+const LANE_GAP = 1.95 // slots → first lot row
+const QUEUE_GAP = 0.66 // spacing between queued people
+const QUEUE_GAP0 = 1.95 // slots → front of queue
+const VISIBLE = 8 // max passengers shown in the queue at once
+
+type Bounds = { minX: number; maxX: number; minZ: number; maxZ: number }
 
 export class Main {
   private container: HTMLElement
@@ -59,7 +62,6 @@ export class Main {
   private boarded = 0
   private queue: Person[] = [] // people still waiting (front first)
   private activePeople: Person[] = []
-  private queueX = -3
 
   private status: 'playing' | 'won' | 'stuck' = 'playing'
   private onState: (s: GameState) => void
@@ -87,8 +89,6 @@ export class Main {
     this.scene.background = this.makeSky()
 
     this.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 200)
-    this.camera.position.set(9, 12, 11)
-    this.camera.lookAt(0, 0, 0)
 
     this.setupLights()
     this.particles = new Particles(this.scene)
@@ -99,8 +99,8 @@ export class Main {
     const saved = Number(localStorage.getItem(STORAGE_KEY))
     this.level = Number.isFinite(saved) && saved >= 1 && saved <= MAX_LEVEL ? saved : 1
 
-    this.resize()
     this.loadLevel(this.level)
+    this.resize()
     this.loop()
   }
 
@@ -126,25 +126,40 @@ export class Main {
     this.scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x4a4358, 0.75))
     this.scene.add(new THREE.AmbientLight(0xffffff, 0.16))
     const key = new THREE.DirectionalLight(0xfff1d8, 2.1)
-    key.position.set(6, 13, 8)
+    key.position.set(6, 14, 9)
     key.castShadow = true
-    key.shadow.mapSize.set(1024, 1024)
+    key.shadow.mapSize.set(2048, 2048)
     key.shadow.bias = -0.0006
     key.shadow.normalBias = 0.02
     const cam = key.shadow.camera
     cam.near = 1
-    cam.far = 60
-    cam.left = -14
-    cam.right = 14
-    cam.top = 14
-    cam.bottom = -14
+    cam.far = 70
+    cam.left = -16
+    cam.right = 16
+    cam.top = 16
+    cam.bottom = -16
     this.scene.add(key)
     const rim = new THREE.DirectionalLight(0x9db8ff, 0.5)
-    rim.position.set(-8, 6, -6)
+    rim.position.set(-8, 6, -2)
     this.scene.add(rim)
   }
 
-  /** Ground platform + painted boarding-slot markers, sized to the level. */
+  /** Bounding box of all play content (lot + slots + queue), in world space. */
+  private bounds(): Bounds {
+    const halfCols = ((this.cols - 1) / 2) * LOT_GAP
+    const visN = Math.min(this.queueColors.length, VISIBLE)
+    return {
+      minX: -halfCols - 0.9,
+      maxX: halfCols + 0.9,
+      minZ: SLOT_Z - QUEUE_GAP0 - Math.max(0, visN - 1) * QUEUE_GAP - 0.7,
+      maxZ: SLOT_Z + LANE_GAP + (this.rows - 1) * LOT_GAP + 0.9,
+    }
+  }
+
+  private center(b: Bounds) {
+    return new THREE.Vector3((b.minX + b.maxX) / 2, 0, (b.minZ + b.maxZ) / 2)
+  }
+
   private buildPlatform() {
     if (this.platform) {
       this.scene.remove(this.platform)
@@ -154,25 +169,22 @@ export class Main {
       })
     }
     const g = new THREE.Group()
-    const minX = Math.min(this.queueX - 1.2, -((this.cols - 1) / 2) * LOT_GAP - 1.2)
-    const maxX = ((this.cols - 1) / 2) * LOT_GAP + 1.2
-    const minZ = -(this.rows - 1) * LOT_GAP - 1.4
-    const maxZ = LANE_Z + VISIBLE * QUEUE_GAP + 1.2
-    const w = maxX - minX
-    const d = maxZ - minZ
+    const b = this.bounds()
+    const w = b.maxX - b.minX + 0.6
+    const d = b.maxZ - b.minZ + 0.6
+    const c = this.center(b)
     const slab = new THREE.Mesh(
       new THREE.BoxGeometry(w, 0.4, d),
       new THREE.MeshStandardMaterial({ color: 0x3c4458, roughness: 0.97 }),
     )
-    slab.position.set((minX + maxX) / 2, -0.2, (minZ + maxZ) / 2)
+    slab.position.set(c.x, -0.2, c.z)
     slab.receiveShadow = true
     g.add(slab)
 
-    // boarding slot pads
     const padMat = new THREE.MeshStandardMaterial({ color: 0x5b6479, roughness: 0.9 })
     for (const sx of this.slotX) {
-      const pad = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.06, 1.3), padMat)
-      pad.position.set(sx, 0.02, LANE_Z)
+      const pad = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.06, 1.35), padMat)
+      pad.position.set(sx, 0.02, SLOT_Z)
       pad.receiveShadow = true
       g.add(pad)
     }
@@ -182,6 +194,13 @@ export class Main {
 
   // ---- camera framing -----------------------------------------------------
 
+  private positionCamera() {
+    const c = this.center(this.bounds())
+    this.camera.position.set(c.x + 7, 12.5, c.z + 9)
+    this.camera.lookAt(c.x, 0, c.z)
+    this.camera.updateMatrixWorld()
+  }
+
   private resize = () => {
     const w = this.container.clientWidth || window.innerWidth
     const h = this.container.clientHeight || window.innerHeight
@@ -190,23 +209,20 @@ export class Main {
   }
 
   private frameCamera(w: number, h: number) {
-    this.camera.updateMatrixWorld()
+    this.positionCamera()
     const view = this.camera.matrixWorldInverse
-    const minX = Math.min(this.queueX - 1, -((this.cols - 1) / 2) * LOT_GAP - 1)
-    const maxX = ((this.cols - 1) / 2) * LOT_GAP + 1
-    const minZ = -(this.rows - 1) * LOT_GAP - 1.2
-    const maxZ = LANE_Z + Math.min(this.queueColors.length, VISIBLE) * QUEUE_GAP + 1
+    const b = this.bounds()
     let mx = 0
     let my = 0
-    for (const x of [minX, maxX])
-      for (const z of [minZ, maxZ])
-        for (const y of [0, 0.9]) {
+    for (const x of [b.minX, b.maxX])
+      for (const z of [b.minZ, b.maxZ])
+        for (const y of [0, 1.0]) {
           this.tmp.set(x, y, z).applyMatrix4(view)
           mx = Math.max(mx, Math.abs(this.tmp.x))
           my = Math.max(my, Math.abs(this.tmp.y))
         }
     const aspect = w / h
-    const FILL = 0.82
+    const FILL = 0.94 // fill ~94% of the limiting screen dimension
     const halfH = Math.max(my / FILL, mx / FILL / aspect)
     this.camera.top = halfH
     this.camera.bottom = -halfH
@@ -241,20 +257,19 @@ export class Main {
     this.slots = new Array(this.slotCount).fill(null)
     this.slotX = []
     for (let i = 0; i < this.slotCount; i++) this.slotX.push((i - (this.slotCount - 1) / 2) * SLOT_GAP)
-    this.queueX = -((this.cols - 1) / 2) * LOT_GAP - 1.8
 
     this.buildPlatform()
 
-    // spawn parked cars
+    // parked cars: row 0 is nearest the lane (just below the slots, +Z)
     spec.cars.forEach((c, id) => {
       const v = this.vehicles.acquire()
       const x = (c.col - (this.cols - 1) / 2) * LOT_GAP
-      const z = -c.row * LOT_GAP
+      const z = SLOT_Z + LANE_GAP + c.row * LOT_GAP
       v.init(id, c.colorIndex, c.seats, c.col, c.row, x, z)
       this.lot.push(v)
     })
 
-    // queue
+    // queue, lined up above the slots (-Z)
     this.queueColors = spec.queue.slice()
     this.boarded = 0
     for (let i = 0; i < Math.min(VISIBLE, this.queueColors.length); i++) {
@@ -262,19 +277,22 @@ export class Main {
     }
 
     this.status = 'playing'
-    this.frameCamera(this.container.clientWidth || window.innerWidth, this.container.clientHeight || window.innerHeight)
+    this.frameCamera(
+      this.container.clientWidth || window.innerWidth,
+      this.container.clientHeight || window.innerHeight,
+    )
     this.emit()
   }
 
   private queueSpot(i: number): [number, number] {
-    return [this.queueX, LANE_Z + 0.4 + i * QUEUE_GAP]
+    return [0, SLOT_Z - QUEUE_GAP0 - i * QUEUE_GAP]
   }
 
   private spawnQueuePerson(colorIndex: number, slotIndex: number) {
     const p = this.people.acquire()
     const [x, z] = this.queueSpot(slotIndex)
-    p.init(colorIndex, x, z + 0.5)
-    p.group.rotation.y = Math.PI / 2 // face the lot (+x)
+    p.init(colorIndex, x, z - 0.5)
+    p.group.rotation.y = 0 // face the lane / cars (+Z)
     p.shuffleTo(x, z)
     this.queue.push(p)
     this.activePeople.push(p)
@@ -305,7 +323,6 @@ export class Main {
   // ---- interaction --------------------------------------------------------
 
   private dispatchable(v: Vehicle): boolean {
-    // front-most parked car of its column?
     for (const o of this.lot) if (o.col === v.col && o.row < v.row) return false
     return true
   }
@@ -320,15 +337,15 @@ export class Main {
     }
     const slot = this.slots.indexOf(null)
     if (slot === -1) {
-      this.audio.honk() // no room on the boarding lane
+      this.audio.honk()
       return
     }
-    // remove from lot, route to slot
     this.lot.splice(this.lot.indexOf(v), 1)
     this.vehicles.unpick(v)
     this.slots[slot] = v
     const sx = this.slotX[slot]
-    const wps = [this.tmp.clone().set(v.group.position.x, 0, LANE_Z), new THREE.Vector3(sx, 0, LANE_Z)]
+    // pull straight up to the lane, then slide across to the slot
+    const wps = [new THREE.Vector3(v.group.position.x, 0, SLOT_Z), new THREE.Vector3(sx, 0, SLOT_Z)]
     v.dispatch(slot, wps)
     this.moving.push(v)
     this.audio.tick()
@@ -338,12 +355,10 @@ export class Main {
   // ---- boarding logic -----------------------------------------------------
 
   private tryBoard() {
-    // Let as many front passengers board matching slotted cars as possible.
     let guard = this.slotCount + 1
     while (guard-- > 0) {
       const front = this.queue[0]
       if (!front || front.state !== 'queued') break
-      // find a slotted, arrived car of the matching colour with a free seat
       let car: Vehicle | null = null
       for (const s of this.slots) {
         if (s && s.state === 'boarding' && s.colorIndex === front.colorIndex && s.freeSeats() > 0) {
@@ -352,11 +367,11 @@ export class Main {
         }
       }
       if (!car) break
-      // reserve a seat and send the passenger in
       car.seats--
       car.pending++
       this.queue.shift()
-      const dest = this.tmp.set(car.group.position.x, 0, car.group.position.z + 0.75)
+      // walk to just in front of the car (on the queue side, -Z)
+      const dest = this.tmp.set(car.group.position.x, 0, car.group.position.z - 0.8)
       front.boardTo({ id: car.id }, dest.x, dest.z, () => this.onBoarded(car!))
       this.advanceQueue()
     }
@@ -367,15 +382,15 @@ export class Main {
     car.popPip()
     this.audio.tick()
     if (car.seats === 0 && car.pending === 0) {
-      // full → drive off and free the slot
-      const exit = new THREE.Vector3(car.group.position.x, 0, LANE_Z + VISIBLE * QUEUE_GAP + 4)
+      const b = this.bounds()
+      // drive off diagonally up-and-to-the-right, clear of queue and lot
+      const exit = new THREE.Vector3(b.maxX + 6, 0, SLOT_Z - 1.2)
       car.depart(exit)
       const si = this.slots.indexOf(car)
       if (si !== -1) this.slots[si] = null
     }
   }
 
-  /** Slide remaining queue members forward and spawn a new tail person. */
   private advanceQueue() {
     this.queue.forEach((p, i) => {
       const [x, z] = this.queueSpot(i)
@@ -396,15 +411,13 @@ export class Main {
       if (!anyWalking) this.win()
       return
     }
-    // deadlock: front can't board, no walkers, all slots full of wrong cars
     const front = this.queue[0]
     if (!front || front.state !== 'queued') return
-    // cars in transit will still change slot availability — not stuck yet
     if (this.moving.some((v) => v.state === 'driving' || v.state === 'departing')) return
     const walking = this.activePeople.some((p) => p.state === 'walking' || p.state === 'boarded')
     if (walking) return
     const freeSlot = this.slots.indexOf(null) !== -1
-    if (freeSlot && this.lot.length > 0) return // can still dispatch
+    if (freeSlot && this.lot.length > 0) return
     const canBoard = this.slots.some(
       (s) => s && s.state === 'boarding' && s.colorIndex === front.colorIndex && s.freeSeats() > 0,
     )
@@ -419,7 +432,7 @@ export class Main {
     this.status = 'won'
     this.audio.clear()
     for (let i = 0; i < 4; i++) {
-      this.tmp.set((Math.random() - 0.5) * 3, 0.6, LANE_Z + (Math.random() - 0.5) * 2)
+      this.tmp.set((Math.random() - 0.5) * 3, 0.6, SLOT_Z + (Math.random() - 0.5) * 2)
       this.particles.burst(this.tmp, CAR_COLORS[i % CAR_COLORS.length])
     }
     this.emit()
@@ -443,8 +456,7 @@ export class Main {
     }
     for (let i = this.activePeople.length - 1; i >= 0; i--) {
       const p = this.activePeople[i]
-      const done = p.update(dt)
-      if (done) {
+      if (p.update(dt)) {
         this.activePeople.splice(i, 1)
         this.people.release(p)
       }
