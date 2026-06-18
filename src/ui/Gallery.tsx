@@ -6,6 +6,9 @@ import { projects } from '../projects/registry'
  * actual work gets loaded and run. Nothing heavy happens here.
  */
 export function Gallery() {
+  // Cards explicitly disabled (enabled === false) are hidden from the grid.
+  const visible = projects.filter((p) => p.enabled !== false)
+
   return (
     <div className="min-h-full w-full bg-slate-950 text-slate-100">
       <div className="mx-auto max-w-6xl px-6 py-16">
@@ -20,7 +23,7 @@ export function Gallery() {
         </header>
 
         <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {projects.map((p) => (
+          {visible.map((p) => (
             <li key={p.id}>
               <a
                 href={`#/p/${p.id}`}
@@ -61,7 +64,7 @@ export function Gallery() {
         </ul>
 
         <footer className="mt-16 text-sm text-slate-600">
-          {projects.length} project{projects.length === 1 ? '' : 's'} · add more
+          {visible.length} project{visible.length === 1 ? '' : 's'} · add more
           in <code className="text-slate-400">src/projects/registry.ts</code>
         </footer>
       </div>
