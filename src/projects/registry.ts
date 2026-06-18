@@ -13,6 +13,11 @@ import type { ComponentType } from 'react'
  *                     canvas game, …) placed under public/projects/<id>/.
  *                     `path` is relative to the site base. It is loaded in an
  *                     iframe only when opened, so it never runs on the home grid.
+ *
+ *  - kind: 'external' → a work hosted elsewhere (its code is not in this repo).
+ *                     `url` is the full external address. It is embedded in an
+ *                     iframe when opened, so it runs in the viewer rather than
+ *                     navigating away (with an "open in new tab" fallback).
  */
 export type BaseProject = {
   id: string
@@ -23,6 +28,8 @@ export type BaseProject = {
   emoji: string
   /** Optional small tags rendered as chips on the card. */
   tags?: string[]
+  /** Omit or true to show the card in the gallery; false hides it. */
+  enabled?: boolean
 }
 
 export type ReactProject = BaseProject & {
@@ -36,7 +43,13 @@ export type IframeProject = BaseProject & {
   path: string
 }
 
-export type Project = ReactProject | IframeProject
+export type ExternalProject = BaseProject & {
+  kind: 'external'
+  /** Full external URL, e.g. 'https://example.com'. */
+  url: string
+}
+
+export type Project = ReactProject | IframeProject | ExternalProject
 
 /**
  * Add new works here. The home screen renders this list automatically, and
@@ -89,6 +102,42 @@ export const projects: Project[] = [
     tags: ['html', 'canvas'],
     kind: 'iframe',
     path: 'projects/bouncing-orbs/index.html',
+  },
+  {
+    id: 'toduji',
+    title: '🎵 토두지 리듬게임',
+    description: '리듬에 맞춰 즐기는 외부 배포 리듬게임.',
+    emoji: '🎵',
+    tags: ['external', 'game', 'rhythm'],
+    kind: 'external',
+    url: 'https://toduji.netlify.app',
+  },
+  {
+    id: 'tori-vs-dujo',
+    title: '⚔️ 토리 vs 두조',
+    description: '2D 대전 액션 게임.',
+    emoji: '⚔️',
+    tags: ['external', 'game', '2d', 'fighting'],
+    kind: 'external',
+    url: 'https://tori-vs-dujo.netlify.app',
+  },
+  {
+    id: 'todu-island',
+    title: '🏝️ 두두 아일랜드',
+    description: '3D 탐험 게임.',
+    emoji: '🏝️',
+    tags: ['external', 'game', '3d'],
+    kind: 'external',
+    url: 'https://wingon1.github.io/todu-island-game/',
+  },
+  {
+    id: 'backrooms',
+    title: '🚪 백룸 게임',
+    description: '백룸 분위기의 외부 배포 게임.',
+    emoji: '🚪',
+    tags: ['external', 'game', 'horror'],
+    kind: 'external',
+    url: 'https://teal-madeleine-fa6760.netlify.app/',
   },
 ]
 

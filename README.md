@@ -91,6 +91,42 @@ export default function MyArt() {
 
 ---
 
+### 외부 URL 작업물 (다른 곳에 배포된 사이트)
+
+코드가 이 레포에 없고 외부에 배포된 작업물(Netlify, GitHub Pages 등)은 URL만으로 등록할 수 있습니다.
+카드를 누르면 페이지 이동 없이 뷰어 안 **iframe으로 실행**되며, 임베딩이 막힌 사이트를 위해 "새 탭에서 열기" 버튼도 함께 표시됩니다.
+
+`src/projects/registry.ts` 의 `projects` 배열에 추가:
+
+```ts
+{
+  id: 'my-external',
+  title: 'My External Work',
+  description: '짧은 설명.',
+  emoji: '🔗',
+  tags: ['external', 'game'],
+  kind: 'external',
+  url: 'https://my-work.netlify.app',
+},
+```
+
+---
+
+### 카드 숨기기 (노출 제어)
+
+작업물을 지우지 않고 갤러리에서만 숨기려면 `enabled: false` 를 추가합니다.
+필드가 없거나 `true` 면 평소대로 노출됩니다.
+
+```ts
+{
+  id: 'wip-project',
+  // ...
+  enabled: false,   // 갤러리에서 숨김
+},
+```
+
+---
+
 ## 배포
 
 `main` 브랜치에 push하면 `.github/workflows/deploy.yml` 이 자동으로 빌드해서 GitHub Pages에 올립니다.  
@@ -116,3 +152,7 @@ npm run lint
 | 🍃 | Cozy Cove | react / three.js | 3D 디오라마. 드래그로 돌려보기. |
 | 🏡 | Pixel Village | react / canvas | 절차적 픽셀아트 마을. 아이소 타일·디더링·물결 애니·드래그 패닝. |
 | 🟣 | Bouncing Orbs | html / canvas | 클릭하면 공이 떨어지는 물리 장난감. |
+| 🎵 | 토두지 리듬게임 | external | 외부 배포 리듬게임. |
+| ⚔️ | 토리 vs 두조 | external | 2D 대전 액션 게임. |
+| 🏝️ | 두두 아일랜드 | external | 3D 탐험 게임. |
+| 🚪 | 백룸 게임 | external | 백룸 분위기의 게임. |

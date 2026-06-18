@@ -55,6 +55,19 @@ export function ProjectView({ id }: { id: string }) {
         ← Gallery
       </a>
 
+      {/* External works: a fallback to open in a new tab in case the host
+          blocks being embedded in an iframe. */}
+      {project?.kind === 'external' && (
+        <a
+          href={project.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="absolute right-4 top-4 z-50 inline-flex items-center gap-1.5 rounded-full bg-black/55 px-3.5 py-2 text-sm font-semibold text-white backdrop-blur-md transition hover:bg-black/75 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-400"
+        >
+          새 탭에서 열기 ↗
+        </a>
+      )}
+
       {!project ? (
         <NotFound id={id} />
       ) : project.kind === 'iframe' ? (
@@ -65,6 +78,16 @@ export function ProjectView({ id }: { id: string }) {
           className="h-full w-full border-0"
           // Sandbox keeps embedded works isolated while still letting them run.
           sandbox="allow-scripts allow-same-origin allow-pointer-lock"
+        />
+      ) : project.kind === 'external' ? (
+        <iframe
+          key={project.id}
+          src={project.url}
+          title={project.title}
+          className="h-full w-full border-0"
+          // Sandbox keeps embedded works isolated while still letting them run.
+          sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-forms allow-popups"
+          allow="fullscreen; gamepad; accelerometer; gyroscope"
         />
       ) : (
         <Suspense fallback={<Loading label={project.title} />}>
