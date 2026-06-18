@@ -224,8 +224,10 @@ export class Main {
 
   private positionCamera() {
     const c = this.center(this.bounds())
-    // near top-down: above in X (no skew) with a gentle front-to-back tilt
-    this.camera.position.set(c.x, 19, c.z + 5)
+    // gentle quarter view (~55° elevation): tilted enough to read each car's
+    // shape/height, but with no X offset so the lot stays an axis-aligned
+    // rectangle (no isometric left/right skew).
+    this.camera.position.set(c.x, 13, c.z + 9)
     this.camera.lookAt(c.x, 0, c.z)
     this.camera.updateMatrixWorld()
   }
