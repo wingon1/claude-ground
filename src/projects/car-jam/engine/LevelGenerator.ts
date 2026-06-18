@@ -1,23 +1,24 @@
 /* ===========================================================================
- * LevelGenerator.ts — procedural, always-solvable stages 1..100 for the
- * color-boarding Car Jam.
+ * LevelGenerator.ts — procedural, always-solvable stages for the slide-out +
+ * boarding Car Jam.
  *
- * Solvability by construction
- * ---------------------------
- * 1. Fill a cols×rows lot with coloured cars, each given a seat count.
- * 2. Produce a *dispatch order* that respects reachability: a car can only
- *    leave the lot when every car in front of it in its column is already gone,
- *    so within each column cars are dispatched front (row 0) to back.
- * 3. Build the passenger queue by concatenating, for each car in that dispatch
- *    order, its colour repeated `seats` times.
+ * Reverse-parking construction
+ * ----------------------------
+ * Cars are added by *undoing* an extraction. Each new car is slid into the lot
+ * from its exit edge (top for vertical cars, left for horizontal) to a spot
+ * whose straight path back to that edge is currently empty — i.e. it could have
+ * just driven out that way.
  *
- * Replaying that same order — pull each car to a slot, board its passengers,
- * let it leave — always clears the queue, so every level is solvable. The
- * player's puzzle is to *find* a working order using only the few boarding
- * slots as a buffer.
+ * Removing cars in reverse insertion order therefore always succeeds: a car's
+ * exit lane was clear of the cars present when it was inserted, and every car
+ * added afterwards (which might block it) is removed first. The passenger queue
+ * is then built by walking that extraction order and emitting each car's colour
+ * once per seat — so replaying the order clears the queue. Every level is
+ * winnable by construction; the player's job is to find a working order while
+ * cars of different sizes jam each other in.
  * ========================================================================= */
 
-import type { CarSpec, LevelSpec } from './types'
+import type { CarSpec, LevelSpec, Orient } from './types'
 
 function mulberry32(seed: number) {
   let a = seed >>> 0
@@ -30,69 +31,109 @@ function mulberry32(seed: number) {
   }
 }
 
-type Cfg = { cols: number; rows: number; colors: number; slots: number; seatMin: number; seatMax: number }
+type Cfg = { cols: number; rows: number; target: number; colors: number; minLen: number; maxLen: number }
 
 function configFor(level: number): Cfg {
   const L = Math.max(1, Math.min(100, level))
   if (L <= 10) {
     const f = (L - 1) / 9
-    return { cols: 3, rows: 2, colors: 2 + Math.round(f), slots: 3, seatMin: 2, seatMax: 3 }
+    return { cols: 4, rows: 4, target: 4 + Math.round(f * 2), colors: 2 + Math.round(f), minLen: 2, maxLen: 2 }
   }
   if (L <= 50) {
     const f = (L - 11) / 39
     return {
-      cols: 4 + Math.round(f),
-      rows: 3,
-      colors: 3 + Math.round(f * 2),
-      slots: 3,
-      seatMin: 2,
-      seatMax: 4,
+      cols: 5,
+      rows: 5,
+      target: 7 + Math.round(f * 4),
+      colors: 3 + Math.round(f),
+      minLen: 2,
+      maxLen: 3,
     }
   }
   const f = (L - 51) / 49
   return {
-    cols: 5 + Math.round(f),
-    rows: 3 + Math.round(f),
-    colors: 5 + Math.round(f * 2),
-    slots: 3,
-    seatMin: 3,
-    seatMax: 4,
+    cols: 6,
+    rows: 6,
+    target: 12 + Math.round(f * 5),
+    colors: 4 + Math.round(f * 2),
+    minLen: 2,
+    maxLen: 4,
   }
+}
+
+/** Build one candidate layout (reverse insertion). */
+function pack(cfg: Cfg, seed: number): CarSpec[] {
+  const rand = mulberry32(seed)
+  const pick = (n: number) => Math.floor(rand() * n)
+  const { cols: C, rows: R } = cfg
+  const occ = new Int16Array(C * R).fill(-1)
+  const idx = (c: number, r: number) => r * C + c
+  const free = (c: number, r: number) => occ[idx(c, r)] === -1
+
+  const cars: CarSpec[] = []
+  const maxAttempts = cfg.target * 120
+  let attempts = 0
+
+  while (cars.length < cfg.target && attempts < maxAttempts) {
+    attempts++
+    const orient: Orient = rand() < 0.5 ? 'h' : 'v'
+    const span = orient === 'h' ? C : R
+    const maxLen = Math.min(cfg.maxLen, span)
+    const length = cfg.minLen + pick(maxLen - cfg.minLen + 1)
+    const lane = pick(orient === 'h' ? R : C)
+
+    // valid anchors: final cells empty AND path back to the exit edge empty.
+    // Since the car slides in from the edge (anchor 0 side), requiring cells
+    // [0 .. anchor+length-1] of the lane to be empty covers both.
+    const candidates: number[] = []
+    for (let a = 0; a <= span - length; a++) {
+      let ok = true
+      for (let p = 0; p < a + length; p++) {
+        const c = orient === 'h' ? p : lane
+        const r = orient === 'h' ? lane : p
+        if (!free(c, r)) {
+          ok = false
+          break
+        }
+      }
+      if (ok) candidates.push(a)
+    }
+    if (candidates.length === 0) continue
+
+    // prefer deeper spots (away from the edge) to crowd the lot
+    candidates.sort((p, q) => q - p)
+    const a = candidates[pick(Math.min(candidates.length, 3))]
+    const colorIndex = pick(cfg.colors)
+    for (let i = 0; i < length; i++) {
+      const c = orient === 'h' ? a + i : lane
+      const r = orient === 'h' ? lane : a + i
+      occ[idx(c, r)] = cars.length
+    }
+    cars.push({ orient, length, anchor: a, lane, colorIndex })
+  }
+  return cars
 }
 
 export function generateLevel(level: number): LevelSpec {
   const cfg = configFor(level)
-  const rand = mulberry32(level * 2654435761 + 7)
-  const pick = (n: number) => Math.floor(rand() * n)
-
-  // 1. Fill the lot with cars of random colour + seat count.
-  const cars: CarSpec[] = []
-  const indexByCell = new Map<number, number>()
-  for (let col = 0; col < cfg.cols; col++) {
-    for (let row = 0; row < cfg.rows; row++) {
-      const seats = cfg.seatMin + pick(cfg.seatMax - cfg.seatMin + 1)
-      indexByCell.set(col * 100 + row, cars.length)
-      cars.push({ col, row, colorIndex: pick(cfg.colors), seats })
+  // keep the densest of a few deterministic candidates
+  const tries = level <= 10 ? 4 : 10
+  let best: CarSpec[] = []
+  let bestFill = -1
+  for (let k = 0; k < tries; k++) {
+    const cars = pack(cfg, (level * 2654435761 + 17 + k * 40503) >>> 0)
+    const fill = cars.reduce((s, c) => s + c.length, 0)
+    if (fill > bestFill) {
+      bestFill = fill
+      best = cars
     }
   }
 
-  // 2. Reachability-respecting dispatch order: repeatedly pop the front-most
-  //    remaining car of a randomly chosen non-empty column.
-  const frontRow = new Array(cfg.cols).fill(0)
+  // extraction order = reverse of insertion; queue = colours per seat
   const order: number[] = []
-  let remaining = cars.length
-  while (remaining > 0) {
-    const avail: number[] = []
-    for (let col = 0; col < cfg.cols; col++) if (frontRow[col] < cfg.rows) avail.push(col)
-    const col = avail[pick(avail.length)]
-    order.push(indexByCell.get(col * 100 + frontRow[col])!)
-    frontRow[col]++
-    remaining--
-  }
-
-  // 3. Queue = colours of each car in dispatch order, repeated per seat.
+  for (let i = best.length - 1; i >= 0; i--) order.push(i)
   const queue: number[] = []
-  for (const idx of order) for (let s = 0; s < cars[idx].seats; s++) queue.push(cars[idx].colorIndex)
+  for (const i of order) for (let s = 0; s < best[i].length; s++) queue.push(best[i].colorIndex)
 
-  return { level, cols: cfg.cols, rows: cfg.rows, slots: cfg.slots, cars, queue, order }
+  return { level, cols: cfg.cols, rows: cfg.rows, bays: 3, cars: best, queue, order }
 }

@@ -45,9 +45,9 @@ export type Project = ReactProject | IframeProject
 export const projects: Project[] = [
   {
     id: 'car-jam',
-    title: '🚗 Car Jam — Color Boarding Puzzle',
+    title: '🚗 Car Jam — Slide & Board Puzzle',
     description:
-      'Tap colour-coded cars out of a jammed lot so the queue of matching passengers can board. 100 procedurally generated, always-solvable stages. Portrait, mobile-first.',
+      'Slide different-sized cars out of a jammed lot (blocked cars are stuck!) so the queue of colour-matched passengers can hop aboard. 100 procedurally generated, always-solvable stages. Portrait, mobile-first.',
     emoji: '🚗',
     tags: ['react', 'three.js', '3d', 'puzzle'],
     kind: 'react',

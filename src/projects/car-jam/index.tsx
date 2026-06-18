@@ -118,8 +118,8 @@ export default function CarJam() {
 
       {/* Hint on the first level */}
       {s.level === 1 && s.status === 'playing' && boarded === 0 && (
-        <div className="pointer-events-none absolute left-1/2 top-[70%] -translate-x-1/2 rounded-full bg-black/40 px-4 py-1.5 text-center text-xs font-medium text-white/85 backdrop-blur">
-          Tap a car to pull it out — passengers board the matching colour
+        <div className="pointer-events-none absolute left-1/2 top-[68%] -translate-x-1/2 rounded-full bg-black/40 px-4 py-1.5 text-center text-xs font-medium text-white/85 backdrop-blur">
+          Slide a car out of its lane — matching passengers hop aboard
         </div>
       )}
     </div>
