@@ -784,10 +784,11 @@ export class Renderer {
   private frameContent(): void {
     const half = (this.size - 1) / 2
     const margin = 1.2
-    // Fit the L: vertical tail extends up to here, horizontal + light extend in x.
-    const queueTopZ = this.queueZ - QUEUE_V * QUEUE_VSPACING - 1.0
-    this.contentBox.min.set(-half - margin, 0, queueTopZ)
-    this.contentBox.max.set(half + margin, 1.9, half + margin)
+    // Frame the grid + zone + horizontal row ONLY (exactly as before the L).
+    // The queue's vertical tail intentionally extends above this box and is
+    // clipped off the top of the screen — grid/zone size & position stay fixed.
+    this.contentBox.min.set(-half - margin, 0, this.queueZ - 1.4)
+    this.contentBox.max.set(half + margin, 1.8, half + margin)
     const zoneHalfW = (this.slotSpacing * SLOT_COUNT) / 2 + 0.8
     // left edge includes the traffic light beside the front of the row
     const queueHalfW = ((QUEUE_H - 1) / 2) * QUEUE_HSPACING + 1.3
