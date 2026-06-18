@@ -495,52 +495,71 @@ export class Renderer {
     }
   }
 
-  // Animate the front passenger boarding the vehicle in the given slot.
-  async animateBoard(vehicleId: number): Promise<void> {
-    const passenger = this.queueMeshes.shift()
-    const view = this.views.get(vehicleId)
-    if (!passenger || !view) return
-    const start = passenger.position.clone()
-    const target = view.group.position.clone()
-    target.y = 1.05
-    const peak = Math.max(start.y, target.y) + 1.1
-    const ctrl = new THREE.Vector3((start.x + target.x) / 2, peak, (start.z + target.z) / 2)
-    await this.anim(300, (k) => {
-      const a = start.clone().lerp(ctrl, k)
-      const b = ctrl.clone().lerp(target, k)
-      passenger.position.copy(a.lerp(b, k))
-      passenger.rotation.y = k * Math.PI * 2
-      const s = 1 - 0.4 * Math.sin(k * Math.PI)
-      passenger.scale.setScalar(s)
-    }, easeInOutCubic)
-    passenger.scale.setScalar(1)
-    passenger.rotation.y = 0
-    this.recyclePassenger(passenger)
-    // little squash on the vehicle as the rider lands
-    await this.anim(140, (k) => {
-      const s = 1 - 0.12 * Math.sin(k * Math.PI)
-      view.body.scale.y = s
-    }, linear)
-    view.body.scale.y = 1
+  private setCapacityRatio(view: VehicleView, ratio: number): void {
+    const r = Math.max(0.001, Math.min(1, ratio))
+    const w = view.capBarWidth
+    view.capFill.scale.x = r
+    view.capFill.position.x = -w * 0.22 - w / 2 + (w * r) / 2
   }
 
-  // After a board, slide remaining passengers forward and reveal a new one.
-  relayoutQueue(colors: ColorKey[]): Promise<void> {
-    // Spawn newly-visible passenger at the tail if needed.
-    if (colors.length >= QUEUE_WINDOW && this.queueMeshes.length < QUEUE_WINDOW) {
-      const p = this.makePassenger()
-      this.paintPassenger(p, colors[QUEUE_WINDOW - 1])
-      const w = this.queueWorld(QUEUE_WINDOW)
-      p.position.copy(w)
-      this.queueMeshes.push(p)
+  // Board a whole batch of passengers in a fast, overlapping burst. State is
+  // already resolved by the caller; this only plays the visuals.
+  async animateBoardBurst(
+    steps: number[],
+    finalQueue: ColorKey[],
+    onLand: (vehicleId: number) => void,
+  ): Promise<void> {
+    const GAP = 50 // ms between successive launches
+    const DUR = 230 // arc duration
+    const landed = new Map<number, number>()
+    const flights: Promise<void>[] = []
+
+    for (let i = 0; i < steps.length; i++) {
+      const vId = steps[i]
+      const view = this.views.get(vId)
+      if (!view) continue
+
+      let mesh = this.queueMeshes.shift()
+      if (!mesh) {
+        // boarding more than fit in the visible window: spawn from the tail
+        mesh = this.makePassenger()
+        this.paintPassenger(mesh, view.vehicle.color)
+        mesh.position.copy(this.queueWorld(QUEUE_WINDOW - 1))
+      }
+      const flier = mesh
+      const start = flier.position.clone()
+      const target = view.group.position.clone()
+      target.y = 1.05
+      const peak = Math.max(start.y, target.y) + 0.85
+      const ctrl = new THREE.Vector3((start.x + target.x) / 2, peak, (start.z + target.z) / 2)
+      const delay = i * GAP
+
+      flights.push(
+        (async () => {
+          if (delay) await this.anim(delay, () => {}, linear)
+          await this.anim(DUR, (k) => {
+            const a = start.clone().lerp(ctrl, k)
+            const b = ctrl.clone().lerp(target, k)
+            flier.position.copy(a.lerp(b, k))
+            flier.scale.setScalar(1 - 0.3 * Math.sin(k * Math.PI))
+          }, easeInOutCubic)
+          flier.scale.setScalar(1)
+          this.recyclePassenger(flier)
+          const c = (landed.get(vId) ?? 0) + 1
+          landed.set(vId, c)
+          this.setCapacityRatio(view, c / view.vehicle.capacity)
+          view.body.scale.y = 0.9
+          this.anim(120, (k) => { view.body.scale.y = 0.9 + 0.1 * k }, easeOutQuad)
+          onLand(vId)
+        })(),
+      )
+
+      // keep the remaining queue tidy as the front empties
+      this.queueMeshes.forEach((m, idx) => m.position.lerp(this.queueWorld(idx), 0.6))
     }
-    const starts = this.queueMeshes.map((m) => m.position.clone())
-    const targets = this.queueMeshes.map((_, i) => this.queueWorld(i))
-    return this.anim(180, (k) => {
-      this.queueMeshes.forEach((m, i) => {
-        m.position.lerpVectors(starts[i], targets[i], k)
-      })
-    }, easeOutQuad)
+
+    await Promise.all(flights)
+    this.buildQueue(finalQueue)
   }
 
   // ---- vehicle animations ----------------------------------------------

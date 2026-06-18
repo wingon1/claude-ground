@@ -136,28 +136,37 @@ export class Game {
     }
   }
 
-  // Board passengers from the front of the queue while possible, cascading
-  // through departures that free capacity.
+  // Resolve the whole boarding cascade in state first, then play it back as a
+  // fast overlapping burst so the player doesn't wait on each passenger.
   private async resolveBoarding(): Promise<void> {
+    const steps: number[] = []
+    const departures: number[] = []
     let guard = 0
-    while (++guard < 10000) {
+    while (++guard < 100000) {
       const slot = nextBoarding(this.state)
       if (!slot) break
-      const vehicleId = slot.vehicle.id
-      await this.renderer.animateBoard(vehicleId)
+      const id = slot.vehicle.id
       const full = applyBoarding(this.state, slot)
-      this.audio.board()
-      this.renderer.updateCapacity(slot.vehicle)
-      await this.renderer.relayoutQueue(this.state.queue)
-      this.ui.flashHud()
-      this.refreshHud()
+      steps.push(id)
       if (full) {
-        const idx = this.state.zone.indexOf(slot)
         departFromZone(this.state, slot)
-        this.audio.depart()
-        await this.renderer.animateDepart(vehicleId, idx)
-        this.refreshHud()
+        departures.push(id)
       }
+    }
+    if (steps.length === 0) return
+
+    let pops = 0
+    await this.renderer.animateBoardBurst(steps, this.state.queue, () => {
+      // throttle the pop so a 10-seat fill doesn't machine-gun the speaker
+      if (pops++ % 2 === 0) this.audio.board()
+    })
+    this.ui.flashHud()
+    this.refreshHud()
+
+    if (departures.length > 0) {
+      this.audio.depart()
+      await Promise.all(departures.map((id) => this.renderer.animateDepart(id, 0)))
+      this.refreshHud()
     }
   }
 
