@@ -11,8 +11,8 @@ import {
 import { TweenManager, easeOutCubic, easeInOutCubic, easeOutBack, easeOutQuad, linear } from './tween'
 import type { GameState } from './GameState'
 
-const QUEUE_WINDOW = 10
-const QUEUE_SPACING = 0.62
+const QUEUE_WINDOW = 20
+const QUEUE_SPACING = 0.46
 const SLOT_COUNT = 4
 
 interface VehicleView {
@@ -213,9 +213,10 @@ export class Renderer {
     return new THREE.Vector3(x, 0, this.zoneZ)
   }
 
+  // Single-file column: index 0 (front) sits nearest the boarding zone, the
+  // tail extends away (more negative z = higher up the screen).
   private queueWorld(i: number): THREE.Vector3 {
-    const x = (i - (QUEUE_WINDOW - 1) / 2) * QUEUE_SPACING
-    return new THREE.Vector3(x, 0, this.queueZ)
+    return new THREE.Vector3(0, 0, this.queueZ - i * QUEUE_SPACING)
   }
 
   // ---- level build ------------------------------------------------------
@@ -226,7 +227,7 @@ export class Renderer {
     const half = (this.size - 1) / 2
     this.slotSpacing = Math.max(1.7, Math.min(2.5, this.size * 0.32))
     this.zoneZ = -half - 3.2
-    this.queueZ = this.zoneZ - 3.0
+    this.queueZ = this.zoneZ - 2.5 // front of the queue column, clear of long buses
 
     this.buildBoard()
     this.buildZoneMarkers()
@@ -287,13 +288,14 @@ export class Renderer {
     zonePlat.position.set(0, -0.15, this.zoneZ)
     this.boardGroup.add(zonePlat)
 
-    // Queue platform
-    const queueW = QUEUE_WINDOW * QUEUE_SPACING + 1.6
+    // Queue platform — a vertical lane the single-file column stands on.
+    const laneLen = QUEUE_WINDOW * QUEUE_SPACING + 0.8
+    const laneCenterZ = this.queueZ - ((QUEUE_WINDOW - 1) * QUEUE_SPACING) / 2
     const qPlat = new THREE.Mesh(
-      new THREE.BoxGeometry(queueW, 0.2, 1.2),
+      new THREE.BoxGeometry(1.2, 0.2, laneLen),
       new THREE.MeshToonMaterial({ color: 0x252b4d, gradientMap: this.gradient }),
     )
-    qPlat.position.set(0, -0.1, this.queueZ)
+    qPlat.position.set(0, -0.1, laneCenterZ)
     this.boardGroup.add(qPlat)
 
     void half
@@ -338,8 +340,8 @@ export class Renderer {
   // passenger boards). The line of people extends away from it (+x).
   private buildTrafficLight(): void {
     const g = new THREE.Group()
-    const headX = this.queueWorld(0).x - 0.95
-    g.position.set(headX, 0, this.queueZ)
+    // Beside the head of the column (front), between the queue and the zone.
+    g.position.set(-0.95, 0, this.queueZ + 0.4)
 
     const dark = new THREE.MeshToonMaterial({ color: 0x2b3047, gradientMap: this.gradient })
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 1.15, 10), dark)
@@ -736,12 +738,13 @@ export class Renderer {
   private frameContent(): void {
     const half = (this.size - 1) / 2
     const margin = 1.2
-    this.contentBox.min.set(-half - margin, 0, this.queueZ - 1.4)
-    this.contentBox.max.set(half + margin, 1.8, half + margin)
+    // The vertical queue column extends up to its (currently visible) tail.
+    const visible = Math.max(1, this.queueMeshes.length)
+    const tailZ = this.queueZ - (visible - 1) * QUEUE_SPACING
+    this.contentBox.min.set(-half - margin, 0, tailZ - 1.0)
+    this.contentBox.max.set(half + margin, 1.9, half + margin)
     const zoneHalfW = (this.slotSpacing * SLOT_COUNT) / 2 + 0.8
-    // queue line (+ traffic light at the head) can be wider than the grid
-    const queueHalfW = ((QUEUE_WINDOW - 1) / 2) * QUEUE_SPACING + 1.3
-    const halfW = Math.max(zoneHalfW, queueHalfW)
+    const halfW = Math.max(zoneHalfW, 1.4) // include the side traffic light
     if (halfW > this.contentBox.max.x) {
       this.contentBox.min.x = -halfW
       this.contentBox.max.x = halfW
