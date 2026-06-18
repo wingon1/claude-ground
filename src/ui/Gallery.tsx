@@ -11,7 +11,7 @@ export function Gallery() {
 
   return (
     <div className="min-h-full w-full bg-slate-950 text-slate-100">
-      <div className="mx-auto max-w-6xl px-6 py-16">
+      <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
         <header className="mb-12">
           <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">
             🛠️ claude-ground
@@ -22,20 +22,20 @@ export function Gallery() {
           </p>
         </header>
 
-        <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-3">
           {visible.map((p) => (
             <li key={p.id}>
               <a
                 href={`#/p/${p.id}`}
                 className="group flex h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 transition hover:-translate-y-1 hover:border-white/25 hover:bg-white/10 hover:shadow-2xl hover:shadow-black/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-400"
               >
-                <div className="flex aspect-[16/10] items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900 text-6xl">
+                <div className="flex aspect-[16/10] items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900 text-4xl sm:text-6xl">
                   <span className="transition-transform duration-300 group-hover:scale-110">
                     {p.emoji}
                   </span>
                 </div>
-                <div className="flex flex-1 flex-col p-5">
-                  <h2 className="text-lg font-semibold text-white">{p.title}</h2>
+                <div className="flex flex-1 flex-col p-3 sm:p-5">
+                  <h2 className="text-base font-semibold text-white sm:text-lg">{p.title}</h2>
                   <p className="mt-1.5 flex-1 text-sm leading-relaxed text-slate-400">
                     {p.description}
                   </p>
