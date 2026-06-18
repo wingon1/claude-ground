@@ -1,0 +1,3 @@
+Revert "Car Jam: Rush-Hour slide-out lot + size-by-capacity cars + up-exit"
+
+This reverts commit 6519ae87e888bd33158abeb82f9c90133da66c79.
