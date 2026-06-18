@@ -24,7 +24,7 @@ import { Vehicle, VehiclePool, CAR_COLORS } from './Vehicle'
 const MAX_LEVEL = 100
 const STORAGE_KEY = 'carjam.level'
 
-const LOT_GAP = 1.4 // spacing between cars in the lot
+const LOT_GAP = 1.5 // spacing between cars in the lot
 const SLOT_Z = 0 // boarding lane sits at z = 0 (screen middle)
 const SLOT_GAP = 1.75
 const LANE_GAP = 1.95 // slots → first lot row
@@ -196,7 +196,10 @@ export class Main {
 
   private positionCamera() {
     const c = this.center(this.bounds())
-    this.camera.position.set(c.x + 7, 12.5, c.z + 9)
+    // Near top-down: directly above in X (no left/right skew → the lot reads as
+    // an axis-aligned rectangle, not an isometric diamond) with a gentle
+    // front-to-back tilt so cars keep a little depth.
+    this.camera.position.set(c.x, 18, c.z + 5)
     this.camera.lookAt(c.x, 0, c.z)
     this.camera.updateMatrixWorld()
   }
