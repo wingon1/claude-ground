@@ -16,6 +16,7 @@ export interface UIHandlers {
   onNext: () => void
   onToggleSound: () => boolean
   onHint: () => void
+  onUnlockAll: () => void
 }
 
 const STYLE = `
@@ -75,6 +76,7 @@ export class UI {
   private soundBtn!: HTMLButtonElement
   private toast!: HTMLDivElement
   private toastTimer = 0
+  private unlockTaps = 0 // hidden cheat: 7 taps on the last cell unlocks all
 
   constructor(host: HTMLElement, handlers: UIHandlers) {
     this.h = handlers
@@ -197,6 +199,7 @@ export class UI {
     this.levelsLayer.classList.remove('be-hidden')
     this.levelsLayer.classList.add('be-on')
     this.levelsGrid.innerHTML = ''
+    this.unlockTaps = 0
     for (let lvl = 1; lvl <= MAX_LEVEL; lvl++) {
       const unlocked = lvl <= p.unlocked
       const done = p.completed[lvl]
@@ -209,7 +212,21 @@ export class UI {
       } else if (lvl === p.unlocked) {
         b.classList.add('be-cur')
       }
-      if (unlocked) b.onclick = () => this.h.onSelectLevel(lvl)
+      if (unlocked) {
+        b.onclick = () => this.h.onSelectLevel(lvl)
+      } else if (lvl === MAX_LEVEL) {
+        // Hidden cheat: tap the last (locked) cell 7 times to unlock everything.
+        b.style.pointerEvents = 'auto'
+        b.style.cursor = 'pointer'
+        b.onclick = () => {
+          this.unlockTaps++
+          b.animate([{ transform: 'scale(0.85)' }, { transform: 'scale(1)' }], { duration: 140, easing: 'ease-out' })
+          if (this.unlockTaps >= 7) {
+            this.unlockTaps = 0
+            this.h.onUnlockAll()
+          }
+        }
+      }
       this.levelsGrid.appendChild(b)
     }
   }

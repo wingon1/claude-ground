@@ -33,6 +33,7 @@ export class Game {
       onNext: () => this.startLevel(Math.min(MAX_LEVEL, this.state.level + 1)),
       onToggleSound: () => this.toggleSound(),
       onHint: () => this.showHint(),
+      onUnlockAll: () => this.unlockAll(),
     })
     this.input = new Input(this.renderer, (id) => void this.handleTap(id))
     this.ui.setSound(this.state.progress.sound)
@@ -75,6 +76,14 @@ export class Game {
     this.state.progress.sound = on
     saveProgress(this.state.progress)
     return on
+  }
+
+  private unlockAll(): void {
+    this.audio.resume()
+    this.audio.levelClear()
+    this.state.progress.unlocked = MAX_LEVEL
+    saveProgress(this.state.progress)
+    this.ui.showLevelSelect(this.state.progress)
   }
 
   private showHint(): void {
