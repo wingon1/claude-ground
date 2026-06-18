@@ -23,7 +23,7 @@ export class Game {
   constructor(host: HTMLElement) {
     this.host = host
     this.renderer = new Renderer(host)
-    this.audio = new AudioEngine(this.state.progress.sound)
+    this.audio = new AudioEngine(!this.state.progress.sound)
     this.ui = new UI(host, {
       onPlay: () => this.startLevel(this.state.progress.unlocked),
       onSelectLevel: (lvl) => this.startLevel(lvl),
@@ -66,7 +66,7 @@ export class Game {
   }
 
   private refreshHud(): void {
-    this.ui.updateHud(this.state.level, this.state.queue.length, this.state.zoneCount(), this.state.queue)
+    this.ui.updateHud(this.state.level, this.state.queue.length, this.state.zoneCount())
   }
 
   private toggleSound(): boolean {

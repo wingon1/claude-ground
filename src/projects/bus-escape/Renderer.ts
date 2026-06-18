@@ -11,7 +11,8 @@ import {
 import { TweenManager, easeOutCubic, easeInOutCubic, easeOutBack, easeOutQuad, linear } from './tween'
 import type { GameState } from './GameState'
 
-const QUEUE_WINDOW = 7
+const QUEUE_WINDOW = 10
+const QUEUE_SPACING = 0.62
 const SLOT_COUNT = 4
 
 interface VehicleView {
@@ -213,7 +214,7 @@ export class Renderer {
   }
 
   private queueWorld(i: number): THREE.Vector3 {
-    const x = (i - (QUEUE_WINDOW - 1) / 2) * 0.66
+    const x = (i - (QUEUE_WINDOW - 1) / 2) * QUEUE_SPACING
     return new THREE.Vector3(x, 0, this.queueZ)
   }
 
@@ -229,6 +230,7 @@ export class Renderer {
 
     this.buildBoard()
     this.buildZoneMarkers()
+    this.buildTrafficLight()
 
     for (const v of state.vehicles.values()) {
       const view = this.makeVehicle(v)
@@ -286,7 +288,7 @@ export class Renderer {
     this.boardGroup.add(zonePlat)
 
     // Queue platform
-    const queueW = QUEUE_WINDOW * 0.66 + 1.0
+    const queueW = QUEUE_WINDOW * QUEUE_SPACING + 1.6
     const qPlat = new THREE.Mesh(
       new THREE.BoxGeometry(queueW, 0.2, 1.2),
       new THREE.MeshToonMaterial({ color: 0x252b4d, gradientMap: this.gradient }),
@@ -330,6 +332,52 @@ export class Renderer {
       this.boardGroup.add(ring)
       this.slotMarkers.push(ring)
     }
+  }
+
+  // A little traffic light marking the head of the queue (where the next
+  // passenger boards). The line of people extends away from it (+x).
+  private buildTrafficLight(): void {
+    const g = new THREE.Group()
+    const headX = this.queueWorld(0).x - 0.95
+    g.position.set(headX, 0, this.queueZ)
+
+    const dark = new THREE.MeshToonMaterial({ color: 0x2b3047, gradientMap: this.gradient })
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 1.15, 10), dark)
+    pole.position.y = 0.57
+    g.add(pole)
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.24, 0.1, 14), dark)
+    base.position.y = 0.05
+    g.add(base)
+    const housing = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.74, 0.22), dark)
+    housing.position.y = 1.32
+    g.add(housing)
+
+    // three lamps facing the camera (+z); green is lit = "board here"
+    const lamps: { y: number; color: number; on: boolean }[] = [
+      { y: 1.58, color: 0xff4d4d, on: false },
+      { y: 1.32, color: 0xffcf3a, on: false },
+      { y: 1.06, color: 0x42cf6b, on: true },
+    ]
+    for (const l of lamps) {
+      const mat = new THREE.MeshToonMaterial({
+        color: l.color,
+        gradientMap: this.gradient,
+        emissive: l.color,
+        emissiveIntensity: l.on ? 1.0 : 0.12,
+      })
+      const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.085, 14, 12), mat)
+      lamp.position.set(0, l.y, 0.12)
+      g.add(lamp)
+      if (l.on) {
+        const glow = new THREE.Mesh(
+          new THREE.CircleGeometry(0.16, 18),
+          new THREE.MeshBasicMaterial({ color: l.color, transparent: true, opacity: 0.35 }),
+        )
+        glow.position.set(0, l.y, 0.135)
+        g.add(glow)
+      }
+    }
+    this.boardGroup.add(g)
   }
 
   // ---- vehicle mesh -----------------------------------------------------
@@ -688,12 +736,15 @@ export class Renderer {
   private frameContent(): void {
     const half = (this.size - 1) / 2
     const margin = 1.2
-    this.contentBox.min.set(-half - margin, 0, this.queueZ - 1.2)
-    this.contentBox.max.set(half + margin, 1.4, half + margin)
+    this.contentBox.min.set(-half - margin, 0, this.queueZ - 1.4)
+    this.contentBox.max.set(half + margin, 1.8, half + margin)
     const zoneHalfW = (this.slotSpacing * SLOT_COUNT) / 2 + 0.8
-    if (zoneHalfW > this.contentBox.max.x) {
-      this.contentBox.min.x = -zoneHalfW
-      this.contentBox.max.x = zoneHalfW
+    // queue line (+ traffic light at the head) can be wider than the grid
+    const queueHalfW = ((QUEUE_WINDOW - 1) / 2) * QUEUE_SPACING + 1.3
+    const halfW = Math.max(zoneHalfW, queueHalfW)
+    if (halfW > this.contentBox.max.x) {
+      this.contentBox.min.x = -halfW
+      this.contentBox.max.x = halfW
     }
     const center = new THREE.Vector3()
     this.contentBox.getCenter(center)

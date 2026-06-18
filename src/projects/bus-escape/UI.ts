@@ -1,11 +1,6 @@
 // DOM overlay: title, level select, in-game HUD, win/fail popups. Portrait-first.
 
-import { COLOR_HEX, type ColorKey } from './types'
 import { MAX_LEVEL, type Progress } from './GameState'
-
-function cssColor(c: ColorKey): string {
-  return '#' + COLOR_HEX[c].toString(16).padStart(6, '0')
-}
 
 export interface UIHandlers {
   onPlay: (level: number) => void
@@ -42,9 +37,6 @@ const STYLE = `
 .be-icbtn:active{transform:scale(.92)}
 .be-row{display:flex;gap:8px;align-items:center}
 .be-bottom{position:absolute;bottom:0;left:0;right:0;display:flex;justify-content:center;gap:10px;padding:14px;pointer-events:none}
-.be-queuebar{position:absolute;top:50px;left:0;right:0;display:flex;justify-content:center;gap:4px;flex-wrap:wrap;padding:0 16px;pointer-events:none}
-.be-dot{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;
-  color:rgba(0,0,0,.55);font-weight:900;box-shadow:0 2px 4px rgba(0,0,0,.3)}
 .be-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;max-height:62vh;overflow-y:auto;padding:6px 2px;width:100%}
 .be-lvl{pointer-events:auto;cursor:pointer;aspect-ratio:1;border-radius:13px;border:none;font-weight:800;font-size:15px;color:#fff;
   background:linear-gradient(160deg,#39437e,#2a3160);display:flex;align-items:center;justify-content:center;position:relative}
@@ -72,7 +64,6 @@ export class UI {
   private hudLevel!: HTMLSpanElement
   private hudRemaining!: HTMLSpanElement
   private hudZone!: HTMLSpanElement
-  private queueBar!: HTMLDivElement
   private soundBtn!: HTMLButtonElement
   private toast!: HTMLDivElement
   private toastTimer = 0
@@ -160,9 +151,6 @@ export class UI {
     hud.append(leftRow, rightRow)
     this.gameLayer.appendChild(hud)
 
-    this.queueBar = this.el('div', 'be-queuebar')
-    this.gameLayer.appendChild(this.queueBar)
-
     this.toast = this.el('div', 'be-toast')
     this.gameLayer.appendChild(this.toast)
 
@@ -245,28 +233,15 @@ export class UI {
     this.soundBtn.textContent = on ? '🔊' : '🔇'
   }
 
-  updateHud(level: number, remaining: number, zoneCount: number, queue: ColorKey[]): void {
+  updateHud(level: number, remaining: number, zoneCount: number): void {
     this.hudLevel.textContent = String(level)
     this.hudRemaining.textContent = String(remaining)
     this.hudZone.textContent = `${zoneCount}/4`
-    this.queueBar.innerHTML = ''
-    const preview = queue.slice(0, 14)
-    for (const c of preview) {
-      const d = this.el('div', 'be-dot')
-      d.style.background = cssColor(c)
-      this.queueBar.appendChild(d)
-    }
-    if (queue.length > preview.length) {
-      const more = this.el('div', 'be-dot', '+')
-      more.style.background = '#445'
-      more.style.color = '#fff'
-      this.queueBar.appendChild(more)
-    }
   }
 
   flashHud(): void {
-    this.queueBar.animate(
-      [{ transform: 'scale(1.12)' }, { transform: 'scale(1)' }],
+    this.hudRemaining.parentElement?.animate(
+      [{ transform: 'scale(1.18)' }, { transform: 'scale(1)' }],
       { duration: 220, easing: 'ease-out' },
     )
   }
