@@ -26,7 +26,7 @@ export interface UIHandlers {
 }
 
 const STYLE = `
-.be-root{position:absolute;inset:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#fff;-webkit-user-select:none;user-select:none}
+.be-root{position:absolute;inset:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#fff;-webkit-user-select:none;user-select:none;pointer-events:none}
 .be-layer{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none}
 .be-layer.be-on{pointer-events:auto}
 .be-panel{pointer-events:auto;background:linear-gradient(160deg,#1c2350,#0f1430);border:1px solid #3a4488;border-radius:22px;padding:26px 24px;box-shadow:0 18px 50px rgba(0,0,0,.5);max-width:88%;width:340px}
@@ -223,9 +223,11 @@ export class UI {
 
   showGame(): void {
     this.hideAll()
+    // NOTE: the game layer stays pointer-events:none so taps reach the 3D
+    // canvas underneath; only its buttons/chips opt back in via .be-btn etc.
     this.gameLayer.classList.remove('be-hidden')
-    this.gameLayer.classList.add('be-on')
     this.popupLayer.classList.add('be-hidden')
+    this.popupLayer.classList.remove('be-on')
   }
 
   setSound(on: boolean): void {
@@ -269,6 +271,7 @@ export class UI {
   showWin(level: number, isLast: boolean, moves: number): void {
     this.popupLayer.innerHTML = ''
     this.popupLayer.classList.remove('be-hidden')
+    this.popupLayer.classList.add('be-on')
     const p = this.el('div', 'be-panel')
     p.appendChild(this.el('h2', 'be-title', '🎉 Cleared!'))
     p.appendChild(this.el('p', 'be-sub', isLast ? `You finished all ${MAX_LEVEL} levels! Legend.` : `Level ${level} solved in ${moves} moves.`))
@@ -288,6 +291,7 @@ export class UI {
   showFail(): void {
     this.popupLayer.innerHTML = ''
     this.popupLayer.classList.remove('be-hidden')
+    this.popupLayer.classList.add('be-on')
     const p = this.el('div', 'be-panel')
     p.appendChild(this.el('h2', 'be-title', '🚫 Gridlock!'))
     p.appendChild(this.el('p', 'be-sub', 'The front passenger has no matching bus and the boarding zone is full.'))
