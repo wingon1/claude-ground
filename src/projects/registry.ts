@@ -44,6 +44,16 @@ export type Project = ReactProject | IframeProject
  */
 export const projects: Project[] = [
   {
+    id: 'car-jam',
+    title: '🚗 Car Jam — 3D Parking Puzzle',
+    description:
+      'Swipe colourful low-poly cars out of a jammed lot. 100 procedurally generated, always-solvable stages. Portrait, mobile-first.',
+    emoji: '🚗',
+    tags: ['react', 'three.js', '3d', 'puzzle'],
+    kind: 'react',
+    load: () => import('./car-jam'),
+  },
+  {
     id: 'cozy-cove',
     title: '3D - Opus 4.8 높음 cozy-cove',
     description: '오브젝트 2번 수정',
