@@ -15,37 +15,48 @@ export interface UIHandlers {
 }
 
 const STYLE = `
-.be-root{position:absolute;inset:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#fff;-webkit-user-select:none;user-select:none;pointer-events:none}
-.be-layer{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none}
+.be-root{position:absolute;inset:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#eef1ff;-webkit-user-select:none;user-select:none;pointer-events:none}
+.be-vignette{position:absolute;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(120% 90% at 50% 38%,rgba(0,0,0,0) 52%,rgba(4,6,18,.55) 100%)}
+.be-layer{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none;z-index:2}
 .be-layer.be-on{pointer-events:auto}
-.be-panel{pointer-events:auto;background:linear-gradient(160deg,#1c2350,#0f1430);border:1px solid #3a4488;border-radius:22px;padding:26px 24px;box-shadow:0 18px 50px rgba(0,0,0,.5);max-width:88%;width:340px}
-.be-title{font-size:34px;font-weight:800;letter-spacing:.5px;margin:0 0 6px;
-  background:linear-gradient(90deg,#ff6b6b,#ffd23a,#42cf6b,#4f86ff);-webkit-background-clip:text;background-clip:text;color:transparent}
-.be-sub{opacity:.8;font-size:14px;margin:0 0 22px;line-height:1.4}
-.be-btn{pointer-events:auto;cursor:pointer;border:none;border-radius:14px;padding:13px 18px;font-size:16px;font-weight:700;color:#fff;
-  background:linear-gradient(160deg,#5566ff,#3344cc);box-shadow:0 6px 0 #2331a0;transition:transform .08s,box-shadow .08s;margin:6px 0;width:100%}
-.be-btn:active{transform:translateY(4px);box-shadow:0 2px 0 #2331a0}
-.be-btn.be-green{background:linear-gradient(160deg,#3ed873,#27a857);box-shadow:0 6px 0 #1c7d40}
-.be-btn.be-ghost{background:linear-gradient(160deg,#2a3160,#222a52);box-shadow:0 6px 0 #161c3c}
-.be-btn.be-sm{width:auto;padding:9px 14px;font-size:14px;margin:0}
+.be-panel{pointer-events:auto;position:relative;background:linear-gradient(165deg,rgba(40,48,98,.96),rgba(15,20,46,.97));
+  border:1px solid rgba(140,156,255,.28);border-radius:26px;padding:30px 26px;
+  box-shadow:0 24px 60px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.12);max-width:88%;width:344px;backdrop-filter:blur(8px)}
+.be-title{font-size:36px;font-weight:800;letter-spacing:.3px;margin:0 0 8px;line-height:1.05;
+  background:linear-gradient(92deg,#ff7a7a,#ffd23a,#5be08a,#5b8cff,#ff7ec2);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 3px 10px rgba(90,120,255,.35))}
+.be-sub{opacity:.78;font-size:14px;margin:0 0 22px;line-height:1.5}
+.be-btn{pointer-events:auto;cursor:pointer;border:none;border-radius:16px;padding:14px 18px;font-size:16px;font-weight:800;color:#fff;letter-spacing:.2px;
+  background:linear-gradient(170deg,#6b7bff,#3a49d4);box-shadow:0 6px 0 #2a37a8,0 10px 18px rgba(40,55,170,.4),inset 0 1px 0 rgba(255,255,255,.3);
+  transition:transform .08s,box-shadow .08s,filter .1s;margin:7px 0;width:100%}
+.be-btn:hover{filter:brightness(1.06)}
+.be-btn:active{transform:translateY(4px);box-shadow:0 2px 0 #2a37a8,0 4px 10px rgba(40,55,170,.35),inset 0 1px 0 rgba(255,255,255,.3)}
+.be-btn.be-green{background:linear-gradient(170deg,#54e487,#23a85a);box-shadow:0 6px 0 #1a8044,0 10px 18px rgba(35,168,90,.4),inset 0 1px 0 rgba(255,255,255,.35)}
+.be-btn.be-green:active{box-shadow:0 2px 0 #1a8044,inset 0 1px 0 rgba(255,255,255,.35)}
+.be-btn.be-ghost{background:linear-gradient(170deg,#333c6e,#252d56);box-shadow:0 6px 0 #161c3c,inset 0 1px 0 rgba(255,255,255,.12)}
+.be-btn.be-ghost:active{box-shadow:0 2px 0 #161c3c,inset 0 1px 0 rgba(255,255,255,.12)}
+.be-btn.be-sm{width:auto;padding:10px 15px;font-size:14px;margin:0}
 .be-hud{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;
-  padding:10px 12px;gap:8px;pointer-events:none}
-.be-hud .be-chip{pointer-events:auto;background:rgba(16,20,46,.82);border:1px solid #39427e;border-radius:12px;
-  padding:7px 11px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;backdrop-filter:blur(4px)}
-.be-icbtn{pointer-events:auto;cursor:pointer;width:38px;height:38px;border-radius:11px;border:1px solid #39427e;
-  background:rgba(16,20,46,.82);color:#fff;font-size:17px;display:flex;align-items:center;justify-content:center}
-.be-icbtn:active{transform:scale(.92)}
+  padding:calc(8px + env(safe-area-inset-top,0px)) 12px 10px;gap:8px;pointer-events:none}
+.be-hud .be-chip{pointer-events:auto;background:rgba(18,24,52,.72);border:1px solid rgba(120,138,230,.35);border-radius:14px;
+  padding:8px 12px;font-size:13px;font-weight:800;display:flex;align-items:center;gap:6px;backdrop-filter:blur(8px);box-shadow:0 4px 14px rgba(0,0,0,.3)}
+.be-icbtn{pointer-events:auto;cursor:pointer;width:40px;height:40px;border-radius:13px;border:1px solid rgba(120,138,230,.35);
+  background:rgba(18,24,52,.72);color:#fff;font-size:18px;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);box-shadow:0 4px 14px rgba(0,0,0,.3);transition:transform .08s}
+.be-icbtn:active{transform:scale(.9)}
 .be-row{display:flex;gap:8px;align-items:center}
-.be-bottom{position:absolute;bottom:0;left:0;right:0;display:flex;justify-content:center;gap:10px;padding:14px;pointer-events:none}
-.be-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;max-height:62vh;overflow-y:auto;padding:6px 2px;width:100%}
-.be-lvl{pointer-events:auto;cursor:pointer;aspect-ratio:1;border-radius:13px;border:none;font-weight:800;font-size:15px;color:#fff;
-  background:linear-gradient(160deg,#39437e,#2a3160);display:flex;align-items:center;justify-content:center;position:relative}
-.be-lvl.be-done{background:linear-gradient(160deg,#3ed873,#27a857)}
-.be-lvl.be-cur{background:linear-gradient(160deg,#5566ff,#3344cc);box-shadow:0 0 0 3px #aab4ff inset}
-.be-lvl.be-lock{background:#1a1f3c;color:#566;cursor:default}
+.be-bottom{position:absolute;bottom:0;left:0;right:0;display:flex;justify-content:center;gap:10px;padding:0 14px calc(14px + env(safe-area-inset-bottom,0px));pointer-events:none}
+.be-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;max-height:62vh;overflow-y:auto;padding:6px 2px;width:100%}
+.be-lvl{pointer-events:auto;cursor:pointer;aspect-ratio:1;border-radius:15px;border:1px solid rgba(255,255,255,.08);font-weight:800;font-size:15px;color:#fff;
+  background:linear-gradient(165deg,#3c4684,#2a3160);display:flex;align-items:center;justify-content:center;position:relative;
+  box-shadow:0 4px 10px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.14);transition:transform .08s}
+.be-lvl:active{transform:scale(.94)}
+.be-lvl.be-done{background:linear-gradient(165deg,#54e487,#23a85a)}
+.be-lvl.be-cur{background:linear-gradient(165deg,#6b7bff,#3a49d4);box-shadow:0 0 0 3px rgba(170,180,255,.9) inset,0 4px 14px rgba(60,80,220,.5)}
+.be-lvl.be-lock{background:#171c38;color:#4a5377;cursor:default;box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
 .be-badge{font-size:11px;opacity:.85;margin-top:2px}
-.be-toast{position:absolute;top:92px;left:50%;transform:translateX(-50%);background:rgba(16,20,46,.9);
-  border:1px solid #39427e;border-radius:12px;padding:8px 14px;font-size:13px;opacity:0;transition:opacity .25s;pointer-events:none;max-width:80%}
+.be-toast{position:absolute;top:96px;left:50%;transform:translateX(-50%);background:rgba(18,24,52,.92);
+  border:1px solid rgba(120,138,230,.4);border-radius:14px;padding:9px 15px;font-size:13px;font-weight:700;opacity:0;transition:opacity .25s;pointer-events:none;max-width:80%;backdrop-filter:blur(8px);box-shadow:0 8px 22px rgba(0,0,0,.4)}
 .be-toast.be-show{opacity:1}
 .be-hidden{display:none !important}
 .be-scroll{max-height:74vh;overflow-y:auto;width:100%}
@@ -80,6 +91,10 @@ export class UI {
     this.root = document.createElement('div')
     this.root.className = 'be-root'
     host.appendChild(this.root)
+    // Vignette overlay (cheap, frames the 3D scene; never intercepts taps).
+    const vignette = document.createElement('div')
+    vignette.className = 'be-vignette'
+    this.root.appendChild(vignette)
     this.build()
   }
 

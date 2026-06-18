@@ -1,6 +1,11 @@
 // All Three.js: procedural meshes, isometric camera framing, animations, FX.
 
 import * as THREE from 'three'
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js'
 import {
   COLOR_HEX,
   COLOR_DARK,
@@ -77,6 +82,8 @@ export class Renderer {
   private shakeMag = 0
   private clock = new THREE.Clock()
   private hintId: number | null = null
+  private composer: EffectComposer
+  private bloomPass: UnrealBloomPass
 
   constructor(host: HTMLElement) {
     this.host = host
@@ -84,6 +91,8 @@ export class Renderer {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
     this.renderer.setSize(host.clientWidth, host.clientHeight, false)
     this.renderer.setClearColor(0x10142e, 1)
+    this.renderer.toneMapping = THREE.NeutralToneMapping
+    this.renderer.toneMappingExposure = 1.05
     this.renderer.domElement.style.display = 'block'
     this.renderer.domElement.style.width = '100%'
     this.renderer.domElement.style.height = '100%'
@@ -97,7 +106,17 @@ export class Renderer {
     this.tireMat = new THREE.MeshToonMaterial({ color: 0x2a2f3a, gradientMap: this.gradient })
     this.markerMat = new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap: this.gradient })
     this.capBgMat = new THREE.MeshBasicMaterial({ color: 0x14203a })
-    this.capFillMat = new THREE.MeshToonMaterial({ color: 0x8affc0, gradientMap: this.gradient, emissive: 0x123a26 })
+    this.capFillMat = new THREE.MeshToonMaterial({ color: 0x8affc0, gradientMap: this.gradient, emissive: 0x2a8f5a, emissiveIntensity: 1.3 })
+
+    // Post-processing: a single conservative bloom pass on bright emissives.
+    const w = Math.max(1, host.clientWidth)
+    const h = Math.max(1, host.clientHeight)
+    const rt = new THREE.WebGLRenderTarget(w, h, { samples: 4, type: THREE.HalfFloatType })
+    this.composer = new EffectComposer(this.renderer, rt)
+    this.composer.addPass(new RenderPass(this.scene, this.camera))
+    this.bloomPass = new UnrealBloomPass(new THREE.Vector2(w, h), 0.5, 0.4, 0.9)
+    this.composer.addPass(this.bloomPass)
+    this.composer.addPass(new OutputPass())
 
     this.setupSceneBasics()
   }
@@ -169,17 +188,39 @@ export class Renderer {
   // ---- scene setup ------------------------------------------------------
 
   private setupSceneBasics(): void {
+    this.scene.background = this.makeBackgroundTexture()
     const hemi = new THREE.HemisphereLight(0xdde6ff, 0x2a2440, 0.9)
     this.scene.add(hemi)
-    const dir = new THREE.DirectionalLight(0xffffff, 1.1)
+    const dir = new THREE.DirectionalLight(0xffffff, 1.15)
     dir.position.set(-6, 12, 8)
     this.scene.add(dir)
     const fill = new THREE.DirectionalLight(0x88aaff, 0.35)
     fill.position.set(8, 6, -6)
     this.scene.add(fill)
+    // Warm rim/back light to separate silhouettes (we use no outlines).
+    const rim = new THREE.DirectionalLight(0xffd9a0, 0.55)
+    rim.position.set(7, 4, -12)
+    this.scene.add(rim)
     this.scene.add(this.boardGroup)
     this.scene.add(this.vehicleGroup)
     this.scene.add(this.fxGroup)
+  }
+
+  private makeBackgroundTexture(): THREE.Texture {
+    const cv = document.createElement('canvas')
+    cv.width = 16
+    cv.height = 256
+    const ctx = cv.getContext('2d')!
+    const grd = ctx.createLinearGradient(0, 0, 0, 256)
+    grd.addColorStop(0, '#0b1030')
+    grd.addColorStop(0.55, '#141a3e')
+    grd.addColorStop(1, '#1f2752')
+    ctx.fillStyle = grd
+    ctx.fillRect(0, 0, 16, 256)
+    const tex = new THREE.CanvasTexture(cv)
+    tex.colorSpace = THREE.SRGBColorSpace
+    tex.needsUpdate = true
+    return tex
   }
 
   // ---- layout helpers ---------------------------------------------------
@@ -285,7 +326,7 @@ export class Renderer {
     const w = this.size + pad * 2
     // Base slab
     const slab = new THREE.Mesh(
-      new THREE.BoxGeometry(w, 0.5, w),
+      new RoundedBoxGeometry(w, 0.5, w, 4, 0.18),
       new THREE.MeshToonMaterial({ color: 0x2c3358, gradientMap: this.gradient }),
     )
     slab.position.set(0, -0.27, 0)
@@ -303,7 +344,7 @@ export class Renderer {
     // Zone platform
     const zoneW = this.slotSpacing * SLOT_COUNT + 0.6
     const zonePlat = new THREE.Mesh(
-      new THREE.BoxGeometry(zoneW, 0.3, 2.0),
+      new RoundedBoxGeometry(zoneW, 0.3, 2.0, 3, 0.12),
       new THREE.MeshToonMaterial({ color: 0x37406b, gradientMap: this.gradient }),
     )
     zonePlat.position.set(0, -0.15, this.zoneZ)
@@ -312,11 +353,11 @@ export class Renderer {
     // Queue platform — an L: horizontal row + vertical tail on the right.
     const qMat = new THREE.MeshToonMaterial({ color: 0x252b4d, gradientMap: this.gradient })
     const hLen = QUEUE_H * QUEUE_HSPACING + 0.9
-    const qH = new THREE.Mesh(new THREE.BoxGeometry(hLen, 0.2, 1.1), qMat)
+    const qH = new THREE.Mesh(new RoundedBoxGeometry(hLen, 0.2, 1.1, 2, 0.09), qMat)
     qH.position.set(0, -0.1, this.queueZ)
     this.boardGroup.add(qH)
     const vLen = QUEUE_V * QUEUE_VSPACING + 0.9
-    const qV = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.2, vLen), qMat)
+    const qV = new THREE.Mesh(new RoundedBoxGeometry(1.1, 0.2, vLen, 2, 0.09), qMat)
     qV.position.set(this.queueRightX, -0.1, this.queueZ - ((QUEUE_V + 1) / 2) * QUEUE_VSPACING)
     this.boardGroup.add(qV)
 
@@ -387,7 +428,7 @@ export class Renderer {
         color: l.color,
         gradientMap: this.gradient,
         emissive: l.color,
-        emissiveIntensity: l.on ? 1.0 : 0.12,
+        emissiveIntensity: l.on ? 2.4 : 0.12,
       })
       const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.085, 14, 12), mat)
       lamp.position.set(0, l.y, 0.12)
@@ -413,14 +454,14 @@ export class Renderer {
     const bodyH = 0.46
     const bodyY = 0.16 + bodyH / 2
 
-    const body = new THREE.Mesh(new THREE.BoxGeometry(len, bodyH, wid), this.bodyMaterial(v.color))
+    const body = new THREE.Mesh(new RoundedBoxGeometry(len, bodyH, wid, 3, 0.1), this.bodyMaterial(v.color))
     body.position.y = bodyY
     group.add(body)
 
     // Cabin / roof (a bit taller for buses & long)
     const cabH = v.size === 'car' ? 0.26 : 0.34
     const cab = new THREE.Mesh(
-      new THREE.BoxGeometry(len * 0.82, cabH, wid * 0.86),
+      new RoundedBoxGeometry(len * 0.82, cabH, wid * 0.86, 3, 0.07),
       this.darkMaterial(v.color),
     )
     cab.position.y = bodyY + bodyH / 2 + cabH / 2 - 0.02
@@ -736,6 +777,24 @@ export class Renderer {
 
   // ---- FX particles -----------------------------------------------------
 
+  private sparkleMat = new Map<string, THREE.MeshToonMaterial>()
+  // Bright emissive material (HDR) so sparkles trigger bloom; independent of
+  // the matte vehicle materials so cars don't glow.
+  private getSparkleMat(c: ColorKey | 'white'): THREE.MeshToonMaterial {
+    let m = this.sparkleMat.get(c)
+    if (!m) {
+      const hex = c === 'white' ? 0xffffff : COLOR_HEX[c]
+      m = new THREE.MeshToonMaterial({
+        color: 0x111111,
+        emissive: hex,
+        emissiveIntensity: 2.4,
+        gradientMap: this.gradient,
+      })
+      this.sparkleMat.set(c, m)
+    }
+    return m
+  }
+
   private spawnSparkles(at: THREE.Vector3, color: ColorKey): void {
     const count = 14
     for (let i = 0; i < count; i++) {
@@ -745,7 +804,7 @@ export class Renderer {
       } else {
         mesh.visible = true
       }
-      mesh.material = i % 2 === 0 ? this.bodyMaterial(color) : this.markerMat
+      mesh.material = i % 2 === 0 ? this.getSparkleMat(color) : this.getSparkleMat('white')
       mesh.position.copy(at).add(new THREE.Vector3(0, 0.6, 0))
       mesh.scale.setScalar(1)
       this.fxGroup.add(mesh)
@@ -851,6 +910,8 @@ export class Renderer {
     const h = this.host.clientHeight
     if (w === 0 || h === 0) return
     this.renderer.setSize(w, h, false)
+    this.composer.setSize(w, h)
+    this.bloomPass.setSize(w, h)
     this.applyFrustum()
   }
 
@@ -928,7 +989,7 @@ export class Renderer {
       this.camera.lookAt(this.camTarget)
     }
 
-    this.renderer.render(this.scene, this.camera)
+    this.composer.render()
   }
 
   clearHint(): void {
@@ -971,6 +1032,7 @@ export class Renderer {
 
   dispose(): void {
     this.disposeLevel()
+    this.composer.dispose()
     this.renderer.dispose()
     if (this.renderer.domElement.parentElement === this.host) {
       this.host.removeChild(this.renderer.domElement)
