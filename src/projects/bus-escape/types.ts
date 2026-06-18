@@ -1,7 +1,7 @@
 // Bus Escape: Traffic Jam — shared types & constants.
 // Independent project: no shared code with other works in this repo.
 
-export type ColorKey = 'red' | 'blue' | 'green' | 'yellow'
+export type ColorKey = 'red' | 'blue' | 'green' | 'yellow' | 'orange'
 export type Orientation = 'h' | 'v'
 export type Facing = 'up' | 'down' | 'left' | 'right'
 export type SizeKey = 'car' | 'bus' | 'long'
@@ -18,13 +18,14 @@ export const SIZE_DEFS: Record<SizeKey, SizeDef> = {
   long: { size: 'long', length: 4, capacity: 10 },
 }
 
-export const COLOR_KEYS: ColorKey[] = ['red', 'blue', 'green', 'yellow']
+export const COLOR_KEYS: ColorKey[] = ['red', 'blue', 'green', 'yellow', 'orange']
 
 export const COLOR_HEX: Record<ColorKey, number> = {
   red: 0xff5a5a,
   blue: 0x4f86ff,
   green: 0x42cf6b,
   yellow: 0xffcf3a,
+  orange: 0xff8c2a,
 }
 
 // Slightly darker shade used for accents / roof.
@@ -33,15 +34,7 @@ export const COLOR_DARK: Record<ColorKey, number> = {
   blue: 0x305fcc,
   green: 0x2aa450,
   yellow: 0xd9a700,
-}
-
-// Color-blind friendly marker shapes.
-export type MarkerKind = 'star' | 'circle' | 'triangle' | 'diamond'
-export const COLOR_MARKER: Record<ColorKey, MarkerKind> = {
-  red: 'star',
-  blue: 'circle',
-  green: 'triangle',
-  yellow: 'diamond',
+  orange: 0xd96a12,
 }
 
 export interface Vehicle {

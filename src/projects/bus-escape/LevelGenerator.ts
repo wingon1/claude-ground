@@ -52,25 +52,33 @@ interface BandParams {
 }
 
 function paramsFor(level: number): BandParams {
-  // Intro
-  if (level <= 15) {
-    const colorCount = level <= 3 ? 2 : level <= 8 ? 3 : 4
-    const occupancy = 0.3 + (level / 15) * 0.18
-    return { size: 6, sizes: ['car'], colorCount, occupancy }
+  // Punchy intro (6x6): buses by L3, 4 colors by L3, density starts high.
+  if (level <= 4) {
+    const sizes: SizeKey[] = level <= 2 ? ['car'] : ['car', 'bus']
+    const colorCount = level <= 2 ? 3 : 4
+    const occupancy = 0.45 + ((level - 1) / 3) * 0.1 // 0.45..0.55
+    return { size: 6, sizes, colorCount, occupancy }
   }
-  // Intermediate
-  if (level <= 45) {
-    const occupancy = 0.46 + ((level - 15) / 30) * 0.16
-    return { size: 7, sizes: ['car', 'bus'], colorCount: 4, occupancy }
+  // Ramp-up (6x6 -> 7x7): introduce the 5th color at L10.
+  if (level <= 14) {
+    const size = level <= 8 ? 6 : 7
+    const colorCount = level >= 10 ? 5 : 4
+    const occupancy = 0.52 + ((level - 5) / 9) * 0.12 // 0.52..0.64
+    return { size, sizes: ['car', 'bus'], colorCount, occupancy }
   }
-  // Hard
-  if (level <= 80) {
-    const occupancy = 0.6 + ((level - 45) / 35) * 0.18
-    return { size: 8, sizes: ['car', 'bus', 'long'], colorCount: 4, occupancy }
+  // Intermediate (7x7): all 5 colors, cars + buses.
+  if (level <= 40) {
+    const occupancy = 0.6 + ((level - 15) / 25) * 0.12 // 0.60..0.72
+    return { size: 7, sizes: ['car', 'bus'], colorCount: 5, occupancy }
   }
-  // Expert
-  const occupancy = 0.8 + ((level - 80) / 20) * 0.15
-  return { size: 9, sizes: ['car', 'bus', 'long'], colorCount: 4, occupancy }
+  // Hard (8x8): introduce long buses.
+  if (level <= 70) {
+    const occupancy = 0.66 + ((level - 41) / 29) * 0.14 // 0.66..0.80
+    return { size: 8, sizes: ['car', 'bus', 'long'], colorCount: 5, occupancy }
+  }
+  // Expert (9x9): all sizes, max density.
+  const occupancy = 0.8 + ((level - 71) / 29) * 0.12 // 0.80..0.92
+  return { size: 9, sizes: ['car', 'bus', 'long'], colorCount: 5, occupancy }
 }
 
 function pick<T>(arr: T[], rand: () => number): T {
@@ -138,7 +146,7 @@ function chooseSize(sizes: SizeKey[], rand: () => number): SizeKey {
   // Bias toward smaller vehicles so boards stay readable; allow big ones too.
   const weighted: SizeKey[] = []
   for (const s of sizes) {
-    const w = s === 'car' ? 3 : s === 'bus' ? 2 : 1
+    const w = s === 'car' ? 2 : s === 'bus' ? 2 : 1
     for (let i = 0; i < w; i++) weighted.push(s)
   }
   return pick(weighted, rand)
@@ -178,6 +186,20 @@ function buildVehicles(p: BandParams, rand: () => number): Vehicle[] {
     vehicles.push(v)
     usedCells += def.length
     fails = 0
+  }
+
+  // Guarantee every palette color is represented (so newer colors reliably
+  // appear and apply pressure). Color is independent of grid placement, so this
+  // does not affect solvability. Assign distinct colors to a random subset.
+  if (vehicles.length >= palette.length) {
+    const idxs = vehicles.map((_, i) => i)
+    for (let i = idxs.length - 1; i > 0; i--) {
+      const j = Math.floor(rand() * (i + 1))
+      ;[idxs[i], idxs[j]] = [idxs[j], idxs[i]]
+    }
+    palette.forEach((c, k) => {
+      vehicles[idxs[k]].color = c
+    })
   }
 
   return vehicles
