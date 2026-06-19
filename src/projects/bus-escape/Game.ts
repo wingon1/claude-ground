@@ -220,6 +220,7 @@ export class Game {
     if (this.boardingRunning) return
     this.boardingRunning = true
     try {
+      if (this.state.mode === 'endless') this.state.refillQueue()
       while (true) {
         const steps: number[] = []
         const departures: number[] = []

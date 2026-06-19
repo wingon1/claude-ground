@@ -1,7 +1,8 @@
 // Owns the live level state + persisted progress.
 
 import { SIZE_DEFS, COLOR_KEYS, type ColorKey, type Level, type SizeKey, type Vehicle } from './types'
-import { makeGrid, place, type Grid } from './GridLogic'
+import { makeGrid, place, exitClear, type Grid } from './GridLogic'
+import { findParkingPlacement } from './LevelGenerator'
 
 export interface ZoneSlot {
   vehicle: Vehicle
@@ -28,7 +29,8 @@ export const MAX_LEVEL = 100
 export const ZONE_SLOTS = 4
 export const ENDLESS_SIZE = 7
 export const HOLDING_COUNT = 5
-const QUEUE_TARGET = 12
+const QUEUE_TARGET = 6
+const ENDLESS_FILL = 0.6 // starting parking-lot density (looks full, stays playable)
 
 export function loadProgress(): Progress {
   const fallback: Progress = { unlocked: 1, completed: {}, sound: true, bestMoves: {}, bestEndless: 0 }
@@ -127,8 +129,33 @@ export class GameState {
     this.status = 'playing'
     this.inputLocked = false
     const palette = COLOR_KEYS.slice(0, 6)
+    this.fillLot(palette)
     for (let i = 0; i < HOLDING_COUNT; i++) this.holding.push(this.makeIncoming(palette))
     this.refillQueue()
+  }
+
+  // Pre-fill the parking lot with cars (reverse-park insertion → at least one
+  // car is always exitable, so the start is never instantly gridlocked).
+  private fillLot(palette: ColorKey[]): void {
+    const target = Math.floor(this.size * this.size * ENDLESS_FILL)
+    let used = 0
+    let fails = 0
+    while (used < target && fails < 200) {
+      const v = this.makeIncoming(palette)
+      const pl = findParkingPlacement(this.grid, v.length, Math.random)
+      if (!pl) {
+        fails++
+        continue
+      }
+      v.orientation = pl.orientation
+      v.facing = pl.facing
+      v.row = pl.row
+      v.col = pl.col
+      place(this.grid, v)
+      this.vehicles.set(v.id, v)
+      used += v.length
+      fails = 0
+    }
   }
 
   // Colors currently in play, so spawned passengers are always serveable.
@@ -141,14 +168,22 @@ export class GameState {
   }
 
   refillQueue(): void {
-    // Bias toward colors already parked / in the zone (easier to serve); fall
-    // back to holding-only colors so the queue is always serveable.
-    const parked = new Set<ColorKey>()
-    for (const v of this.vehicles.values()) parked.add(v.color)
-    for (const s of this.zone) if (s) parked.add(s.vehicle.color)
+    // Only spawn passengers whose colour the player can serve RIGHT NOW — a car
+    // already in the zone (with capacity) or an exitable grid car that can be
+    // sent to a slot. This keeps a packed lot a fair "dig-out" (no passenger of
+    // a colour whose cars are all blocked). Fallback to any parked colour.
     const pool: ColorKey[] = []
-    for (const c of parked) pool.push(c, c, c)
-    for (const v of this.holding) if (!parked.has(v.color)) pool.push(v.color)
+    const add = (c: ColorKey, w: number) => { for (let i = 0; i < w; i++) pool.push(c) }
+    for (const s of this.zone) {
+      if (s && s.vehicle.boarded < s.vehicle.capacity) add(s.vehicle.color, 3)
+    }
+    for (const v of this.vehicles.values()) {
+      if (exitClear(this.grid, v)) add(v.color, 2)
+    }
+    if (pool.length === 0) {
+      for (const v of this.vehicles.values()) add(v.color, 1)
+      for (const v of this.holding) add(v.color, 1)
+    }
     if (pool.length === 0) return
     while (this.queue.length < QUEUE_TARGET) {
       this.queue.push(pool[Math.floor(Math.random() * pool.length)])

@@ -361,6 +361,17 @@ export class Renderer {
     this.buildZoneMarkers()
     this.buildTrafficLight()
     this.buildHoldingPlatform(state.holding.length)
+
+    // Pre-parked cars already on the grid.
+    for (const v of state.vehicles.values()) {
+      const view = this.makeVehicle(v)
+      const c = this.vehicleCenter(v)
+      view.group.position.set(c.x, 0, c.z)
+      view.group.rotation.y = this.rotForFacing(v.facing)
+      this.vehicleGroup.add(view.group)
+      this.views.set(v.id, view)
+    }
+
     this.buildQueue(state.queue)
     this.syncHolding(state.holding)
   }
