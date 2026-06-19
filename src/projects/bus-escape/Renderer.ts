@@ -14,7 +14,7 @@ import {
   type Vehicle,
 } from './types'
 import { TweenManager, easeOutCubic, easeInOutCubic, easeOutBack, easeOutQuad, linear } from './tween'
-import type { GameState } from './GameState'
+import { HOLDING_COUNT, type GameState } from './GameState'
 
 // Queue is an L: a horizontal row (front on the left, by the traffic light)
 // turning up into a vertical tail on the right. People enter top-right, come
@@ -77,6 +77,10 @@ export class Renderer {
   // the actual queue (queueZ) is raised above it to overlap the top HUD bar.
   private queueFrameZ = 0
   private slotSpacing = 2.4
+  // Endless mode: incoming "holding" cars at the bottom.
+  private endless = false
+  private holdingZ = 0
+  private holdingSpacing = 1.7
 
   private contentBox = new THREE.Box3()
   private camBasePos = new THREE.Vector3()
@@ -288,6 +292,7 @@ export class Renderer {
 
   buildLevel(state: GameState): void {
     this.disposeLevel()
+    this.endless = false
     this.size = state.size
     const half = (this.size - 1) / 2
     this.slotSpacing = Math.max(1.7, Math.min(2.5, this.size * 0.32))
@@ -330,6 +335,95 @@ export class Renderer {
     })
 
     this.buildQueue(state.queue)
+  }
+
+  // Endless mode: empty 7x7 parking grid + zone + top queue + a bottom row of
+  // incoming "holding" cars the player taps to park.
+  buildEndless(state: GameState): void {
+    this.disposeLevel()
+    this.endless = true
+    this.size = state.size
+    const half = (this.size - 1) / 2
+    this.slotSpacing = Math.max(1.7, Math.min(2.5, this.size * 0.32))
+    const zoneBaseZ = -half - 3.2
+    this.queueFrameZ = zoneBaseZ - 3.0
+    this.holdingZ = half + 2.6
+    this.holdingSpacing = Math.max(1.5, Math.min(2.3, (this.size * 0.9) / Math.max(1, state.holding.length)))
+    this.zoneZ = zoneBaseZ
+    this.queueZ = this.queueFrameZ
+    this.frameContent()
+    const sp = Math.sin((56 * Math.PI) / 180)
+    const raise = 0.05 * (this.camera.top - this.camera.bottom) / sp
+    this.zoneZ = zoneBaseZ - raise
+    this.queueZ = this.queueFrameZ - raise
+
+    this.buildBoard()
+    this.buildZoneMarkers()
+    this.buildTrafficLight()
+    this.buildHoldingPlatform(state.holding.length)
+    this.buildQueue(state.queue)
+    this.syncHolding(state.holding)
+  }
+
+  private holdingWorld(i: number, count: number): THREE.Vector3 {
+    const x = (i - (count - 1) / 2) * this.holdingSpacing
+    return new THREE.Vector3(x, 0, this.holdingZ)
+  }
+
+  private buildHoldingPlatform(count: number): void {
+    const len = Math.max(count, 1) * this.holdingSpacing + 1.0
+    const plat = new THREE.Mesh(
+      new RoundedBoxGeometry(len, 0.2, 1.6, 2, 0.1),
+      new THREE.MeshToonMaterial({ color: 0x2a2150, gradientMap: this.gradient }),
+    )
+    plat.position.set(0, -0.1, this.holdingZ)
+    this.boardGroup.add(plat)
+  }
+
+  // Create/reposition holding car meshes to match state.holding order.
+  syncHolding(holding: Vehicle[]): void {
+    const count = holding.length
+    holding.forEach((v, i) => {
+      let view = this.views.get(v.id)
+      const target = this.holdingWorld(i, count)
+      if (!view) {
+        view = this.makeVehicle(v)
+        // new arrivals slide in from the right
+        view.group.position.set(target.x + 2.2, 0, this.holdingZ)
+        view.group.rotation.y = this.rotForFacing('up')
+        this.vehicleGroup.add(view.group)
+        this.views.set(v.id, view)
+      }
+      const from = view.group.position.clone()
+      const v2 = view
+      this.anim(240, (k) => v2.group.position.lerpVectors(from, target, k), easeOutQuad)
+    })
+  }
+
+  // Animate an incoming car from its holding spot into its parked grid cell.
+  // Reads the (already updated) row/col/orientation from the vehicle.
+  async animateParkIn(vehicleId: number): Promise<void> {
+    const view = this.views.get(vehicleId)
+    if (!view) return
+    const c = this.vehicleCenter(view.vehicle)
+    const end = new THREE.Vector3(c.x, 0, c.z)
+    const start = view.group.position.clone()
+    const endRot = this.rotForFacing(view.vehicle.facing)
+    const startRot = view.group.rotation.y
+    const mid = new THREE.Vector3(end.x, 0, (start.z + end.z) / 2)
+    await this.anim(140, (k) => {
+      view.group.scale.set(1 + 0.08 * k, 1 - 0.06 * k, 1)
+    }, easeOutQuad)
+    await this.anim(420, (k) => {
+      const a = start.clone().lerp(mid, k)
+      const b = mid.clone().lerp(end, k)
+      view.group.position.copy(a.lerp(b, k))
+      view.group.rotation.y = startRot + (endRot - startRot) * k
+      view.group.scale.set(1 + 0.08 * (1 - k), 1 - 0.06 * (1 - k), 1)
+    }, easeInOutCubic)
+    view.group.position.copy(end)
+    view.group.rotation.y = endRot
+    view.group.scale.set(1, 1, 1)
   }
 
   private buildBoard(): void {
@@ -867,12 +961,15 @@ export class Renderer {
     // Frame the grid + zone + horizontal row ONLY (exactly as before the L).
     // The queue's vertical tail intentionally extends above this box and is
     // clipped off the top of the screen — grid/zone size & position stay fixed.
+    // Bottom edge extends to the holding row in endless mode.
+    const nearZ = this.endless ? this.holdingZ + 1.2 : half + margin
     this.contentBox.min.set(-half - margin, 0, this.queueFrameZ - 1.4)
-    this.contentBox.max.set(half + margin, 1.8, half + margin)
+    this.contentBox.max.set(half + margin, 1.8, nearZ)
     const zoneHalfW = (this.slotSpacing * SLOT_COUNT) / 2 + 0.8
     // left edge includes the traffic light beside the front of the row
     const queueHalfW = ((QUEUE_H - 1) / 2) * QUEUE_HSPACING + 1.3
-    const halfW = Math.max(zoneHalfW, queueHalfW)
+    const holdingHalfW = this.endless ? (this.holdingSpacing * HOLDING_COUNT) / 2 + 0.6 : 0
+    const halfW = Math.max(zoneHalfW, queueHalfW, holdingHalfW)
     if (halfW > this.contentBox.max.x) {
       this.contentBox.min.x = -halfW
       this.contentBox.max.x = halfW

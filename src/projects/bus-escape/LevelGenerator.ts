@@ -85,11 +85,17 @@ function pick<T>(arr: T[], rand: () => number): T {
   return arr[Math.floor(rand() * arr.length) % arr.length]
 }
 
-interface Placement {
+export interface Placement {
   orientation: Orientation
   facing: Facing
   row: number
   col: number
+}
+
+// Public helper for the endless mode: find a legal slide-in (park) placement on
+// the given grid — body empty AND the path from the facing edge clear.
+export function findParkingPlacement(g: Grid, length: number, rand: () => number): Placement | null {
+  return findPlacement(g, length, rand)
 }
 
 // Enumerate every legal slide-in placement for a given size, then pick one.

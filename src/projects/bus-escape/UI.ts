@@ -12,6 +12,7 @@ export interface UIHandlers {
   onToggleSound: () => boolean
   onHint: () => void
   onUnlockAll: () => void
+  onEndless: () => void
 }
 
 const STYLE = `
@@ -75,6 +76,11 @@ export class UI {
   private hudLevel!: HTMLSpanElement
   private hudRemaining!: HTMLSpanElement
   private hudZone!: HTMLSpanElement
+  private hudScore!: HTMLSpanElement
+  private levelChip!: HTMLDivElement
+  private scoreChip!: HTMLDivElement
+  private remChip!: HTMLDivElement
+  private bottomBar!: HTMLDivElement
   private soundBtn!: HTMLButtonElement
   private toast!: HTMLDivElement
   private toastTimer = 0
@@ -113,9 +119,12 @@ export class UI {
     tp.appendChild(this.el('p', 'be-sub', 'Traffic Jam — free the buses, match the colors, clear the queue. 100 puzzle levels.'))
     const playBtn = this.el('button', 'be-btn be-green', '▶  Play')
     playBtn.onclick = () => this.h.onPlay(0)
+    const endlessBtn = this.el('button', 'be-btn', '🚌  무한 버스')
+    endlessBtn.onclick = () => this.h.onEndless()
     const lvlBtn = this.el('button', 'be-btn be-ghost', '☰  Level Select')
     lvlBtn.onclick = () => this.h.onOpenLevels()
     tp.appendChild(playBtn)
+    tp.appendChild(endlessBtn)
     tp.appendChild(lvlBtn)
     this.titleLayer.appendChild(tp)
     this.root.appendChild(this.titleLayer)
@@ -146,14 +155,18 @@ export class UI {
     const menuBtn = this.el('button', 'be-icbtn', '☰')
     menuBtn.onclick = () => this.h.onMenu()
     this.hudLevel = this.el('span')
-    const lvlChip = this.el('div', 'be-chip')
-    lvlChip.append('Lv ', this.hudLevel)
+    this.levelChip = this.el('div', 'be-chip')
+    this.levelChip.append('Lv ', this.hudLevel)
     this.hudLevel.textContent = '1'
-    leftRow.append(menuBtn, lvlChip)
+    this.hudScore = this.el('span')
+    this.scoreChip = this.el('div', 'be-chip be-hidden')
+    this.scoreChip.append('⭐ ', this.hudScore)
+    this.hudScore.textContent = '0'
+    leftRow.append(menuBtn, this.levelChip, this.scoreChip)
     const rightRow = this.el('div', 'be-row')
     this.hudRemaining = this.el('span')
-    const remChip = this.el('div', 'be-chip')
-    remChip.append('🧍 ', this.hudRemaining)
+    this.remChip = this.el('div', 'be-chip')
+    this.remChip.append('🧍 ', this.hudRemaining)
     this.hudZone = this.el('span')
     const zoneChip = this.el('div', 'be-chip')
     zoneChip.append('🅿️ ', this.hudZone)
@@ -162,20 +175,20 @@ export class UI {
       this.soundOn = this.h.onToggleSound()
       this.soundBtn.textContent = this.soundOn ? '🔊' : '🔇'
     }
-    rightRow.append(remChip, zoneChip, this.soundBtn)
+    rightRow.append(this.remChip, zoneChip, this.soundBtn)
     hud.append(leftRow, rightRow)
     this.gameLayer.appendChild(hud)
 
     this.toast = this.el('div', 'be-toast')
     this.gameLayer.appendChild(this.toast)
 
-    const bottom = this.el('div', 'be-bottom')
+    this.bottomBar = this.el('div', 'be-bottom')
     const restartBtn = this.el('button', 'be-btn be-sm be-ghost', '↻ Restart')
     restartBtn.onclick = () => this.h.onRestart()
     const hintBtn = this.el('button', 'be-btn be-sm', '💡 Hint')
     hintBtn.onclick = () => this.h.onHint()
-    bottom.append(restartBtn, hintBtn)
-    this.gameLayer.appendChild(bottom)
+    this.bottomBar.append(restartBtn, hintBtn)
+    this.gameLayer.appendChild(this.bottomBar)
     this.root.appendChild(this.gameLayer)
 
     // Popups
@@ -234,13 +247,18 @@ export class UI {
     }
   }
 
-  showGame(): void {
+  showGame(endless = false): void {
     this.hideAll()
     // NOTE: the game layer stays pointer-events:none so taps reach the 3D
     // canvas underneath; only its buttons/chips opt back in via .be-btn etc.
     this.gameLayer.classList.remove('be-hidden')
     this.popupLayer.classList.add('be-hidden')
     this.popupLayer.classList.remove('be-on')
+    // Endless: show score, hide level/remaining chips and the hint/restart bar.
+    this.levelChip.classList.toggle('be-hidden', endless)
+    this.scoreChip.classList.toggle('be-hidden', !endless)
+    this.remChip.classList.toggle('be-hidden', endless)
+    this.bottomBar.classList.toggle('be-hidden', endless)
   }
 
   setSound(on: boolean): void {
@@ -254,11 +272,32 @@ export class UI {
     this.hudZone.textContent = `${zoneCount}/4`
   }
 
+  updateHudEndless(score: number, zoneCount: number): void {
+    this.hudScore.textContent = String(score)
+    this.hudZone.textContent = `${zoneCount}/4`
+  }
+
   flashHud(): void {
-    this.hudRemaining.parentElement?.animate(
+    const chip = this.scoreChip.classList.contains('be-hidden') ? this.hudRemaining.parentElement : this.scoreChip
+    chip?.animate(
       [{ transform: 'scale(1.18)' }, { transform: 'scale(1)' }],
       { duration: 220, easing: 'ease-out' },
     )
+  }
+
+  showEndlessOver(score: number, best: number): void {
+    this.popupLayer.innerHTML = ''
+    this.popupLayer.classList.remove('be-hidden')
+    this.popupLayer.classList.add('be-on')
+    const p = this.el('div', 'be-panel')
+    p.appendChild(this.el('h2', 'be-title', '게임 오버'))
+    p.appendChild(this.el('p', 'be-sub', `점수 ${score}  ·  최고 ${best}`))
+    const retry = this.el('button', 'be-btn be-green', '↻ 다시하기')
+    retry.onclick = () => this.h.onRestart()
+    const menu = this.el('button', 'be-btn be-ghost', '☰ 메뉴')
+    menu.onclick = () => this.h.onMenu()
+    p.append(retry, menu)
+    this.popupLayer.appendChild(p)
   }
 
   showToast(text: string): void {

@@ -5,9 +5,10 @@ import { AudioEngine } from './Audio'
 import { UI } from './UI'
 import { Input } from './Input'
 import { GameState, MAX_LEVEL, saveProgress } from './GameState'
-import { generateLevel } from './LevelGenerator'
-import { exitClear, clearAhead } from './GridLogic'
+import { generateLevel, findParkingPlacement } from './LevelGenerator'
+import { exitClear, clearAhead, place } from './GridLogic'
 import { parkInZone, nextBoarding, applyBoarding, departFromZone } from './BoardingLogic'
+import type { Vehicle } from './types'
 
 export class Game {
   private host: HTMLElement
@@ -32,11 +33,12 @@ export class Game {
       onSelectLevel: (lvl) => this.startLevel(lvl),
       onOpenLevels: () => this.ui.showLevelSelect(this.state.progress),
       onMenu: () => this.ui.showTitle(),
-      onRestart: () => this.startLevel(this.state.level),
+      onRestart: () => (this.state.mode === 'endless' ? this.startEndless() : this.startLevel(this.state.level)),
       onNext: () => this.startLevel(Math.min(MAX_LEVEL, this.state.level + 1)),
       onToggleSound: () => this.toggleSound(),
       onHint: () => this.showHint(),
       onUnlockAll: () => this.unlockAll(),
+      onEndless: () => this.startEndless(),
     })
     this.input = new Input(this.renderer, (id) => this.handleTap(id))
     this.ui.setSound(this.state.progress.sound)
@@ -71,8 +73,23 @@ export class Game {
     this.refreshHud()
   }
 
+  private startEndless(): void {
+    this.audio.resume()
+    this.state.startEndless()
+    this.busy.clear()
+    this.drivingCount = 0
+    this.boardingRunning = false
+    this.renderer.buildEndless(this.state)
+    this.ui.showGame(true)
+    this.refreshHud()
+  }
+
   private refreshHud(): void {
-    this.ui.updateHud(this.state.level, this.state.queue.length, this.state.zoneCount())
+    if (this.state.mode === 'endless') {
+      this.ui.updateHudEndless(this.state.score, this.state.zoneCount())
+    } else {
+      this.ui.updateHud(this.state.level, this.state.queue.length, this.state.zoneCount())
+    }
   }
 
   private toggleSound(): boolean {
@@ -122,10 +139,20 @@ export class Game {
   private handleTap(id: number): void {
     if (this.state.status !== 'playing') return
     if (this.busy.has(id)) return
-    const v = this.state.vehicles.get(id)
-    if (!v) return
     this.audio.resume()
     this.renderer.clearHint()
+
+    // Endless: tapping an incoming (holding) car parks it into the lot.
+    if (this.state.mode === 'endless') {
+      const incoming = this.state.holding.find((h) => h.id === id)
+      if (incoming) {
+        this.parkIncoming(incoming)
+        return
+      }
+    }
+
+    const v = this.state.vehicles.get(id)
+    if (!v) return
 
     // Forward-only, strict clearance check.
     if (!exitClear(this.state.grid, v)) {
@@ -149,6 +176,34 @@ export class Game {
     this.drivingCount++
     this.refreshHud()
     void this.driveThenBoard(id, slot)
+  }
+
+  // Endless: park an incoming car into a legal spot (clear entrance path).
+  private parkIncoming(v: Vehicle): void {
+    const placement = findParkingPlacement(this.state.grid, v.length, Math.random)
+    if (!placement) {
+      this.audio.blocked()
+      this.busy.add(v.id)
+      void this.renderer.animateBlocked(v.id).then(() => this.busy.delete(v.id))
+      this.ui.showToast('주차할 공간이 없어요!')
+      return
+    }
+    v.orientation = placement.orientation
+    v.facing = placement.facing
+    v.row = placement.row
+    v.col = placement.col
+    place(this.state.grid, v)
+    this.state.vehicles.set(v.id, v)
+    this.state.holding = this.state.holding.filter((h) => h.id !== v.id)
+    this.audio.drive()
+    this.busy.add(v.id)
+    void this.renderer.animateParkIn(v.id).then(() => this.busy.delete(v.id))
+    // refill the holding lane and keep passengers topped up
+    this.state.addIncoming()
+    this.renderer.syncHolding(this.state.holding)
+    this.state.refillQueue()
+    this.refreshHud()
+    this.checkEnd()
   }
 
   private async driveThenBoard(id: number, slotIndex: number): Promise<void> {
@@ -182,6 +237,10 @@ export class Game {
         }
         if (steps.length === 0) break
 
+        if (this.state.mode === 'endless') {
+          this.state.score += steps.length // +1 per boarded passenger
+          this.state.refillQueue()
+        }
         let pops = 0
         await this.renderer.animateBoardBurst(steps, this.state.queue, () => {
           if (pops++ % 2 === 0) this.audio.board()
@@ -202,6 +261,12 @@ export class Game {
   }
 
   private checkEnd(): void {
+    if (this.state.mode === 'endless') {
+      if (this.drivingCount === 0 && this.busy.size === 0 && !this.boardingRunning && this.endlessStuck()) {
+        this.failEndless()
+      }
+      return
+    }
     if (this.state.isWin()) {
       this.win()
       return
@@ -211,6 +276,33 @@ export class Game {
     if (this.drivingCount === 0 && !this.boardingRunning && this.state.isGridlock()) {
       this.fail()
     }
+  }
+
+  // Endless game-over: no legal move left (can't park, can't send to a slot,
+  // and no passenger can board now).
+  private endlessStuck(): boolean {
+    if (this.state.matchForFront()) return false
+    for (const h of this.state.holding) {
+      if (findParkingPlacement(this.state.grid, h.length, Math.random)) return false
+    }
+    if (this.state.freeSlotIndex() !== -1) {
+      for (const v of this.state.vehicles.values()) {
+        if (exitClear(this.state.grid, v)) return false
+      }
+    }
+    return true
+  }
+
+  private failEndless(): void {
+    this.state.status = 'fail'
+    this.audio.gridlock()
+    this.renderer.screenShake(0.5, 0.5)
+    const p = this.state.progress
+    if (this.state.score > p.bestEndless) {
+      p.bestEndless = this.state.score
+      saveProgress(p)
+    }
+    setTimeout(() => this.ui.showEndlessOver(this.state.score, p.bestEndless), 550)
   }
 
   private win(): void {

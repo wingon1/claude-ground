@@ -1,6 +1,6 @@
 // Owns the live level state + persisted progress.
 
-import type { ColorKey, Level, Vehicle } from './types'
+import { SIZE_DEFS, COLOR_KEYS, type ColorKey, type Level, type SizeKey, type Vehicle } from './types'
 import { makeGrid, place, type Grid } from './GridLogic'
 
 export interface ZoneSlot {
@@ -18,14 +18,20 @@ export interface Progress {
   completed: Record<number, boolean>
   sound: boolean
   bestMoves: Record<number, number>
+  bestEndless: number
 }
+
+export type Mode = 'levels' | 'endless'
 
 const STORAGE_KEY = 'bus-escape:progress:v1'
 export const MAX_LEVEL = 100
 export const ZONE_SLOTS = 4
+export const ENDLESS_SIZE = 7
+export const HOLDING_COUNT = 5
+const QUEUE_TARGET = 12
 
 export function loadProgress(): Progress {
-  const fallback: Progress = { unlocked: 1, completed: {}, sound: true, bestMoves: {} }
+  const fallback: Progress = { unlocked: 1, completed: {}, sound: true, bestMoves: {}, bestEndless: 0 }
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return fallback
@@ -35,6 +41,7 @@ export function loadProgress(): Progress {
       completed: parsed.completed ?? {},
       sound: parsed.sound ?? true,
       bestMoves: parsed.bestMoves ?? {},
+      bestEndless: parsed.bestEndless ?? 0,
     }
   } catch {
     return fallback
@@ -62,12 +69,18 @@ export class GameState {
   moves = 0
   zoneSeq = 0
   progress: Progress
+  // Endless mode
+  mode: Mode = 'levels'
+  holding: Vehicle[] = [] // incoming cars waiting to park
+  score = 0
+  endlessSeq = 0
 
   constructor() {
     this.progress = loadProgress()
   }
 
   loadLevel(lvl: Level): void {
+    this.mode = 'levels'
     this.level = lvl.level
     this.size = lvl.size
     this.grid = makeGrid(lvl.size)
@@ -84,6 +97,68 @@ export class GameState {
     this.inputLocked = false
     this.moves = 0
     this.zoneSeq = 0
+  }
+
+  // ---- endless mode ----------------------------------------------------
+
+  private makeIncoming(palette: ColorKey[]): Vehicle {
+    const weighted: SizeKey[] = ['car', 'car', 'car', 'bus', 'bus', 'long']
+    const sk = weighted[Math.floor(Math.random() * weighted.length)]
+    const def = SIZE_DEFS[sk]
+    const color = palette[Math.floor(Math.random() * palette.length)]
+    return {
+      id: this.endlessSeq++, color, size: sk, length: def.length, capacity: def.capacity,
+      orientation: 'h', facing: 'right', row: 0, col: 0, boarded: 0,
+    }
+  }
+
+  startEndless(): void {
+    this.mode = 'endless'
+    this.size = ENDLESS_SIZE
+    this.grid = makeGrid(ENDLESS_SIZE)
+    this.vehicles = new Map()
+    this.zone = new Array(ZONE_SLOTS).fill(null)
+    this.queue = []
+    this.holding = []
+    this.score = 0
+    this.zoneSeq = 0
+    this.endlessSeq = 0
+    this.moves = 0
+    this.status = 'playing'
+    this.inputLocked = false
+    const palette = COLOR_KEYS.slice(0, 5)
+    for (let i = 0; i < HOLDING_COUNT; i++) this.holding.push(this.makeIncoming(palette))
+    this.refillQueue()
+  }
+
+  // Colors currently in play, so spawned passengers are always serveable.
+  activeColors(): ColorKey[] {
+    const set = new Set<ColorKey>()
+    for (const v of this.holding) set.add(v.color)
+    for (const v of this.vehicles.values()) set.add(v.color)
+    for (const s of this.zone) if (s) set.add(s.vehicle.color)
+    return [...set]
+  }
+
+  refillQueue(): void {
+    // Bias toward colors already parked / in the zone (easier to serve); fall
+    // back to holding-only colors so the queue is always serveable.
+    const parked = new Set<ColorKey>()
+    for (const v of this.vehicles.values()) parked.add(v.color)
+    for (const s of this.zone) if (s) parked.add(s.vehicle.color)
+    const pool: ColorKey[] = []
+    for (const c of parked) pool.push(c, c, c)
+    for (const v of this.holding) if (!parked.has(v.color)) pool.push(v.color)
+    if (pool.length === 0) return
+    while (this.queue.length < QUEUE_TARGET) {
+      this.queue.push(pool[Math.floor(Math.random() * pool.length)])
+    }
+  }
+
+  addIncoming(): void {
+    if (this.holding.length >= HOLDING_COUNT) return
+    const palette = COLOR_KEYS.slice(0, 5)
+    this.holding.push(this.makeIncoming(palette))
   }
 
   freeSlotIndex(): number {
