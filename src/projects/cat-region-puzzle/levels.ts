@@ -31,20 +31,7 @@ function shuffle<T>(items: T[], rng: Rng): T[] {
 
 function createSolution(size: number, rng: Rng): Coord[] | null {
   const columns = Array.from({ length: size }, (_, index) => index)
-
-  for (let attempt = 0; attempt < 5000; attempt++) {
-    const candidate = shuffle(columns, rng)
-    let valid = true
-    for (let row = 1; row < size; row++) {
-      if (Math.abs(candidate[row] - candidate[row - 1]) <= 1) {
-        valid = false
-        break
-      }
-    }
-    if (valid) return candidate.map((col, row) => ({ row, col }))
-  }
-
-  return null
+  return shuffle(columns, rng).map((col, row) => ({ row, col }))
 }
 
 function createRegions(size: number, solution: Coord[], rng: Rng): number[][] | null {
@@ -113,13 +100,41 @@ function createRegions(size: number, solution: Coord[], rng: Rng): number[][] | 
 }
 
 function createRegionTargets(size: number, rng: Rng): number[] {
-  const targetsBySize: Record<number, number[]> = {
-    5: [1, 2, 3, 8, 11],
-    6: [1, 2, 3, 6, 10, 14],
-    7: [1, 2, 3, 5, 8, 12, 18],
+  const total = size * size
+  const maxRegionSize = Math.ceil(total * 0.46)
+  const minDistinctSizes = Math.max(3, Math.ceil(size * 0.6))
+
+  for (let attempt = 0; attempt < 500; attempt++) {
+    const cuts = new Set<number>()
+    while (cuts.size < size - 1) {
+      cuts.add(1 + Math.floor(rng() * (total - 1)))
+    }
+
+    const sortedCuts = [0, ...[...cuts].sort((a, b) => a - b), total]
+    const targets = Array.from({ length: size }, (_, index) => {
+      return sortedCuts[index + 1] - sortedCuts[index]
+    })
+
+    const largest = Math.max(...targets)
+    const distinctSizes = new Set(targets).size
+    if (largest <= maxRegionSize && distinctSizes >= minDistinctSizes) {
+      return shuffle(targets, rng)
+    }
   }
 
-  return shuffle(targetsBySize[size], rng)
+  const targets = Array.from({ length: size }, () => 1)
+  let remaining = total - size
+  while (remaining > 0) {
+    const candidates = targets
+      .map((target, index) => ({ target, index }))
+      .filter((item) => item.target < maxRegionSize)
+    const selected = candidates[Math.floor(rng() * candidates.length)]
+    selected.target += 1
+    targets[selected.index] += 1
+    remaining -= 1
+  }
+
+  return shuffle(targets, rng)
 }
 
 function sizeForDifficulty(difficulty: Difficulty): number {
