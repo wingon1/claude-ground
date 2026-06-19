@@ -4,8 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
+    "generate:moledoku": "node scripts/generate-moledoku-levels.mjs",
+    "generate:moledoku:force": "node scripts/generate-moledoku-levels.mjs --force",
+    "dev": "npm run generate:moledoku && vite",
+    "build": "npm run generate:moledoku:force && tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
