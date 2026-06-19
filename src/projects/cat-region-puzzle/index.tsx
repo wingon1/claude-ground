@@ -66,10 +66,6 @@ function nextPlayableLevel(currentIndex: number, count: number): number {
   return (currentIndex + 1) % count
 }
 
-function previousPlayableLevel(currentIndex: number, count: number): number {
-  return (currentIndex - 1 + count) % count
-}
-
 function conflictText(reasons: string[]): string {
   if (reasons.includes('row')) return '같은 행에는 한 마리만 들어갈 수 있어요.'
   if (reasons.includes('column')) return '같은 열에는 한 마리만 들어갈 수 있어요.'
@@ -78,17 +74,32 @@ function conflictText(reasons: string[]): string {
 }
 
 export default function CatRegionPuzzle() {
-  const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty>('5x5')
+  const [activeDifficulty, setActiveDifficulty] = useState<Difficulty>('5x5')
+  const [stagePickerDifficulty, setStagePickerDifficulty] = useState<Difficulty | null>(null)
+  const [isPlaying, setIsPlaying] = useState(false)
   const [levelIndex, setLevelIndex] = useState(0)
   const availableLevels = useMemo(
-    () => levels.filter((item) => item.difficulty === selectedDifficulty),
-    [selectedDifficulty],
+    () => levels.filter((item) => item.difficulty === activeDifficulty),
+    [activeDifficulty],
   )
   const level = availableLevels[levelIndex] ?? availableLevels[0]
 
-  const selectDifficulty = (difficulty: Difficulty) => {
-    setSelectedDifficulty(difficulty)
-    setLevelIndex(0)
+  const startStage = (difficulty: Difficulty, index: number) => {
+    setActiveDifficulty(difficulty)
+    setLevelIndex(index)
+    setStagePickerDifficulty(null)
+    setIsPlaying(true)
+  }
+
+  if (!isPlaying) {
+    return (
+      <MainMenu
+        stagePickerDifficulty={stagePickerDifficulty}
+        openStagePicker={setStagePickerDifficulty}
+        closeStagePicker={() => setStagePickerDifficulty(null)}
+        startStage={startStage}
+      />
+    )
   }
 
   return (
@@ -97,10 +108,117 @@ export default function CatRegionPuzzle() {
       level={level}
       levelIndex={levelIndex}
       availableLevels={availableLevels}
-      selectedDifficulty={selectedDifficulty}
-      selectDifficulty={selectDifficulty}
       setLevelIndex={setLevelIndex}
+      returnToMenu={() => setIsPlaying(false)}
     />
+  )
+}
+
+function MainMenu({
+  stagePickerDifficulty,
+  openStagePicker,
+  closeStagePicker,
+  startStage,
+}: {
+  stagePickerDifficulty: Difficulty | null
+  openStagePicker: (difficulty: Difficulty) => void
+  closeStagePicker: () => void
+  startStage: (difficulty: Difficulty, index: number) => void
+}) {
+  const pickerLevels = stagePickerDifficulty
+    ? levels.filter((item) => item.difficulty === stagePickerDifficulty)
+    : []
+
+  return (
+    <div className="min-h-full w-full overflow-auto bg-[#f7f7f7] px-3 py-5 text-[#87515b]">
+      <div className="relative mx-auto flex min-h-[calc(100dvh-2.5rem)] w-full max-w-[28rem] flex-col overflow-hidden rounded-[2.25rem] border border-[#eadfd8] bg-[#f8f3ef] shadow-[0_16px_40px_rgba(96,68,52,0.16)]">
+        <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 py-10 text-center">
+          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-white shadow-[0_10px_26px_rgba(132,87,80,0.12)]">
+            <MoleFace large />
+          </div>
+          <p className="mt-6 text-xs font-black uppercase tracking-[0.24em] text-[#b27782]">
+            Burrow Puzzle
+          </p>
+          <h1 className="mt-2 text-5xl font-black text-[#99545f]">Moledoku</h1>
+          <p className="mt-3 max-w-xs text-sm font-black leading-relaxed text-[#a06b72]">
+            색상마다 한 마리씩, 행과 열마다 한 마리씩 두더지를 찾아요.
+          </p>
+
+          <div className="mt-9 grid w-full max-w-[19rem] gap-3">
+            {DIFFICULTIES.map((difficulty) => (
+              <button
+                key={difficulty}
+                type="button"
+                onClick={() => openStagePicker(difficulty)}
+                className="rounded-[18px] bg-white px-5 py-4 text-xl font-black text-[#99545f] shadow-[0_7px_18px_rgba(132,87,80,0.12)] transition active:scale-95"
+              >
+                {difficulty}
+              </button>
+            ))}
+          </div>
+        </main>
+
+        <footer className="relative mt-auto h-28 overflow-hidden bg-[#8edaf4]">
+          <div className="absolute -top-9 left-1/2 h-20 w-[120%] -translate-x-1/2 rounded-[50%] bg-[#f8f3ef]" />
+          <div className="absolute inset-x-0 bottom-5 text-center text-3xl font-black text-white drop-shadow-[0_3px_0_#45aad1]">
+            난이도 선택
+          </div>
+        </footer>
+
+        {stagePickerDifficulty && (
+          <StagePicker
+            difficulty={stagePickerDifficulty}
+            levels={pickerLevels}
+            onClose={closeStagePicker}
+            onStart={(index) => startStage(stagePickerDifficulty, index)}
+          />
+        )}
+      </div>
+    </div>
+  )
+}
+
+function StagePicker({
+  difficulty,
+  levels: pickerLevels,
+  onClose,
+  onStart,
+}: {
+  difficulty: Difficulty
+  levels: Level[]
+  onClose: () => void
+  onStart: (index: number) => void
+}) {
+  return (
+    <div className="absolute inset-0 z-30 flex items-center justify-center bg-[#3d2d22]/30 p-5 backdrop-blur-sm">
+      <div className="w-full max-w-xs rounded-[1.75rem] bg-[#fff8f3] p-5 text-center shadow-[0_18px_38px_rgba(72,45,35,0.2)]">
+        <div className="flex items-center justify-between">
+          <span className="w-9" />
+          <h2 className="text-2xl font-black text-[#99545f]">{difficulty}</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="스테이지 선택 닫기"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-[#f1e5df] text-lg font-black text-[#99545f]"
+          >
+            X
+          </button>
+        </div>
+        <p className="mt-2 text-sm font-black text-[#a06b72]">스테이지를 선택해요</p>
+        <div className="mt-5 grid grid-cols-5 gap-2">
+          {pickerLevels.map((item, index) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onStart(index)}
+              className="h-12 rounded-[12px] bg-white text-sm font-black text-[#99545f] shadow-[0_5px_14px_rgba(132,87,80,0.12)] transition active:scale-95"
+            >
+              {index + 1}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -108,16 +226,14 @@ function GameSession({
   level,
   levelIndex,
   availableLevels,
-  selectedDifficulty,
-  selectDifficulty,
   setLevelIndex,
+  returnToMenu,
 }: {
   level: Level
   levelIndex: number
   availableLevels: Level[]
-  selectedDifficulty: Difficulty
-  selectDifficulty: (difficulty: Difficulty) => void
   setLevelIndex: Dispatch<SetStateAction<number>>
+  returnToMenu: () => void
 }) {
   const [board, setBoard] = useState<Board>(() => createBoard(level))
   const [hearts, setHearts] = useState(3)
@@ -235,16 +351,8 @@ function GameSession({
     setNotice('반짝이는 칸을 살펴봐요.')
   }
 
-  const goToLevel = (index: number) => {
-    setLevelIndex(index)
-  }
-
   const nextLevel = () => {
     setLevelIndex((index) => nextPlayableLevel(index, availableLevels.length))
-  }
-
-  const previousLevel = () => {
-    setLevelIndex((index) => previousPlayableLevel(index, availableLevels.length))
   }
 
   return (
@@ -252,7 +360,7 @@ function GameSession({
       <div className="mx-auto flex min-h-[calc(100dvh-2.5rem)] w-full max-w-[28rem] flex-col overflow-hidden rounded-[2.25rem] border border-[#eadfd8] bg-[#f8f3ef] shadow-[0_16px_40px_rgba(96,68,52,0.16)]">
         <header className="px-5 pt-8">
           <div className="grid grid-cols-[2.75rem_1fr_2.75rem] items-center">
-            <RoundIconButton ariaLabel="이전 스테이지" onClick={previousLevel}>
+            <RoundIconButton ariaLabel="메인으로 돌아가기" onClick={returnToMenu}>
               &lt;
             </RoundIconButton>
             <h1 className="text-center text-2xl font-black text-[#99545f]">
@@ -261,18 +369,6 @@ function GameSession({
             <RoundIconButton ariaLabel="다시 시작" onClick={restart}>
               S
             </RoundIconButton>
-          </div>
-
-          <div className="mt-4 flex justify-center gap-2">
-            {DIFFICULTIES.map((difficulty) => (
-              <DifficultyButton
-                key={difficulty}
-                active={selectedDifficulty === difficulty}
-                onClick={() => selectDifficulty(difficulty)}
-              >
-                {difficulty}
-              </DifficultyButton>
-            ))}
           </div>
 
           <div className="mt-3 flex items-center justify-center gap-3">
@@ -329,19 +425,6 @@ function GameSession({
           </div>
 
           <p className="mt-4 min-h-5 text-center text-xs font-black text-[#a06970]">{notice}</p>
-
-          <div className="mt-3 grid w-full max-w-[19.5rem] grid-cols-5 gap-1.5">
-            {availableLevels.map((item, index) => (
-              <StageDot
-                key={item.id}
-                active={index === levelIndex}
-                onClick={() => goToLevel(index)}
-                ariaLabel={`${selectedDifficulty} ${index + 1}번 스테이지`}
-              >
-                {index + 1}
-              </StageDot>
-            ))}
-          </div>
 
           <div className="mt-4 grid w-full max-w-[19.5rem] grid-cols-5 gap-2">
             <ModeButton active={mode === 'cat'} onClick={() => setMode('cat')} ariaLabel="두더지 놓기">
@@ -501,28 +584,6 @@ function RoundIconButton({
   )
 }
 
-function DifficultyButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean
-  onClick: () => void
-  children: ReactNode
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-full px-3 py-1.5 text-xs font-black transition active:scale-95 ${
-        active ? 'bg-[#99545f] text-white' : 'bg-white text-[#99545f]'
-      }`}
-    >
-      {children}
-    </button>
-  )
-}
-
 function StatusPill({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-8 items-center gap-1.5 rounded-full bg-white px-3 text-lg font-black shadow-[0_5px_14px_rgba(132,87,80,0.1)]">
@@ -540,31 +601,6 @@ function RuleChip({ active = false, children }: { active?: boolean; children: Re
     >
       {children}
     </div>
-  )
-}
-
-function StageDot({
-  active,
-  onClick,
-  ariaLabel,
-  children,
-}: {
-  active: boolean
-  onClick: () => void
-  ariaLabel: string
-  children: ReactNode
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={ariaLabel}
-      className={`h-8 rounded-full text-xs font-black transition active:scale-95 ${
-        active ? 'bg-[#99545f] text-white' : 'bg-white text-[#99545f]'
-      }`}
-    >
-      {children}
-    </button>
   )
 }
 
