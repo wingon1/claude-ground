@@ -173,7 +173,7 @@ function MainMenu({
                 key={difficulty}
                 type="button"
                 onClick={() => openStagePicker(difficulty)}
-                className="flex items-center justify-between rounded-[22px] bg-white px-7 py-5 text-left shadow-[0_10px_22px_rgba(132,87,80,0.12)] transition active:scale-[0.97]"
+                className="flex items-center justify-between rounded-[22px] bg-white px-8 py-6 text-left shadow-[0_10px_22px_rgba(132,87,80,0.12)] transition active:scale-[0.97]"
               >
                 <span className="text-xl font-extrabold tracking-tight text-[#99545f]">
                   {difficulty}
@@ -212,7 +212,7 @@ function StagePicker({
 }) {
   return (
     <div className="absolute inset-0 z-30 flex items-center justify-center bg-[#3d2d22]/35 p-8 backdrop-blur-sm">
-      <div className="w-full max-w-[22rem] overflow-hidden rounded-[30px] bg-[#fff8f3] px-8 pb-9 pt-7 text-center shadow-[0_20px_42px_rgba(72,45,35,0.22)]">
+      <div className="w-full max-w-[22.5rem] overflow-hidden rounded-[30px] bg-[#fff8f3] px-9 pb-11 pt-9 text-center shadow-[0_20px_42px_rgba(72,45,35,0.22)]">
         <div className="flex items-center justify-between">
           <span className="h-10 w-10" />
           <div>
@@ -228,7 +228,7 @@ function StagePicker({
             ×
           </button>
         </div>
-        <div className="mx-auto mt-8 grid w-full max-w-[17.5rem] grid-cols-5 gap-2.5">
+        <div className="mx-auto mt-9 grid w-full max-w-[17.5rem] grid-cols-5 gap-3">
           {pickerLevels.map((item, index) => (
             <button
               key={item.id}
@@ -475,7 +475,7 @@ function GameSession({
 
       {status !== 'playing' && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-[#3d2d22]/45 p-8 backdrop-blur-sm">
-          <div className="w-full max-w-[20rem] overflow-hidden rounded-[30px] bg-[#fff8f3] px-9 pb-9 pt-8 text-center shadow-[0_20px_42px_rgba(72,45,35,0.24)]">
+          <div className="w-full max-w-[20.5rem] overflow-hidden rounded-[30px] bg-[#fff8f3] px-9 pb-11 pt-9 text-center shadow-[0_20px_42px_rgba(72,45,35,0.24)]">
             <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-[30px] bg-[#f7ede6]">
               <MoleFace large seed={status === 'won' ? 4 : 7} />
             </div>
@@ -487,7 +487,7 @@ function GameSession({
                 ? '모든 두더지가 자기 색깔 굴을 찾았어요.'
                 : '되돌리거나 다시 시작해봐요.'}
             </p>
-            <div className="mx-auto mt-7 grid w-full max-w-[15rem] grid-cols-2 gap-3">
+            <div className="mx-auto mt-8 grid w-full max-w-[15rem] grid-cols-2 gap-3.5">
               <ModalButton onClick={restart}>다시 하기</ModalButton>
               <ModalButton onClick={nextLevel}>다음</ModalButton>
             </div>
@@ -661,7 +661,7 @@ function ModeButton({
       disabled={disabled}
       aria-label={ariaLabel}
       aria-pressed={active}
-      className={`flex h-[3.25rem] items-center justify-center rounded-[20px] px-2 text-sm font-bold shadow-[0_5px_14px_rgba(132,87,80,0.1)] transition active:scale-95 disabled:opacity-40 ${
+      className={`flex min-h-[3.5rem] items-center justify-center rounded-[20px] px-3 py-4 text-sm font-bold shadow-[0_5px_14px_rgba(132,87,80,0.1)] transition active:scale-95 disabled:opacity-40 ${
         active ? 'bg-[#99545f] text-white' : 'bg-white text-[#99545f]'
       }`}
     >
@@ -675,7 +675,7 @@ function ModalButton({ onClick, children }: { onClick: () => void; children: Rea
     <button
       type="button"
       onClick={onClick}
-      className="min-h-[3.25rem] rounded-[20px] border-0 bg-[#99545f] px-6 py-4 text-sm font-bold text-white shadow-[0_5px_14px_rgba(132,87,80,0.18)] outline-none transition active:scale-95"
+      className="min-h-[3.5rem] rounded-[20px] border-0 bg-[#99545f] px-7 py-[1.1rem] text-sm font-bold text-white shadow-[0_5px_14px_rgba(132,87,80,0.18)] outline-none transition active:scale-95"
     >
       {children}
     </button>
