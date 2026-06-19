@@ -73,6 +73,9 @@ export class Renderer {
   private size = 6
   private zoneZ = 0
   private queueZ = 0
+  // Framing is pinned to this (original) queue z so the grid/zone never move;
+  // the actual queue (queueZ) is raised above it to overlap the top HUD bar.
+  private queueFrameZ = 0
   private slotSpacing = 2.4
 
   private contentBox = new THREE.Box3()
@@ -289,7 +292,14 @@ export class Renderer {
     const half = (this.size - 1) / 2
     this.slotSpacing = Math.max(1.7, Math.min(2.5, this.size * 0.32))
     this.zoneZ = -half - 3.2
-    this.queueZ = this.zoneZ - 3.0
+    this.queueFrameZ = this.zoneZ - 3.0
+    // Frame first (pinned to queueFrameZ) so grid/zone size & position are fixed,
+    // then raise the actual queue ~30% of the screen height up over the HUD.
+    this.queueZ = this.queueFrameZ
+    this.frameContent()
+    const sp = Math.sin((56 * Math.PI) / 180)
+    const raise = 0.3 * (this.camera.top - this.camera.bottom) / sp
+    this.queueZ = this.queueFrameZ - raise
 
     this.buildBoard()
     this.buildZoneMarkers()
@@ -317,7 +327,6 @@ export class Renderer {
     })
 
     this.buildQueue(state.queue)
-    this.frameContent()
   }
 
   private buildBoard(): void {
@@ -855,7 +864,7 @@ export class Renderer {
     // Frame the grid + zone + horizontal row ONLY (exactly as before the L).
     // The queue's vertical tail intentionally extends above this box and is
     // clipped off the top of the screen — grid/zone size & position stay fixed.
-    this.contentBox.min.set(-half - margin, 0, this.queueZ - 1.4)
+    this.contentBox.min.set(-half - margin, 0, this.queueFrameZ - 1.4)
     this.contentBox.max.set(half + margin, 1.8, half + margin)
     const zoneHalfW = (this.slotSpacing * SLOT_COUNT) / 2 + 0.8
     // left edge includes the traffic light beside the front of the row
