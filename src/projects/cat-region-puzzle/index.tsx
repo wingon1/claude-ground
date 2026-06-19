@@ -49,6 +49,37 @@ const REGION_COLORS: CellColor[] = [
 ]
 
 const DIFFICULTIES: Difficulty[] = ['5x5', '6x6', '7x7']
+const COMPLETED_STAGE_STORAGE_KEY = 'moledoku.completedStages.v1'
+
+function stageCompletionKey(difficulty: Difficulty, index: number): string {
+  return `${difficulty}:${index + 1}`
+}
+
+function loadCompletedStageKeys(): Set<string> {
+  if (typeof window === 'undefined') return new Set()
+
+  try {
+    const raw = window.localStorage.getItem(COMPLETED_STAGE_STORAGE_KEY)
+    if (!raw) return new Set()
+
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return new Set()
+
+    return new Set(parsed.filter((item): item is string => typeof item === 'string'))
+  } catch {
+    return new Set()
+  }
+}
+
+function saveCompletedStageKeys(keys: Set<string>) {
+  if (typeof window === 'undefined') return
+
+  try {
+    window.localStorage.setItem(COMPLETED_STAGE_STORAGE_KEY, JSON.stringify([...keys].sort()))
+  } catch {
+    // Progress coloring is optional; gameplay should continue if storage is unavailable.
+  }
+}
 
 // Self-contained keyframes for the mole's blink + mouth animation. Rendered via
 // a hoisted <style> (deduped by `href` in React 19) so we never touch the shared
@@ -170,6 +201,9 @@ export default function CatRegionPuzzle() {
   const [stagePickerDifficulty, setStagePickerDifficulty] = useState<Difficulty | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [levelIndex, setLevelIndex] = useState(0)
+  const [completedStageKeys, setCompletedStageKeys] = useState<Set<string>>(
+    () => loadCompletedStageKeys(),
+  )
   const availableLevels = useMemo(
     () => levels.filter((item) => item.difficulty === activeDifficulty),
     [activeDifficulty],
@@ -183,10 +217,23 @@ export default function CatRegionPuzzle() {
     setIsPlaying(true)
   }
 
+  const markStageComplete = (difficulty: Difficulty, index: number) => {
+    const key = stageCompletionKey(difficulty, index)
+    setCompletedStageKeys((current) => {
+      if (current.has(key)) return current
+
+      const next = new Set(current)
+      next.add(key)
+      saveCompletedStageKeys(next)
+      return next
+    })
+  }
+
   if (!isPlaying) {
     return (
       <MainMenu
         stagePickerDifficulty={stagePickerDifficulty}
+        completedStageKeys={completedStageKeys}
         openStagePicker={setStagePickerDifficulty}
         closeStagePicker={() => setStagePickerDifficulty(null)}
         startStage={startStage}
@@ -202,17 +249,20 @@ export default function CatRegionPuzzle() {
       availableLevels={availableLevels}
       setLevelIndex={setLevelIndex}
       returnToMenu={() => setIsPlaying(false)}
+      markStageComplete={markStageComplete}
     />
   )
 }
 
 function MainMenu({
   stagePickerDifficulty,
+  completedStageKeys,
   openStagePicker,
   closeStagePicker,
   startStage,
 }: {
   stagePickerDifficulty: Difficulty | null
+  completedStageKeys: Set<string>
   openStagePicker: (difficulty: Difficulty) => void
   closeStagePicker: () => void
   startStage: (difficulty: Difficulty, index: number) => void
@@ -262,6 +312,7 @@ function MainMenu({
           <StagePicker
             difficulty={stagePickerDifficulty}
             levels={pickerLevels}
+            completedStageKeys={completedStageKeys}
             onClose={closeStagePicker}
             onStart={(index) => startStage(stagePickerDifficulty, index)}
           />
@@ -274,17 +325,19 @@ function MainMenu({
 function StagePicker({
   difficulty,
   levels: pickerLevels,
+  completedStageKeys,
   onClose,
   onStart,
 }: {
   difficulty: Difficulty
   levels: Level[]
+  completedStageKeys: Set<string>
   onClose: () => void
   onStart: (index: number) => void
 }) {
   return (
     <div className="absolute inset-0 z-30 flex items-center justify-center bg-[#3d2d22]/35 p-8 backdrop-blur-sm">
-      <div className="w-full max-w-[22.5rem] overflow-hidden rounded-[30px] bg-[#fff8f3] px-9 pb-11 pt-9 text-center shadow-[0_20px_42px_rgba(72,45,35,0.22)]">
+      <div className="max-h-[calc(100dvh-4rem)] w-full max-w-[22.5rem] overflow-y-auto rounded-[30px] bg-[#fff8f3] px-9 pb-11 pt-9 text-center shadow-[0_20px_42px_rgba(72,45,35,0.22)]">
         <div className="flex items-center justify-between">
           <span className="h-10 w-10" />
           <div>
@@ -301,16 +354,22 @@ function StagePicker({
           </button>
         </div>
         <div className="mx-auto mt-9 grid w-full max-w-[17.5rem] grid-cols-5 gap-3">
-          {pickerLevels.map((item, index) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => onStart(index)}
-              className="flex aspect-square items-center justify-center rounded-[16px] border-0 bg-white text-lg font-extrabold text-[#99545f] shadow-[0_5px_14px_rgba(132,87,80,0.12)] outline-none transition active:scale-90"
-            >
-              {index + 1}
-            </button>
-          ))}
+          {pickerLevels.map((item, index) => {
+            const isCompleted = completedStageKeys.has(stageCompletionKey(difficulty, index))
+
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => onStart(index)}
+                className={`flex aspect-square items-center justify-center rounded-[16px] border-0 text-lg font-extrabold shadow-[0_5px_14px_rgba(132,87,80,0.12)] outline-none transition active:scale-90 ${
+                  isCompleted ? 'bg-[#eadbd4] text-[#8f5360]' : 'bg-white text-[#99545f]'
+                }`}
+              >
+                {index + 1}
+              </button>
+            )
+          })}
         </div>
       </div>
     </div>
@@ -323,12 +382,14 @@ function GameSession({
   availableLevels,
   setLevelIndex,
   returnToMenu,
+  markStageComplete,
 }: {
   level: Level
   levelIndex: number
   availableLevels: Level[]
   setLevelIndex: Dispatch<SetStateAction<number>>
   returnToMenu: () => void
+  markStageComplete: (difficulty: Difficulty, index: number) => void
 }) {
   const [board, setBoard] = useState<Board>(() => createBoard(level))
   const [hearts, setHearts] = useState(3)
@@ -391,7 +452,10 @@ function GameSession({
     setBoard(next)
     setHint(null)
     setNotice('좋아요!')
-    if (checkWin(next, level)) setStatus('won')
+    if (checkWin(next, level)) {
+      markStageComplete(level.difficulty, levelIndex)
+      setStatus('won')
+    }
   }
 
   const toggleMark = (row: number, col: number) => {

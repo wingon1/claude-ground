@@ -172,9 +172,9 @@ function createLevel(id: number, difficulty: Difficulty, seed: number): Level {
 function buildLevelPack(): Level[] {
   const levels: Level[] = []
   const groups: { difficulty: Difficulty; count: number; seed: number }[] = [
-    { difficulty: '5x5', count: 10, seed: 22000 },
-    { difficulty: '6x6', count: 10, seed: 32000 },
-    { difficulty: '7x7', count: 10, seed: 42000 },
+    { difficulty: '5x5', count: 50, seed: 22000 },
+    { difficulty: '6x6', count: 50, seed: 32000 },
+    { difficulty: '7x7', count: 50, seed: 42000 },
   ]
 
   for (const group of groups) {
