@@ -15,7 +15,7 @@ const GROUPS = [
   { difficulty: '7x7', count: 50, seed: 42000 },
 ]
 
-const signature = `// moledoku-levels:${JSON.stringify({ version: 2, groups: GROUPS })}`
+const signature = `// moledoku-levels:${JSON.stringify({ version: 4, groups: GROUPS })}`
 const force = process.argv.includes('--force')
 const outputPath = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -63,111 +63,125 @@ function sizeForDifficulty(difficulty) {
   return 7
 }
 
-function createSolution(size, rng) {
-  const columns = Array.from({ length: size }, (_, index) => index)
-  return shuffle(columns, rng).map((col, row) => ({ row, col }))
+const BASE_REGION_PATTERNS = {
+  5: [
+    [0, 1, 1, 2, 2],
+    [1, 1, 2, 2, 4],
+    [1, 3, 2, 3, 4],
+    [3, 3, 3, 3, 4],
+    [3, 3, 4, 4, 4],
+  ],
+  6: [
+    [0, 1, 2, 2, 3, 3],
+    [1, 1, 2, 3, 3, 4],
+    [1, 2, 2, 3, 4, 4],
+    [1, 2, 3, 3, 4, 5],
+    [4, 4, 4, 4, 4, 5],
+    [4, 5, 5, 5, 5, 5],
+  ],
+  7: [
+    [0, 1, 1, 3, 6, 6, 6],
+    [1, 1, 2, 3, 3, 5, 6],
+    [1, 2, 2, 3, 5, 5, 6],
+    [2, 2, 3, 3, 5, 5, 6],
+    [4, 4, 4, 4, 4, 5, 6],
+    [6, 6, 6, 5, 5, 5, 6],
+    [6, 6, 6, 6, 6, 6, 6],
+  ],
 }
 
-function createRegionTargets(size, rng) {
-  const total = size * size
-  const maxRegionSize = Math.ceil(total * 0.46)
-  const minDistinctSizes = Math.max(3, Math.ceil(size * 0.6))
-
-  for (let attempt = 0; attempt < 500; attempt++) {
-    const cuts = new Set()
-    while (cuts.size < size - 1) {
-      cuts.add(1 + Math.floor(rng() * (total - 1)))
-    }
-
-    const sortedCuts = [0, ...[...cuts].sort((a, b) => a - b), total]
-    const targets = Array.from({ length: size }, (_, index) => {
-      return sortedCuts[index + 1] - sortedCuts[index]
-    })
-
-    const largest = Math.max(...targets)
-    const distinctSizes = new Set(targets).size
-    const singletonCount = targets.filter((target) => target === 1).length
-    if (largest <= maxRegionSize && distinctSizes >= minDistinctSizes && singletonCount <= 1) {
-      return shuffle(targets, rng)
-    }
-  }
-
-  const targets = Array.from({ length: size }, () => 2)
-  let remaining = total - size * 2
-  while (remaining > 0) {
-    const candidates = targets
-      .map((target, index) => ({ target, index }))
-      .filter((item) => item.target < maxRegionSize)
-    const selected = candidates[Math.floor(rng() * candidates.length)]
-    selected.target += 1
-    targets[selected.index] += 1
-    remaining -= 1
-  }
-
-  return shuffle(targets, rng)
+function cloneRegions(regions) {
+  return regions.map((row) => [...row])
 }
 
-function createRegions(size, solution, rng) {
-  const targetSizes = createRegionTargets(size, rng)
-  const regions = Array.from({ length: size }, () => Array.from({ length: size }).fill(-1))
-  const regionSizes = Array.from({ length: size }).fill(0)
+function transformCoord(coord, size, transformId) {
+  const last = size - 1
+  const { row, col } = coord
 
-  for (let regionId = 0; regionId < size; regionId++) {
-    const seed = solution[regionId]
-    regions[seed.row][seed.col] = regionId
-    regionSizes[regionId] = 1
+  if (transformId === 1) return { row: col, col: last - row }
+  if (transformId === 2) return { row: last - row, col: last - col }
+  if (transformId === 3) return { row: last - col, col: row }
+  if (transformId === 4) return { row, col: last - col }
+  if (transformId === 5) return { row: last - row, col }
+  if (transformId === 6) return { row: col, col: row }
+  if (transformId === 7) return { row: last - col, col: last - row }
+  return { row, col }
+}
+
+function transformRegions(regions, transformId) {
+  const size = regions.length
+  const transformed = Array.from({ length: size }, () => Array.from({ length: size }).fill(0))
+
+  for (let row = 0; row < size; row++) {
+    for (let col = 0; col < size; col++) {
+      const next = transformCoord({ row, col }, size, transformId)
+      transformed[next.row][next.col] = regions[row][col]
+    }
   }
 
-  let unassigned = size * size - size
+  return transformed
+}
 
-  while (unassigned > 0) {
-    const options = []
+function relabelRegions(regions, rng) {
+  const labels = shuffle(
+    Array.from({ length: regions.length }, (_, index) => index),
+    rng,
+  )
 
-    for (let regionId = 0; regionId < size; regionId++) {
-      if (regionSizes[regionId] >= targetSizes[regionId]) continue
+  return regions.map((row) => row.map((regionId) => labels[regionId]))
+}
 
-      const cells = []
-      for (let row = 0; row < size; row++) {
-        for (let col = 0; col < size; col++) {
-          if (regions[row][col] !== regionId) continue
+function createPatternSolution(size, transformId) {
+  return Array.from({ length: size }, (_, index) => {
+    return transformCoord({ row: index, col: index }, size, transformId)
+  })
+}
 
-          for (const [dr, dc] of DIRECTIONS) {
-            const nextRow = row + dr
-            const nextCol = col + dc
-            if (
-              nextRow >= 0 &&
-              nextRow < size &&
-              nextCol >= 0 &&
-              nextCol < size &&
-              regions[nextRow][nextCol] === -1
-            ) {
-              cells.push({ row: nextRow, col: nextCol })
-            }
-          }
-        }
-      }
+function getNeighborRegionIds(regions, row, col) {
+  const size = regions.length
+  const regionIds = new Set()
+  const currentRegionId = regions[row][col]
 
-      if (cells.length > 0) {
-        options.push({
-          regionId,
-          cells,
-          size: targetSizes[regionId] - regionSizes[regionId],
-        })
-      }
+  for (const [dr, dc] of DIRECTIONS) {
+    const nextRow = row + dr
+    const nextCol = col + dc
+    if (nextRow < 0 || nextRow >= size || nextCol < 0 || nextCol >= size) continue
+    const regionId = regions[nextRow][nextCol]
+    if (regionId !== currentRegionId) regionIds.add(regionId)
+  }
+
+  return [...regionIds]
+}
+
+function varyRegions(regions, solution, rng) {
+  let current = cloneRegions(regions)
+  const size = current.length
+  const solutionKeys = new Set(solution.map(coordKey))
+
+  for (let step = 0; step < 160; step++) {
+    const row = Math.floor(rng() * size)
+    const col = Math.floor(rng() * size)
+    if (solutionKeys.has(coordKey({ row, col }))) continue
+
+    const neighborRegionIds = getNeighborRegionIds(current, row, col)
+    if (neighborRegionIds.length === 0) continue
+
+    const next = cloneRegions(current)
+    next[row][col] = neighborRegionIds[Math.floor(rng() * neighborRegionIds.length)]
+
+    const level = {
+      id: 0,
+      size,
+      difficulty: `${size}x${size}`,
+      regions: next,
+      solution,
+      lockedCats: [],
     }
 
-    if (options.length === 0) return null
-
-    const largestNeed = Math.max(...options.map((option) => option.size))
-    const growing = options.filter((option) => option.size >= largestNeed - 1)
-    const selected = growing[Math.floor(rng() * growing.length)]
-    const cell = selected.cells[Math.floor(rng() * selected.cells.length)]
-    regions[cell.row][cell.col] = selected.regionId
-    regionSizes[selected.regionId] += 1
-    unassigned -= 1
+    if (validateLevel(level)) current = next
   }
 
-  return regions
+  return current
 }
 
 function getRegionCells(level, regionId) {
@@ -234,6 +248,30 @@ function countSingletonRegions(level) {
   return counts.filter((count) => count === 1).length
 }
 
+function countSmallRegions(level) {
+  const counts = Array.from({ length: level.size }).fill(0)
+
+  for (const row of level.regions) {
+    for (const regionId of row) {
+      counts[regionId] += 1
+    }
+  }
+
+  return counts.filter((count) => count <= 4).length
+}
+
+function countTinyRegions(level) {
+  const counts = Array.from({ length: level.size }).fill(0)
+
+  for (const row of level.regions) {
+    for (const regionId of row) {
+      counts[regionId] += 1
+    }
+  }
+
+  return counts.filter((count) => count <= 3).length
+}
+
 function solveLevel(level, limit = 2) {
   const usedColumns = new Set()
   const usedRegions = new Set()
@@ -267,6 +305,8 @@ function solveLevel(level, limit = 2) {
 function validateLevel(level) {
   return (
     countSingletonRegions(level) <= 1 &&
+    countTinyRegions(level) === 1 &&
+    countSmallRegions(level) === 1 &&
     validateSolution(level) &&
     validateRegionConnectivity(level) &&
     solveLevel(level, 2) === 1
@@ -276,25 +316,26 @@ function validateLevel(level) {
 function createLevel(id, difficulty, seed) {
   const size = sizeForDifficulty(difficulty)
 
-  for (let seedVariant = 0; seedVariant < 240; seedVariant++) {
+  for (let seedVariant = 0; seedVariant < 80; seedVariant++) {
     const rng = makeRng(seed + seedVariant * 1000003)
+    const transformId = Math.floor(rng() * 8)
+    const solution = createPatternSolution(size, transformId)
+    const baseRegions = relabelRegions(
+      transformRegions(BASE_REGION_PATTERNS[size], transformId),
+      rng,
+    )
+    const regions = varyRegions(baseRegions, solution, rng)
 
-    for (let attempt = 0; attempt < 12000; attempt++) {
-      const solution = createSolution(size, rng)
-      const regions = createRegions(size, solution, rng)
-      if (!regions) continue
-
-      const level = {
-        id,
-        size,
-        difficulty,
-        regions,
-        solution,
-        lockedCats: [],
-      }
-
-      if (validateLevel(level)) return level
+    const level = {
+      id,
+      size,
+      difficulty,
+      regions,
+      solution,
+      lockedCats: [],
     }
+
+    if (validateLevel(level)) return level
   }
 
   throw new Error(`Unable to generate level ${id}`)
@@ -305,7 +346,9 @@ function buildLevelPack() {
 
   for (const group of GROUPS) {
     for (let index = 0; index < group.count; index++) {
-      levels.push(createLevel(levels.length + 1, group.difficulty, group.seed + index * 97))
+      const levelId = levels.length + 1
+      levels.push(createLevel(levelId, group.difficulty, group.seed + index * 97))
+      if (force) console.log(`Generated level ${levelId} (${group.difficulty})`)
     }
   }
 
@@ -320,6 +363,16 @@ const summary = {
   seven: levels.filter((level) => level.difficulty === '7x7').length,
   unique: levels.every((level) => solveLevel(level, 2) === 1),
   singletonLimited: levels.every((level) => countSingletonRegions(level) <= 1),
+  tinyRegionRequired: levels.every((level) => countTinyRegions(level) === 1),
+  smallRegionLimited: levels.every((level) => countSmallRegions(level) === 1),
+  smallRegionCounts: levels.reduce(
+    (counts, level) => {
+      const smallRegionCount = countSmallRegions(level)
+      counts[smallRegionCount] = (counts[smallRegionCount] ?? 0) + 1
+      return counts
+    },
+    {},
+  ),
   noLocks: levels.every((level) => level.lockedCats.length === 0),
 }
 
