@@ -523,13 +523,13 @@ function GameSession({
             )}
           </div>
 
-          <div className="mt-11 flex h-12 items-center justify-center px-2">
+          <div className="mt-7 flex h-12 items-center justify-center px-2">
             <p className="break-keep text-center text-sm font-semibold leading-snug text-[#a87f85]">
               {notice}
             </p>
           </div>
 
-          <div className="mt-10 grid w-full max-w-[21rem] grid-cols-4 gap-3">
+          <div className="mt-6 grid w-full max-w-[21rem] grid-cols-4 gap-3">
             <ModeButton active={mode === 'cat'} onClick={() => setMode('cat')} ariaLabel="두더지 놓기">
               <MoleFace tiny seed={3} />
             </ModeButton>
