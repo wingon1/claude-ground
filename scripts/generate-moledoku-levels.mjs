@@ -15,7 +15,7 @@ const GROUPS = [
   { difficulty: '7x7', count: 50, seed: 42000 },
 ]
 
-const signature = `// moledoku-levels:${JSON.stringify({ version: 1, groups: GROUPS })}`
+const signature = `// moledoku-levels:${JSON.stringify({ version: 2, groups: GROUPS })}`
 const force = process.argv.includes('--force')
 const outputPath = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -86,13 +86,14 @@ function createRegionTargets(size, rng) {
 
     const largest = Math.max(...targets)
     const distinctSizes = new Set(targets).size
-    if (largest <= maxRegionSize && distinctSizes >= minDistinctSizes) {
+    const singletonCount = targets.filter((target) => target === 1).length
+    if (largest <= maxRegionSize && distinctSizes >= minDistinctSizes && singletonCount <= 1) {
       return shuffle(targets, rng)
     }
   }
 
-  const targets = Array.from({ length: size }, () => 1)
-  let remaining = total - size
+  const targets = Array.from({ length: size }, () => 2)
+  let remaining = total - size * 2
   while (remaining > 0) {
     const candidates = targets
       .map((target, index) => ({ target, index }))
@@ -221,6 +222,18 @@ function validateSolution(level) {
   return rows.size === level.size && cols.size === level.size && regions.size === level.size
 }
 
+function countSingletonRegions(level) {
+  const counts = Array.from({ length: level.size }).fill(0)
+
+  for (const row of level.regions) {
+    for (const regionId of row) {
+      counts[regionId] += 1
+    }
+  }
+
+  return counts.filter((count) => count === 1).length
+}
+
 function solveLevel(level, limit = 2) {
   const usedColumns = new Set()
   const usedRegions = new Set()
@@ -252,28 +265,36 @@ function solveLevel(level, limit = 2) {
 }
 
 function validateLevel(level) {
-  return validateSolution(level) && validateRegionConnectivity(level) && solveLevel(level, 2) === 1
+  return (
+    countSingletonRegions(level) <= 1 &&
+    validateSolution(level) &&
+    validateRegionConnectivity(level) &&
+    solveLevel(level, 2) === 1
+  )
 }
 
 function createLevel(id, difficulty, seed) {
   const size = sizeForDifficulty(difficulty)
-  const rng = makeRng(seed)
 
-  for (let attempt = 0; attempt < 80000; attempt++) {
-    const solution = createSolution(size, rng)
-    const regions = createRegions(size, solution, rng)
-    if (!regions) continue
+  for (let seedVariant = 0; seedVariant < 240; seedVariant++) {
+    const rng = makeRng(seed + seedVariant * 1000003)
 
-    const level = {
-      id,
-      size,
-      difficulty,
-      regions,
-      solution,
-      lockedCats: [],
+    for (let attempt = 0; attempt < 12000; attempt++) {
+      const solution = createSolution(size, rng)
+      const regions = createRegions(size, solution, rng)
+      if (!regions) continue
+
+      const level = {
+        id,
+        size,
+        difficulty,
+        regions,
+        solution,
+        lockedCats: [],
+      }
+
+      if (validateLevel(level)) return level
     }
-
-    if (validateLevel(level)) return level
   }
 
   throw new Error(`Unable to generate level ${id}`)
@@ -298,6 +319,7 @@ const summary = {
   six: levels.filter((level) => level.difficulty === '6x6').length,
   seven: levels.filter((level) => level.difficulty === '7x7').length,
   unique: levels.every((level) => solveLevel(level, 2) === 1),
+  singletonLimited: levels.every((level) => countSingletonRegions(level) <= 1),
   noLocks: levels.every((level) => level.lockedCats.length === 0),
 }
 
