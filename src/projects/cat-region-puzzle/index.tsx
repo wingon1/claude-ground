@@ -59,7 +59,9 @@ const MOLE_CSS = `
 .moledoku-tooth{transform-box:fill-box;transform-origin:top center;animation:moledoku-tooth 1.9s ease-in-out infinite}
 @keyframes moledoku-blink{0%,88%,100%{transform:scaleY(1)}93%{transform:scaleY(0.1)}}
 @keyframes moledoku-tooth{0%,100%{transform:scaleY(0.74)}50%{transform:scaleY(1.04)}}
-@media (prefers-reduced-motion:reduce){.moledoku-eye,.moledoku-tooth{animation:none}}
+.moledoku-confetti-piece{position:absolute;left:0;top:0;opacity:0;animation:moledoku-confetti 1150ms cubic-bezier(.16,.7,.3,1) forwards}
+@keyframes moledoku-confetti{0%{transform:translate(-50%,-50%) rotate(0);opacity:0}12%{opacity:1}100%{transform:translate(calc(-50% + var(--tx)),calc(-50% + var(--ty))) rotate(var(--rot));opacity:0}}
+@media (prefers-reduced-motion:reduce){.moledoku-eye,.moledoku-tooth{animation:none}.moledoku-confetti-piece{animation:none;opacity:0}}
 `
 
 function MoleStyles() {
@@ -67,6 +69,76 @@ function MoleStyles() {
     <style href="moledoku-anim" precedence="default">
       {MOLE_CSS}
     </style>
+  )
+}
+
+const CONFETTI_COLORS = [
+  '#f36f9e',
+  '#ffd04a',
+  '#7fc8ed',
+  '#b9b5e8',
+  '#9fdc9d',
+  '#f2ae78',
+  '#ff9ec0',
+]
+
+type ConfettiPiece = {
+  i: number
+  color: string
+  delay: number
+  round: boolean
+  style: Record<string, string>
+}
+
+// Generated once at module load (Math.random is impure, so it must stay out of
+// render). The CSS animation replays whenever the win modal mounts.
+function makeConfetti(): ConfettiPiece[] {
+  return Array.from({ length: 28 }, (_, i) => {
+    const dir = i % 2 === 0 ? -1 : 1 // alternate left / right
+    const tx = dir * (28 + Math.random() * 86)
+    const ty = -52 + Math.random() * 150
+    const rot = Math.round(Math.random() * 760 - 380)
+    const w = 5 + Math.random() * 4
+    const h = 8 + Math.random() * 7
+    return {
+      i,
+      color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+      delay: Math.round(Math.random() * 130),
+      round: Math.random() < 0.3,
+      style: {
+        width: `${w}px`,
+        height: `${h}px`,
+        '--tx': `${tx.toFixed(1)}px`,
+        '--ty': `${ty.toFixed(1)}px`,
+        '--rot': `${rot}deg`,
+      },
+    }
+  })
+}
+
+const CONFETTI_PIECES = makeConfetti()
+
+// A one-shot celebratory burst that sprays paper pieces out to both sides of
+// the mole.
+function Confetti() {
+  return (
+    <div
+      className="pointer-events-none absolute left-1/2 top-[5.25rem] z-10 h-0 w-0"
+      aria-hidden="true"
+    >
+      {CONFETTI_PIECES.map((p) => (
+        <span
+          key={p.i}
+          className="moledoku-confetti-piece"
+          style={{
+            ...p.style,
+            background: p.color,
+            borderRadius: p.round ? '9999px' : '1.5px',
+            animationDelay: `${p.delay}ms`,
+          } as CSSProperties}
+        />
+      ))}
+    </div>
   )
 }
 
@@ -475,8 +547,9 @@ function GameSession({
 
       {status !== 'playing' && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-[#3d2d22]/45 p-8 backdrop-blur-sm">
-          <div className="w-full max-w-[20.5rem] overflow-hidden rounded-[30px] bg-[#fff8f3] px-9 pb-11 pt-9 text-center shadow-[0_20px_42px_rgba(72,45,35,0.24)]">
-            <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-[30px] bg-[#f7ede6]">
+          <div className="relative w-full max-w-[20.5rem] overflow-hidden rounded-[30px] bg-[#fff8f3] px-9 pb-11 pt-9 text-center shadow-[0_20px_42px_rgba(72,45,35,0.24)]">
+            {status === 'won' && <Confetti />}
+            <div className="relative z-10 mx-auto flex h-24 w-24 items-center justify-center rounded-[30px] bg-[#f7ede6]">
               <MoleFace large seed={status === 'won' ? 4 : 7} />
             </div>
             <h2 className="mt-5 text-2xl font-black tracking-tight text-[#99545f]">
