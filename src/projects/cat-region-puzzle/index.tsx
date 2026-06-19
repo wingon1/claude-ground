@@ -57,10 +57,10 @@ const DIFFICULTIES: Difficulty[] = ['5x5', '6x6', '7x7']
 // scales around its own centre regardless of where it sits in the SVG.
 const MOLE_CSS = `
 .moledoku-eye{transform-box:fill-box;transform-origin:center;animation:moledoku-blink 4.8s ease-in-out infinite}
-.moledoku-mouth{transform-box:fill-box;transform-origin:center;animation:moledoku-mouth 1.9s ease-in-out infinite}
-@keyframes moledoku-blink{0%,88%,100%{transform:scaleY(1)}93%{transform:scaleY(0.08)}}
-@keyframes moledoku-mouth{0%,100%{transform:scaleY(0.5)}50%{transform:scaleY(1.12)}}
-@media (prefers-reduced-motion:reduce){.moledoku-eye,.moledoku-mouth{animation:none}}
+.moledoku-tooth{transform-box:fill-box;transform-origin:top center;animation:moledoku-tooth 1.9s ease-in-out infinite}
+@keyframes moledoku-blink{0%,88%,100%{transform:scaleY(1)}93%{transform:scaleY(0.1)}}
+@keyframes moledoku-tooth{0%,100%{transform:scaleY(0.74)}50%{transform:scaleY(1.04)}}
+@media (prefers-reduced-motion:reduce){.moledoku-eye,.moledoku-tooth{animation:none}}
 `
 
 function MoleStyles() {
@@ -571,65 +571,59 @@ function MoleFace({
   seed?: number
 }) {
   const gid = useId()
-  const grad = `mole-grad-${gid}`
+  const headClip = `mole-head-${gid}`
+  const noseClip = `mole-nose-${gid}`
   // Desync instances a little so a board full of moles doesn't blink in unison.
   const blinkDelay = `${-((seed * 0.53) % 4.8).toFixed(2)}s`
-  const mouthDelay = `${-((seed * 0.37) % 1.9).toFixed(2)}s`
-  const sizeClass = large ? 'mx-auto h-16 w-16' : tiny ? 'h-6 w-6' : 'h-[74%] w-[74%]'
+  const toothDelay = `${-((seed * 0.37) % 1.9).toFixed(2)}s`
+  const sizeClass = large ? 'mx-auto h-16 w-16' : tiny ? 'h-6 w-6' : 'h-[78%] w-[78%]'
 
   return (
     <svg viewBox="0 0 100 100" className={`block ${sizeClass}`} aria-hidden="true">
       <defs>
-        <radialGradient id={grad} cx="38%" cy="26%" r="80%">
-          <stop offset="0%" stopColor="#8c6856" />
-          <stop offset="60%" stopColor="#6d4c3e" />
-          <stop offset="100%" stopColor="#573b30" />
-        </radialGradient>
+        <clipPath id={headClip}>
+          <path d="M6 50 A44 44 0 0 1 94 50 L94 86 Q94 96 84 96 L16 96 Q6 96 6 86 Z" />
+        </clipPath>
+        <clipPath id={noseClip}>
+          <rect x="44.2" y="48.5" width="11.6" height="11.6" rx="3.8" />
+        </clipPath>
       </defs>
 
-      {/* ears */}
-      <circle cx="21" cy="27" r="11" fill="#684739" />
-      <circle cx="79" cy="27" r="11" fill="#684739" />
-      <circle cx="21" cy="27" r="5" fill="#f3a4b7" />
-      <circle cx="79" cy="27" r="5" fill="#f3a4b7" />
-
-      {/* head */}
-      <ellipse cx="50" cy="55" rx="40" ry="39" fill={`url(#${grad})`} />
-
-      {/* blush */}
-      <ellipse cx="25" cy="64" rx="7" ry="4.3" fill="#f493ab" opacity="0.5" />
-      <ellipse cx="75" cy="64" rx="7" ry="4.3" fill="#f493ab" opacity="0.5" />
-
-      {/* eyes (blink together) */}
-      <g className="moledoku-eye" style={{ animationDelay: blinkDelay }}>
-        <ellipse cx="37" cy="49.5" rx="7.4" ry="8.6" fill="#211711" />
-        <circle cx="34.2" cy="46.2" r="2.7" fill="#ffffff" />
-        <circle cx="39.2" cy="52.4" r="1.3" fill="#ffffff" opacity="0.7" />
-      </g>
-      <g className="moledoku-eye" style={{ animationDelay: blinkDelay }}>
-        <ellipse cx="63" cy="49.5" rx="7.4" ry="8.6" fill="#211711" />
-        <circle cx="60.2" cy="46.2" r="2.7" fill="#ffffff" />
-        <circle cx="65.2" cy="52.4" r="1.3" fill="#ffffff" opacity="0.7" />
+      {/* head — warm two-tone (lighter left, terracotta right) */}
+      <g clipPath={`url(#${headClip})`}>
+        <rect x="0" y="0" width="50" height="100" fill="#d99c75" />
+        <rect x="50" y="0" width="50" height="100" fill="#c06f56" />
       </g>
 
-      {/* nose */}
-      <ellipse cx="50" cy="61" rx="5.6" ry="4.6" fill="#ec84a0" />
-      <circle cx="48" cy="59.3" r="1.6" fill="#ffffff" opacity="0.65" />
+      {/* eyes (simple dots, blink together) */}
+      <g className="moledoku-eye" style={{ animationDelay: blinkDelay }}>
+        <circle cx="31" cy="40" r="5.6" fill="#45454f" />
+      </g>
+      <g className="moledoku-eye" style={{ animationDelay: blinkDelay }}>
+        <circle cx="69" cy="40" r="5.6" fill="#38302b" />
+      </g>
 
-      {/* teeth */}
-      <rect x="46.6" y="65.6" width="3.1" height="4.1" rx="1.2" fill="#fffdf7" />
-      <rect x="50.3" y="65.6" width="3.1" height="4.1" rx="1.2" fill="#fffdf7" />
+      {/* muzzle — cream left, golden right */}
+      <ellipse cx="37" cy="70" rx="16.5" ry="15.5" fill="#f0e5ca" />
+      <ellipse cx="63" cy="70" rx="16.5" ry="15.5" fill="#e7c887" />
 
-      {/* mouth (puckers) */}
-      <ellipse
-        className="moledoku-mouth"
-        style={{ animationDelay: mouthDelay }}
-        cx="50"
-        cy="72.4"
-        rx="3.6"
-        ry="2.9"
-        fill="#6c3c31"
+      {/* tooth (gentle nibble) */}
+      <rect
+        className="moledoku-tooth"
+        style={{ animationDelay: toothDelay }}
+        x="46.3"
+        y="79"
+        width="7.4"
+        height="12.5"
+        rx="3"
+        fill="#fffdf7"
       />
+
+      {/* nose — slate, two-tone */}
+      <rect x="44.2" y="48.5" width="11.6" height="11.6" rx="3.8" fill="#6e6e7d" />
+      <g clipPath={`url(#${noseClip})`}>
+        <rect x="50" y="0" width="50" height="100" fill="#45444f" />
+      </g>
     </svg>
   )
 }
