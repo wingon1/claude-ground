@@ -16,15 +16,13 @@ import {
 import { TweenManager, easeOutCubic, easeInOutCubic, easeOutBack, easeOutQuad, linear } from './tween'
 import type { GameState } from './GameState'
 
-// Queue is an L: a horizontal row (front on the left, by the traffic light)
-// turning up into a vertical tail on the right. People enter top-right, come
-// down the vertical, round the corner and slide left to the front.
-const QUEUE_H = 10 // horizontal slots (incl. the corner)
-const QUEUE_V = 8 // vertical slots above the corner
-const QUEUE_WINDOW = QUEUE_H + QUEUE_V // 18 visible
-const QUEUE_HSPACING = 0.48
-const QUEUE_VSPACING = 0.4 // tighter; descending people may visually overlap
 const SLOT_COUNT = 4
+// Screen split into fixed vertical bands: grid 55% (bottom) / zone 20% (middle)
+// / queue 25% (top). The queue is a single horizontal row whose width & visible
+// count adapt to the screen ("widen horizontally" when more people are needed).
+const GRID_BAND = 0.55
+const ZONE_BAND = 0.2
+const PITCH = (50 * Math.PI) / 180
 
 interface VehicleView {
   group: THREE.Group
@@ -74,8 +72,13 @@ export class Renderer {
   private zoneZ = 0
   private queueZ = 0
   private slotSpacing = 2.4
+  private queueWindow = 14
+  private queueSpacing = 0.5
+  private halfW = 5
+  private halfH = 5
+  private camTargetZ = 0
+  private lastState: GameState | null = null
 
-  private contentBox = new THREE.Box3()
   private camBasePos = new THREE.Vector3()
   private camTarget = new THREE.Vector3()
   private shakeTime = 0
@@ -260,36 +263,26 @@ export class Renderer {
     return new THREE.Vector3(x, 0, this.zoneZ)
   }
 
-  private get queueRightX(): number {
-    return ((QUEUE_H - 1) / 2) * QUEUE_HSPACING
-  }
-
-  // Resting position of queue index i along the L (0 = front/left).
+  // Resting position of queue index i: single horizontal row, 0 = front/left.
   private queueWorld(i: number): THREE.Vector3 {
-    if (i < QUEUE_H) {
-      const x = (i - (QUEUE_H - 1) / 2) * QUEUE_HSPACING
-      return new THREE.Vector3(x, 0, this.queueZ)
-    }
-    // vertical tail above the right corner, steps 1..QUEUE_V
-    const step = i - (QUEUE_H - 1)
-    return new THREE.Vector3(this.queueRightX, 0, this.queueZ - step * QUEUE_VSPACING)
+    const x = (i - (this.queueWindow - 1) / 2) * this.queueSpacing
+    return new THREE.Vector3(x, 0, this.queueZ)
   }
 
-  // Off-frame point above the top of the vertical tail where passengers appear
-  // before descending and rounding the corner toward the front.
+  // Off-frame point at the top-right where passengers appear before sliding
+  // down-left into the row.
   private queueEntryStart(): THREE.Vector3 {
-    return new THREE.Vector3(this.queueRightX, 1.7, this.queueZ - (QUEUE_V + 1) * QUEUE_VSPACING)
+    const rightX = ((this.queueWindow - 1) / 2) * this.queueSpacing
+    return new THREE.Vector3(rightX + 1.2, 1.6, this.queueZ - 1.6)
   }
 
   // ---- level build ------------------------------------------------------
 
   buildLevel(state: GameState): void {
     this.disposeLevel()
+    this.lastState = state
     this.size = state.size
-    const half = (this.size - 1) / 2
-    this.slotSpacing = Math.max(1.7, Math.min(2.5, this.size * 0.32))
-    this.zoneZ = -half - 3.2
-    this.queueZ = this.zoneZ - 3.0
+    this.computeLayout()
 
     this.buildBoard()
     this.buildZoneMarkers()
@@ -317,11 +310,59 @@ export class Renderer {
     })
 
     this.buildQueue(state.queue)
-    this.frameContent()
+    this.applyCamera()
+  }
+
+  // Compute the banded layout (grid 55% / zone 20% / queue 25%) for the current
+  // canvas aspect. Grid is centered at world z=0; zone & queue sit above it.
+  private computeLayout(): void {
+    const w = Math.max(1, this.host.clientWidth)
+    const h = Math.max(1, this.host.clientHeight)
+    const aspect = w / h
+    const sp = Math.sin(PITCH)
+
+    // Grid fills the screen width; keep its footprint inside its 55% band.
+    const gridHalfW = this.size / 2 + 0.35
+    this.halfH = Math.max(gridHalfW / aspect, (this.size * sp) / (GRID_BAND * 2))
+    this.halfW = this.halfH * aspect
+
+    // Band centres in screen-up units (frustum centred at 0): bottom = -halfH.
+    const uGrid = -this.halfH + GRID_BAND * this.halfH // = -(1-GRID_BAND)*halfH
+    const uZone = -this.halfH + (GRID_BAND + ZONE_BAND / 2) * 2 * this.halfH
+    const uQueue = -this.halfH + (GRID_BAND + ZONE_BAND + (1 - GRID_BAND - ZONE_BAND) / 2) * 2 * this.halfH
+
+    // u = -(z - targetZ) * sp  =>  z = targetZ - u/sp. Grid centre is world z=0.
+    this.camTargetZ = uGrid / sp // so that world z=0 maps to uGrid
+    this.zoneZ = this.camTargetZ - uZone / sp
+    this.queueZ = this.camTargetZ - uQueue / sp
+
+    // Zone slots spread across most of the width.
+    this.slotSpacing = Math.max(1.7, ((this.halfW * 2 * 0.86) / SLOT_COUNT))
+    // Queue: single horizontal row across the available width.
+    const rowHalf = this.halfW - 0.4
+    this.queueSpacing = 0.52
+    this.queueWindow = Math.max(8, Math.min(24, Math.floor((rowHalf * 2) / this.queueSpacing)))
+  }
+
+  private applyCamera(): void {
+    const sp = Math.sin(PITCH)
+    const cp = Math.cos(PITCH)
+    const target = new THREE.Vector3(0, 0, this.camTargetZ)
+    this.camTarget.copy(target)
+    this.camBasePos.copy(target).add(new THREE.Vector3(0, sp, cp).multiplyScalar(60))
+    this.camera.position.copy(this.camBasePos)
+    this.camera.lookAt(target)
+    this.camera.left = -this.halfW
+    this.camera.right = this.halfW
+    this.camera.top = this.halfH
+    this.camera.bottom = -this.halfH
+    this.camera.near = 0.1
+    this.camera.far = 300
+    this.camera.updateProjectionMatrix()
+    this.camera.updateMatrixWorld(true)
   }
 
   private buildBoard(): void {
-    const half = (this.size - 1) / 2
     const pad = 0.5
     const w = this.size + pad * 2
     // Base slab
@@ -350,27 +391,12 @@ export class Renderer {
     zonePlat.position.set(0, -0.15, this.zoneZ)
     this.boardGroup.add(zonePlat)
 
-    // Queue platform — a clean L: the two arms share the same width and meet
-    // exactly at the corner (no overhang). PW = lane width.
+    // Queue platform — a single horizontal lane across the top band.
     const qMat = new THREE.MeshToonMaterial({ color: 0x252b4d, gradientMap: this.gradient })
-    const PW = 1.0
-    const cornerX = this.queueRightX
-    const xLeft = -cornerX - 0.55 // a little before the front (index 0)
-    const xRight = cornerX + PW / 2 // reach the corner's outer edge
-    // Horizontal arm
-    const hLen = xRight - xLeft
-    const qH = new THREE.Mesh(new RoundedBoxGeometry(hLen, 0.2, PW, 2, 0.09), qMat)
-    qH.position.set((xLeft + xRight) / 2, -0.1, this.queueZ)
-    this.boardGroup.add(qH)
-    // Vertical arm — from the corner up to just past the last vertical slot
-    const topZ = this.queueZ - QUEUE_V * QUEUE_VSPACING - 0.5
-    const bottomZ = this.queueZ - PW / 2 // butts against the horizontal arm
-    const vLen = bottomZ - topZ
-    const qV = new THREE.Mesh(new RoundedBoxGeometry(PW, 0.2, vLen, 2, 0.09), qMat)
-    qV.position.set(cornerX, -0.1, (topZ + bottomZ) / 2)
-    this.boardGroup.add(qV)
-
-    void half
+    const qLen = this.queueWindow * this.queueSpacing + 0.9
+    const qPlat = new THREE.Mesh(new RoundedBoxGeometry(qLen, 0.2, 1.1, 2, 0.09), qMat)
+    qPlat.position.set(0, -0.1, this.queueZ)
+    this.boardGroup.add(qPlat)
   }
 
   private makeBoardTexture(): THREE.Texture {
@@ -598,7 +624,7 @@ export class Renderer {
   private buildQueue(colors: ColorKey[]): void {
     for (const m of this.queueMeshes) this.recyclePassenger(m)
     this.queueMeshes = []
-    const n = Math.min(QUEUE_WINDOW, colors.length)
+    const n = Math.min(this.queueWindow, colors.length)
     for (let i = 0; i < n; i++) {
       this.queueMeshes.push(this.spawnQueuePassenger(colors[i], i))
     }
@@ -608,7 +634,7 @@ export class Renderer {
   // survivors (they slide left via update()), drop extras, and let new tail
   // passengers descend in from the top-right.
   private syncQueueColors(colors: ColorKey[]): void {
-    const n = Math.min(QUEUE_WINDOW, colors.length)
+    const n = Math.min(this.queueWindow, colors.length)
     while (this.queueMeshes.length > n) {
       this.recyclePassenger(this.queueMeshes.pop()!)
     }
@@ -648,7 +674,7 @@ export class Renderer {
         // boarding more than fit in the visible window: spawn from the tail
         mesh = this.makePassenger()
         this.paintPassenger(mesh, view.vehicle.color)
-        mesh.position.copy(this.queueWorld(QUEUE_WINDOW - 1))
+        mesh.position.copy(this.queueWorld(this.queueWindow - 1))
       }
       const flier = mesh
       const start = flier.position.clone()
@@ -849,71 +875,6 @@ export class Renderer {
 
   // ---- camera framing ---------------------------------------------------
 
-  private frameContent(): void {
-    const half = (this.size - 1) / 2
-    const margin = 1.2
-    // Frame the grid + zone + horizontal row ONLY (exactly as before the L).
-    // The queue's vertical tail intentionally extends above this box and is
-    // clipped off the top of the screen — grid/zone size & position stay fixed.
-    this.contentBox.min.set(-half - margin, 0, this.queueZ - 1.4)
-    this.contentBox.max.set(half + margin, 1.8, half + margin)
-    const zoneHalfW = (this.slotSpacing * SLOT_COUNT) / 2 + 0.8
-    // left edge includes the traffic light beside the front of the row
-    const queueHalfW = ((QUEUE_H - 1) / 2) * QUEUE_HSPACING + 1.3
-    const halfW = Math.max(zoneHalfW, queueHalfW)
-    if (halfW > this.contentBox.max.x) {
-      this.contentBox.min.x = -halfW
-      this.contentBox.max.x = halfW
-    }
-    const center = new THREE.Vector3()
-    this.contentBox.getCenter(center)
-    this.camTarget.copy(center)
-
-    const pitch = (56 * Math.PI) / 180
-    const dir = new THREE.Vector3(0, Math.sin(pitch), Math.cos(pitch)).normalize()
-    this.camBasePos.copy(center).addScaledVector(dir, 45)
-    this.camera.position.copy(this.camBasePos)
-    this.camera.lookAt(center)
-    this.camera.updateMatrixWorld(true)
-    this.applyFrustum()
-  }
-
-  private applyFrustum(): void {
-    // Project content box corners into camera space, fit ortho frustum.
-    const inv = this.camera.matrixWorldInverse
-    const b = this.contentBox
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
-    const corner = new THREE.Vector3()
-    for (let xi = 0; xi < 2; xi++) {
-      for (let yi = 0; yi < 2; yi++) {
-        for (let zi = 0; zi < 2; zi++) {
-          corner.set(xi ? b.max.x : b.min.x, yi ? b.max.y : b.min.y, zi ? b.max.z : b.min.z)
-          corner.applyMatrix4(inv)
-          minX = Math.min(minX, corner.x)
-          maxX = Math.max(maxX, corner.x)
-          minY = Math.min(minY, corner.y)
-          maxY = Math.max(maxY, corner.y)
-        }
-      }
-    }
-    let halfW = (maxX - minX) / 2
-    let halfH = (maxY - minY) / 2
-    halfW *= 1.06
-    halfH *= 1.06
-    const w = this.host.clientWidth || 1
-    const h = this.host.clientHeight || 1
-    const aspect = w / h
-    if (halfW / halfH < aspect) halfW = halfH * aspect
-    else halfH = halfW / aspect
-    const cx = (minX + maxX) / 2
-    const cy = (minY + maxY) / 2
-    this.camera.left = cx - halfW
-    this.camera.right = cx + halfW
-    this.camera.top = cy + halfH
-    this.camera.bottom = cy - halfH
-    this.camera.updateProjectionMatrix()
-  }
-
   resize(): void {
     const w = this.host.clientWidth
     const h = this.host.clientHeight
@@ -921,7 +882,12 @@ export class Renderer {
     this.renderer.setSize(w, h, false)
     this.composer.setSize(w, h)
     this.bloomPass.setSize(w, h)
-    this.applyFrustum()
+    // Re-derive the banded layout for the new aspect and rebuild positions.
+    if (this.lastState) this.buildLevel(this.lastState)
+    else {
+      this.computeLayout()
+      this.applyCamera()
+    }
   }
 
   // ---- picking ----------------------------------------------------------
