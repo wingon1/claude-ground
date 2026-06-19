@@ -298,7 +298,7 @@ export class Renderer {
     this.queueZ = this.queueFrameZ
     this.frameContent()
     const sp = Math.sin((56 * Math.PI) / 180)
-    const raise = 0.3 * (this.camera.top - this.camera.bottom) / sp
+    const raise = 0.05 * (this.camera.top - this.camera.bottom) / sp
     this.queueZ = this.queueFrameZ - raise
 
     this.buildBoard()
