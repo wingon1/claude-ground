@@ -57,6 +57,16 @@ export type Project = ReactProject | IframeProject | ExternalProject
  */
 export const projects: Project[] = [
   {
+    id: 'mole-region-puzzle',
+    title: 'Moledoku',
+    description:
+      'A mole-region logic puzzle with solver-verified levels: one mole per row, column, and color region, with no diagonal touching.',
+    emoji: 'M',
+    tags: ['react', 'logic', 'puzzle', 'levels'],
+    kind: 'react',
+    load: () => import('./cat-region-puzzle'),
+  },
+  {
     id: 'bus-escape',
     title: '🚌 Bus Escape: Traffic Jam',
     description:
