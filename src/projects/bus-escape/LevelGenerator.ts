@@ -66,19 +66,20 @@ function paramsFor(level: number): BandParams {
     const occupancy = 0.52 + ((level - 5) / 9) * 0.12 // 0.52..0.64
     return { size, sizes: ['car', 'bus'], colorCount, occupancy }
   }
-  // Intermediate (7x7): all 5 colors, cars + buses.
+  // Intermediate (7x7): 5 colors, then the 6th from L25.
   if (level <= 40) {
+    const colorCount = level >= 25 ? 6 : 5
     const occupancy = 0.6 + ((level - 15) / 25) * 0.12 // 0.60..0.72
-    return { size: 7, sizes: ['car', 'bus'], colorCount: 5, occupancy }
+    return { size: 7, sizes: ['car', 'bus'], colorCount, occupancy }
   }
   // Hard (8x8): introduce long buses.
   if (level <= 70) {
     const occupancy = 0.66 + ((level - 41) / 29) * 0.14 // 0.66..0.80
-    return { size: 8, sizes: ['car', 'bus', 'long'], colorCount: 5, occupancy }
+    return { size: 8, sizes: ['car', 'bus', 'long'], colorCount: 6, occupancy }
   }
   // Expert (9x9): all sizes, max density.
   const occupancy = 0.8 + ((level - 71) / 29) * 0.12 // 0.80..0.92
-  return { size: 9, sizes: ['car', 'bus', 'long'], colorCount: 5, occupancy }
+  return { size: 9, sizes: ['car', 'bus', 'long'], colorCount: 6, occupancy }
 }
 
 function pick<T>(arr: T[], rand: () => number): T {

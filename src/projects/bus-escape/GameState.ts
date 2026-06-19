@@ -126,7 +126,7 @@ export class GameState {
     this.moves = 0
     this.status = 'playing'
     this.inputLocked = false
-    const palette = COLOR_KEYS.slice(0, 5)
+    const palette = COLOR_KEYS.slice(0, 6)
     for (let i = 0; i < HOLDING_COUNT; i++) this.holding.push(this.makeIncoming(palette))
     this.refillQueue()
   }
@@ -157,7 +157,7 @@ export class GameState {
 
   addIncoming(): void {
     if (this.holding.length >= HOLDING_COUNT) return
-    const palette = COLOR_KEYS.slice(0, 5)
+    const palette = COLOR_KEYS.slice(0, 6)
     this.holding.push(this.makeIncoming(palette))
   }
 

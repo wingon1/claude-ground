@@ -1,7 +1,7 @@
 // Bus Escape: Traffic Jam — shared types & constants.
 // Independent project: no shared code with other works in this repo.
 
-export type ColorKey = 'red' | 'blue' | 'green' | 'yellow' | 'pink'
+export type ColorKey = 'red' | 'blue' | 'green' | 'yellow' | 'pink' | 'cyan'
 export type Orientation = 'h' | 'v'
 export type Facing = 'up' | 'down' | 'left' | 'right'
 export type SizeKey = 'car' | 'bus' | 'long'
@@ -18,7 +18,7 @@ export const SIZE_DEFS: Record<SizeKey, SizeDef> = {
   long: { size: 'long', length: 4, capacity: 10 },
 }
 
-export const COLOR_KEYS: ColorKey[] = ['red', 'blue', 'green', 'yellow', 'pink']
+export const COLOR_KEYS: ColorKey[] = ['red', 'blue', 'green', 'yellow', 'pink', 'cyan']
 
 export const COLOR_HEX: Record<ColorKey, number> = {
   red: 0xff5a5a,
@@ -26,6 +26,7 @@ export const COLOR_HEX: Record<ColorKey, number> = {
   green: 0x42cf6b,
   yellow: 0xffcf3a,
   pink: 0xff6fb5,
+  cyan: 0x2fd4cf,
 }
 
 // Slightly darker shade used for accents / roof.
@@ -35,6 +36,7 @@ export const COLOR_DARK: Record<ColorKey, number> = {
   green: 0x2aa450,
   yellow: 0xd9a700,
   pink: 0xd94e92,
+  cyan: 0x1fa39d,
 }
 
 export interface Vehicle {
