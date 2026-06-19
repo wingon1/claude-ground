@@ -33,21 +33,20 @@ function mulberry32(seed: number) {
 
 type Cfg = { size: number; target: number; truckProb: number }
 
-/** Difficulty curve from the spec, smoothly ramped across 1..100. */
+/** Aggressive early ramp, then high-density plateaus for stable late play. */
 function configFor(level: number): Cfg {
   const L = Math.max(1, Math.min(100, level))
-  if (L <= 10) {
-    return { size: 5, target: 3 + Math.round((L - 1) * (2 / 9)), truckProb: 0 }
+  if (L <= 15) {
+    const f = (L - 1) / 14 // 0..1
+    return { size: 6, target: 10 + Math.round(f * 4), truckProb: 0.18 + f * 0.1 }
   }
-  if (L <= 50) {
-    const f = (L - 11) / 39 // 0..1
-    return { size: 6, target: 8 + Math.round(f * 7), truckProb: 0.18 + f * 0.12 }
+  if (L <= 55) {
+    return { size: 7, target: 20, truckProb: 0.38 }
   }
-  const f = (L - 51) / 49 // 0..1
   return {
-    size: f < 0.5 ? 7 : 8,
-    target: 16 + Math.round(f * 12),
-    truckProb: 0.3 + f * 0.15,
+    size: 8,
+    target: 27,
+    truckProb: 0.48,
   }
 }
 
@@ -69,7 +68,7 @@ function packCandidate(cfg: Cfg, seed: number): CarSpec[] {
   // Cap attempts so dense levels terminate even when the lot is nearly full.
   // Dense lots reject most random (orient, lane, edge) combos, so give the
   // packing loop a generous budget to actually reach the target car count.
-  const maxAttempts = cfg.target * 150
+  const maxAttempts = cfg.target * 500
   let attempts = 0
 
   while (cars.length < cfg.target && attempts < maxAttempts) {
@@ -124,7 +123,7 @@ function packCandidate(cfg: Cfg, seed: number): CarSpec[] {
       const dq = fromLow ? q : N - length - q
       return dq - dp
     })
-    const pick = candidates[Math.floor(rand() * Math.min(candidates.length, 3))]
+    const pick = candidates[Math.floor(rand() * Math.min(candidates.length, 2))]
 
     const id = cars.length
     for (let i = 0; i < length; i++) {
@@ -143,7 +142,7 @@ export function generateLevel(level: number): LevelSpec {
   // Reverse-packing is seed-sensitive: some seeds paint into a low-density
   // corner. Generate several deterministic candidates and keep the densest so
   // late levels reliably approach a full lot. More tries for harder levels.
-  const tries = level <= 10 ? 4 : level <= 50 ? 8 : 14
+  const tries = level <= 15 ? 14 : level <= 55 ? 22 : 30
   let best: CarSpec[] = []
   let bestFill = -1
   for (let k = 0; k < tries; k++) {
