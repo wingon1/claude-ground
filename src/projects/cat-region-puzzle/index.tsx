@@ -500,6 +500,7 @@ function GameSession({
             className="mt-11 grid w-full max-w-[21rem] touch-manipulation gap-1.5 rounded-[22px] bg-white p-2.5 shadow-[0_12px_28px_rgba(125,85,78,0.16)]"
             style={{
               gridTemplateColumns: `repeat(${level.size}, minmax(0, 1fr))`,
+              gridTemplateRows: `repeat(${level.size}, minmax(0, 1fr))`,
               aspectRatio: '1 / 1',
             }}
             aria-label={`Level ${level.id} board`}
