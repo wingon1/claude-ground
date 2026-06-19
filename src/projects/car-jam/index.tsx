@@ -107,7 +107,7 @@ export default function CarJam() {
       {/* Hint, fades out once the player has cleared a car */}
       {cleared === 0 && s.status === 'playing' && (
         <div className="pointer-events-none absolute left-1/2 top-[64%] -translate-x-1/2 rounded-full bg-black/40 px-4 py-1.5 text-xs font-medium text-white/80 backdrop-blur">
-          Swipe a car along its lane to drive it out
+          Swipe cars forward through the exit
         </div>
       )}
     </div>

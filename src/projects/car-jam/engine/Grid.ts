@@ -13,9 +13,9 @@ export type MoveRange = {
   min: number
   /** Highest anchor the car can slide to without hitting another car. */
   max: number
-  /** True when the path to the low (anchor-decreasing) edge is fully clear. */
+  /** True when the path to the low (anchor-decreasing) edge is a valid exit. */
   exitMin: boolean
-  /** True when the path to the high (anchor-increasing) edge is fully clear. */
+  /** True when the path to the high (anchor-increasing) edge is a valid exit. */
   exitMax: boolean
 }
 
@@ -82,7 +82,7 @@ export class Grid {
     return {
       min,
       max,
-      exitMin: min === 0,
+      exitMin: false,
       exitMax: max === this.size - length,
     }
   }
