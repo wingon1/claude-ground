@@ -68,9 +68,9 @@ export const projects: Project[] = [
   },
   {
     id: 'car-jam',
-    title: '🚗 Car Jam — Slide & Board Puzzle',
+    title: '🚗 Car Jam — 3D Parking Puzzle',
     description:
-      'Slide different-sized cars out of a jammed lot (blocked cars are stuck!) so the queue of colour-matched passengers can hop aboard. 100 procedurally generated, always-solvable stages. Portrait, mobile-first.',
+      'Swipe colourful low-poly cars out of a jammed lot. 100 procedurally generated, always-solvable stages. Portrait, mobile-first.',
     emoji: '🚗',
     tags: ['react', 'three.js', '3d', 'puzzle'],
     kind: 'react',

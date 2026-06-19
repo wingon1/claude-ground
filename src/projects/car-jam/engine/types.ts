@@ -1,38 +1,28 @@
-/* Shared types for the Car Jam (slide-out + color-boarding) engine. */
+/* Shared types for the Car Jam engine. */
 
 export type Orient = 'h' | 'v'
 
-/**
- * A car in the lot. Occupies `length` contiguous cells along its axis.
- *  - 'h' (horizontal): cells (anchor..anchor+length-1, lane), exits LEFT
- *  - 'v' (vertical):   cells (lane, anchor..anchor+length-1), exits UP
- * `length` doubles as the seat count (passengers it carries).
- */
+/** A single car's logical placement on the grid. */
 export type CarSpec = {
+  length: number // 2 = sedan, 3 = truck/bus
   orient: Orient
-  length: number
-  anchor: number
-  lane: number
+  anchor: number // index of the car's lowest occupied cell along its axis
+  lane: number // the fixed cross-axis coordinate
   colorIndex: number
 }
 
 export type LevelSpec = {
   level: number
-  cols: number
-  rows: number
-  bays: number
+  size: number
   cars: CarSpec[]
-  /** Queue of passenger colour indices, front of line first. */
-  queue: number[]
-  /** A guaranteed-winnable extraction order: indices into `cars`. */
-  order: number[]
 }
 
 /** Snapshot pushed to the React HUD. */
 export type GameState = {
   level: number
-  queueTotal: number
-  queueLeft: number
-  status: 'playing' | 'won' | 'stuck'
+  total: number
+  remaining: number
+  status: 'playing' | 'won'
   muted: boolean
+  canUndo: boolean
 }
