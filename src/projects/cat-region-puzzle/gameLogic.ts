@@ -246,5 +246,5 @@ export function solveLevel(level: Level, limit = 2): SolveResult {
 export function validateLevel(level: Level): boolean {
   if (!validateSolution(level)) return false
   if (!validateRegionConnectivity(level)) return false
-  return solveLevel(level, 1).count >= 1
+  return solveLevel(level, 2).count === 1
 }

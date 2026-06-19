@@ -193,6 +193,6 @@ export const levelPackSummary = {
   five: levels.filter((level) => level.difficulty === '5x5').length,
   six: levels.filter((level) => level.difficulty === '6x6').length,
   seven: levels.filter((level) => level.difficulty === '7x7').length,
-  solvable: levels.every((level) => solveLevel(level, 1).count >= 1),
+  unique: levels.every((level) => solveLevel(level, 2).count === 1),
   noLocks: levels.every((level) => level.lockedCats.length === 0),
 }
