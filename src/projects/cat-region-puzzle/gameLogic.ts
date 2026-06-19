@@ -18,7 +18,7 @@ export type CellState = 'empty' | 'cat' | 'mark'
 
 export type Board = CellState[][]
 
-export type ConflictReason = 'row' | 'column' | 'region' | 'diagonal' | 'locked'
+export type ConflictReason = 'row' | 'column' | 'region' | 'locked'
 
 export type SolveResult = {
   count: number
@@ -92,9 +92,6 @@ export function getConflicts(
     if (cat.row === row) reasons.add('row')
     if (cat.col === col) reasons.add('column')
     if (level.regions[cat.row][cat.col] === regionId) reasons.add('region')
-    if (Math.abs(cat.row - row) === 1 && Math.abs(cat.col - col) === 1) {
-      reasons.add('diagonal')
-    }
   }
 
   return [...reasons]
@@ -120,17 +117,6 @@ export function checkWin(board: Board, level: Level): boolean {
 
   if (rows.size !== level.size || cols.size !== level.size || regions.size !== level.size) {
     return false
-  }
-
-  for (let i = 0; i < cats.length; i++) {
-    for (let j = i + 1; j < cats.length; j++) {
-      if (
-        Math.abs(cats[i].row - cats[j].row) === 1 &&
-        Math.abs(cats[i].col - cats[j].col) === 1
-      ) {
-        return false
-      }
-    }
   }
 
   return true
@@ -199,14 +185,6 @@ export function validateSolution(level: Level): boolean {
     return false
   }
 
-  for (let i = 0; i < level.solution.length; i++) {
-    for (let j = i + 1; j < level.solution.length; j++) {
-      const a = level.solution[i]
-      const b = level.solution[j]
-      if (Math.abs(a.row - b.row) === 1 && Math.abs(a.col - b.col) === 1) return false
-    }
-  }
-
   return level.lockedCats.every((cat) => isSolutionCell(level, cat.row, cat.col))
 }
 
@@ -222,12 +200,6 @@ export function solveLevel(level: Level, limit = 2): SolveResult {
     const regionId = level.regions[cat.row][cat.col]
     if (lockedByRow.has(cat.row) || usedColumns.has(cat.col) || usedRegions.has(regionId)) {
       return { count: 0, firstSolution: [] }
-    }
-
-    for (const other of placed) {
-      if (Math.abs(cat.row - other.row) === 1 && Math.abs(cat.col - other.col) === 1) {
-        return { count: 0, firstSolution: [] }
-      }
     }
 
     lockedByRow.set(cat.row, cat)
@@ -254,15 +226,6 @@ export function solveLevel(level: Level, limit = 2): SolveResult {
     for (let col = 0; col < level.size; col++) {
       const regionId = level.regions[row][col]
       if (usedColumns.has(col) || usedRegions.has(regionId)) continue
-
-      let touchesDiagonally = false
-      for (const cat of placed) {
-        if (Math.abs(cat.row - row) === 1 && Math.abs(cat.col - col) === 1) {
-          touchesDiagonally = true
-          break
-        }
-      }
-      if (touchesDiagonally) continue
 
       usedColumns.add(col)
       usedRegions.add(regionId)

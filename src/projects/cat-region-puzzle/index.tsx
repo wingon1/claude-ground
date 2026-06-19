@@ -32,23 +32,23 @@ type Snapshot = {
   status: Status
 }
 
-const REGION_COLORS: JellyColor[] = [
-  { base: '#f8c88e', light: '#ffe8bc', shadow: '#d79357' },
-  { base: '#f4df75', light: '#fff4ac', shadow: '#c9aa43' },
-  { base: '#9bd8a5', light: '#cef0c9', shadow: '#6fae77' },
-  { base: '#98d9df', light: '#d3f1f2', shadow: '#65aeb7' },
-  { base: '#bea9ea', light: '#e3d8ff', shadow: '#9076c7' },
-  { base: '#f0a9bd', light: '#ffd8df', shadow: '#c6738b' },
-  { base: '#d9b28a', light: '#f2d4b0', shadow: '#a67955' },
+type CellColor = {
+  base: string
+  light: string
+  text: string
+}
+
+const REGION_COLORS: CellColor[] = [
+  { base: '#f36f9e', light: '#ff9ec0', text: '#9b375e' },
+  { base: '#ffd04a', light: '#ffe27a', text: '#9f7221' },
+  { base: '#7fc8ed', light: '#aee0f7', text: '#3b7fa4' },
+  { base: '#b9b5e8', light: '#d2cff7', text: '#706aad' },
+  { base: '#9fdc9d', light: '#c6efc1', text: '#4b9456' },
+  { base: '#f2ae78', light: '#ffd0a6', text: '#a66035' },
+  { base: '#d6b18a', light: '#edcfac', text: '#8d6346' },
 ]
 
 const DIFFICULTIES: Difficulty[] = ['5x5', '6x6', '7x7']
-
-type JellyColor = {
-  base: string
-  light: string
-  shadow: string
-}
 
 function cloneBoard(board: Board): Board {
   return board.map((row) => [...row])
@@ -64,6 +64,17 @@ function createSnapshot(board: Board, hearts: number, status: Status): Snapshot 
 
 function nextPlayableLevel(currentIndex: number, count: number): number {
   return (currentIndex + 1) % count
+}
+
+function previousPlayableLevel(currentIndex: number, count: number): number {
+  return (currentIndex - 1 + count) % count
+}
+
+function conflictText(reasons: string[]): string {
+  if (reasons.includes('row')) return '같은 행에는 한 마리만 들어갈 수 있어요.'
+  if (reasons.includes('column')) return '같은 열에는 한 마리만 들어갈 수 있어요.'
+  if (reasons.includes('region')) return '같은 색상에는 한 마리만 들어갈 수 있어요.'
+  return '여기에는 놓을 수 없어요.'
 }
 
 export default function CatRegionPuzzle() {
@@ -115,7 +126,7 @@ function GameSession({
   const [history, setHistory] = useState<Snapshot[]>([])
   const [hint, setHint] = useState<Coord | null>(null)
   const [mistake, setMistake] = useState<Coord | null>(null)
-  const [notice, setNotice] = useState('Place one mole in every row, column, and color region.')
+  const [notice, setNotice] = useState('색상, 열, 행마다 두더지 1마리')
 
   const catsPlaced = useMemo(() => getCats(board).length, [board])
   const lockedKeys = useMemo(
@@ -147,20 +158,19 @@ function GameSession({
 
     if (board[row][col] === 'cat') {
       if (isLocked(level, row, col)) {
-        setNotice('Locked moles are part of the puzzle start.')
+        setNotice('처음부터 있는 두더지는 고정이에요.')
         return
       }
       pushHistory()
       const next = cloneBoard(board)
       next[row][col] = 'empty'
       setBoard(next)
-      setNotice('Mole removed.')
+      setNotice('두더지를 뺐어요.')
       return
     }
 
     if (!canPlaceCat(board, level, row, col)) {
-      const conflicts = getConflicts(board, level, row, col)
-      loseHeart(row, col, `Conflict: ${conflicts.join(', ') || 'blocked cell'}.`)
+      loseHeart(row, col, conflictText(getConflicts(board, level, row, col)))
       return
     }
 
@@ -169,7 +179,7 @@ function GameSession({
     next[row][col] = 'cat'
     setBoard(next)
     setHint(null)
-    setNotice('Good placement.')
+    setNotice('좋아요!')
     if (checkWin(next, level)) setStatus('won')
   }
 
@@ -185,7 +195,7 @@ function GameSession({
     next[row][col] = board[row][col] === 'mark' ? 'empty' : 'mark'
     setBoard(next)
     setHint(null)
-    setNotice(next[row][col] === 'mark' ? 'Marked as impossible.' : 'Mark cleared.')
+    setNotice(next[row][col] === 'mark' ? '여긴 아니라고 표시했어요.' : '표시를 지웠어요.')
   }
 
   const handleCell = (row: number, col: number) => {
@@ -202,7 +212,7 @@ function GameSession({
     setHistory((items) => items.slice(0, -1))
     setHint(null)
     setMistake(null)
-    setNotice('Undid the last move.')
+    setNotice('한 수 되돌렸어요.')
   }
 
   const restart = () => {
@@ -212,17 +222,17 @@ function GameSession({
     setHistory([])
     setHint(null)
     setMistake(null)
-    setNotice('Level restarted.')
+    setNotice('다시 시작해요.')
   }
 
   const showHint = () => {
     const nextCat = level.solution.find((cat) => board[cat.row][cat.col] !== 'cat')
     if (!nextCat) {
-      setNotice('All moles are already placed.')
+      setNotice('이미 다 찾았어요.')
       return
     }
     setHint(nextCat)
-    setNotice('Inspect the highlighted cell and its row, column, region, and diagonals.')
+    setNotice('반짝이는 칸을 살펴봐요.')
   }
 
   const goToLevel = (index: number) => {
@@ -233,154 +243,155 @@ function GameSession({
     setLevelIndex((index) => nextPlayableLevel(index, availableLevels.length))
   }
 
-  return (
-    <div className="h-full w-full overflow-auto bg-[#f7ead7] text-[#3d2d22]">
-      <div className="mx-auto flex min-h-full max-w-5xl flex-col px-4 py-5 sm:px-6">
-        <header className="pt-12">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#dcb486] shadow-[inset_0_4px_0_rgba(255,255,255,0.45),0_7px_0_#a87750,0_12px_20px_rgba(87,56,34,0.18)]">
-                <MoleFace />
-              </div>
-              <div>
-                <div className="text-xs font-black uppercase tracking-[0.18em] text-[#9a6845]">
-                  Burrow Puzzle
-                </div>
-                <h1 className="text-3xl font-black leading-tight text-[#3d2d22] sm:text-4xl">
-                  Moledoku
-                </h1>
-              </div>
-            </div>
+  const previousLevel = () => {
+    setLevelIndex((index) => previousPlayableLevel(index, availableLevels.length))
+  }
 
-            <div className="flex items-center justify-between gap-3 rounded-[18px] bg-[#fff7ea]/90 px-3 py-2 shadow-[0_8px_0_#d5b58d,0_16px_28px_rgba(91,59,35,0.12)] ring-1 ring-[#8b674d]/10 sm:min-w-64">
-              <div className="flex items-center gap-1.5">
-                {Array.from({ length: 3 }, (_, index) => (
-                  <span
-                    key={index}
-                    className={`h-3.5 w-3.5 rounded-full shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] ${
-                      index < hearts ? 'bg-[#ef6b63]' : 'bg-[#decab3]'
-                    }`}
-                  />
-                ))}
-              </div>
-              <span className="text-sm font-black text-[#7b5a42]">
-                {catsPlaced}/{level.size} moles
-              </span>
-            </div>
+  return (
+    <div className="min-h-full w-full overflow-auto bg-[#f7f7f7] px-3 py-5 text-[#87515b]">
+      <div className="mx-auto flex min-h-[calc(100dvh-2.5rem)] w-full max-w-[28rem] flex-col overflow-hidden rounded-[2.25rem] border border-[#eadfd8] bg-[#f8f3ef] shadow-[0_16px_40px_rgba(96,68,52,0.16)]">
+        <header className="px-5 pt-8">
+          <div className="grid grid-cols-[2.75rem_1fr_2.75rem] items-center">
+            <RoundIconButton ariaLabel="이전 스테이지" onClick={previousLevel}>
+              &lt;
+            </RoundIconButton>
+            <h1 className="text-center text-2xl font-black text-[#99545f]">
+              레벨 {levelIndex + 1}
+            </h1>
+            <RoundIconButton ariaLabel="다시 시작" onClick={restart}>
+              S
+            </RoundIconButton>
           </div>
 
-          <div className="mt-5 grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
-            <ControlGroup label="Burrow size">
-              {DIFFICULTIES.map((difficulty) => (
-                <PillButton
-                  key={difficulty}
-                  active={selectedDifficulty === difficulty}
-                  onClick={() => selectDifficulty(difficulty)}
-                  ariaLabel={`Select ${difficulty} burrow`}
-                >
-                  {difficulty}
-                </PillButton>
-              ))}
-            </ControlGroup>
+          <div className="mt-4 flex justify-center gap-2">
+            {DIFFICULTIES.map((difficulty) => (
+              <DifficultyButton
+                key={difficulty}
+                active={selectedDifficulty === difficulty}
+                onClick={() => selectDifficulty(difficulty)}
+              >
+                {difficulty}
+              </DifficultyButton>
+            ))}
+          </div>
 
-            <ControlGroup label="Stage">
-              {availableLevels.map((item, index) => (
-                <StageButton
-                  key={item.id}
-                  active={index === levelIndex}
-                  onClick={() => goToLevel(index)}
-                  ariaLabel={`Open ${selectedDifficulty} puzzle ${index + 1}`}
+          <div className="mt-3 flex items-center justify-center gap-3">
+            <StatusPill>
+              <MoleFace tiny />
+              <span className="text-[#1fb26d]">
+                {catsPlaced}/{level.size}
+              </span>
+            </StatusPill>
+            <StatusPill>
+              {Array.from({ length: 3 }, (_, index) => (
+                <span
+                  key={index}
+                  className={index < hearts ? 'text-[#f0444d]' : 'text-[#d8ccc7]'}
                 >
-                  {index + 1}
-                </StageButton>
+                  ♥
+                </span>
               ))}
-            </ControlGroup>
+            </StatusPill>
+          </div>
+
+          <div className="mt-4 grid grid-cols-3 gap-1.5">
+            <RuleChip active>색상마다 두더지 1마리</RuleChip>
+            <RuleChip>열과 행마다 두더지 1마리</RuleChip>
+            <RuleChip>대각선은 허용</RuleChip>
           </div>
         </header>
 
-        <main className="flex flex-1 flex-col items-center gap-4 py-5">
-          <section className="w-full max-w-[min(92vw,39rem)]">
-            <div
-              className="grid touch-manipulation gap-[clamp(0.22rem,1vw,0.42rem)] rounded-[22px] bg-[#6f4f37] p-[clamp(0.45rem,1.5vw,0.75rem)] shadow-[inset_0_5px_0_rgba(255,255,255,0.16),0_12px_0_#4e3524,0_24px_36px_rgba(75,48,29,0.24)]"
-              style={{
-                gridTemplateColumns: `repeat(${level.size}, minmax(0, 1fr))`,
-                aspectRatio: '1 / 1',
-              }}
-              aria-label={`Level ${level.id} board`}
-            >
-              {board.map((row, rowIndex) =>
-                row.map((cell, colIndex) => (
-                  <BoardCell
-                    key={`${rowIndex}-${colIndex}`}
-                    cell={cell}
-                    level={level}
-                    row={rowIndex}
-                    col={colIndex}
-                    isHint={hint?.row === rowIndex && hint.col === colIndex}
-                    isMistake={mistake?.row === rowIndex && mistake.col === colIndex}
-                    isLocked={lockedKeys.has(`${rowIndex}:${colIndex}`)}
-                    onClick={() => handleCell(rowIndex, colIndex)}
-                    onDoubleClick={() => placeCat(rowIndex, colIndex)}
-                  />
-                )),
-              )}
-            </div>
-          </section>
+        <main className="relative z-10 flex flex-1 flex-col items-center px-5 pb-4 pt-8">
+          <div
+            className="grid w-full max-w-[19.5rem] touch-manipulation gap-1.5 rounded-[14px] bg-white p-1.5 shadow-[0_8px_20px_rgba(125,85,78,0.14)]"
+            style={{
+              gridTemplateColumns: `repeat(${level.size}, minmax(0, 1fr))`,
+              aspectRatio: '1 / 1',
+            }}
+            aria-label={`Level ${level.id} board`}
+          >
+            {board.map((row, rowIndex) =>
+              row.map((cell, colIndex) => (
+                <BoardCell
+                  key={`${rowIndex}-${colIndex}`}
+                  cell={cell}
+                  level={level}
+                  row={rowIndex}
+                  col={colIndex}
+                  isHint={hint?.row === rowIndex && hint.col === colIndex}
+                  isMistake={mistake?.row === rowIndex && mistake.col === colIndex}
+                  isLocked={lockedKeys.has(`${rowIndex}:${colIndex}`)}
+                  onClick={() => handleCell(rowIndex, colIndex)}
+                  onDoubleClick={() => placeCat(rowIndex, colIndex)}
+                />
+              )),
+            )}
+          </div>
 
-          <p className="min-h-6 max-w-xl text-center text-sm font-bold text-[#7b5a42]">
-            {notice}
-          </p>
+          <p className="mt-4 min-h-5 text-center text-xs font-black text-[#a06970]">{notice}</p>
 
-          <div className="grid w-full max-w-xl grid-cols-3 gap-2 sm:grid-cols-6">
-            <ToolButton active={mode === 'cat'} onClick={() => setMode('cat')} ariaLabel="Mole mode">
-              <span className="flex items-center justify-center">
-                <MoleFace tiny />
-              </span>
-              Mole
-            </ToolButton>
-            <ToolButton active={mode === 'mark'} onClick={() => setMode('mark')} ariaLabel="X mark mode">
-              <span className="text-xl leading-none">X</span>
-              Mark
-            </ToolButton>
-            <ToolButton onClick={undo} disabled={history.length === 0} ariaLabel="Undo">
-              <span className="text-xl leading-none">U</span>
-              Undo
-            </ToolButton>
-            <ToolButton onClick={showHint} ariaLabel="Hint">
-              <span className="text-xl leading-none">?</span>
-              Hint
-            </ToolButton>
-            <ToolButton onClick={restart} ariaLabel="Restart">
-              <span className="text-xl leading-none">R</span>
-              Reset
-            </ToolButton>
-            <ToolButton onClick={nextLevel} ariaLabel="Next stage">
-              <span className="text-xl leading-none">&gt;</span>
-              Next
-            </ToolButton>
+          <div className="mt-3 grid w-full max-w-[19.5rem] grid-cols-5 gap-1.5">
+            {availableLevels.map((item, index) => (
+              <StageDot
+                key={item.id}
+                active={index === levelIndex}
+                onClick={() => goToLevel(index)}
+                ariaLabel={`${selectedDifficulty} ${index + 1}번 스테이지`}
+              >
+                {index + 1}
+              </StageDot>
+            ))}
+          </div>
+
+          <div className="mt-4 grid w-full max-w-[19.5rem] grid-cols-5 gap-2">
+            <ModeButton active={mode === 'cat'} onClick={() => setMode('cat')} ariaLabel="두더지 놓기">
+              <MoleFace tiny />
+            </ModeButton>
+            <ModeButton active={mode === 'mark'} onClick={() => setMode('mark')} ariaLabel="X 표시">
+              X
+            </ModeButton>
+            <ModeButton onClick={undo} disabled={history.length === 0} ariaLabel="되돌리기">
+              U
+            </ModeButton>
+            <ModeButton onClick={showHint} ariaLabel="힌트">
+              ?
+            </ModeButton>
+            <ModeButton onClick={nextLevel} ariaLabel="다음 스테이지">
+              &gt;
+            </ModeButton>
           </div>
         </main>
+
+        <footer className="relative mt-auto h-28 overflow-hidden bg-[#8edaf4]">
+          <div className="absolute -top-9 left-1/2 h-20 w-[120%] -translate-x-1/2 rounded-[50%] bg-[#f8f3ef]" />
+          <div className="absolute left-1/2 top-2 h-11 w-16 -translate-x-1/2">
+            <div className="absolute bottom-0 left-1/2 h-9 w-11 -translate-x-1/2 rounded-t-full bg-[#64c3e7]" />
+            <div className="absolute left-4 top-0 h-5 w-5 rotate-[-18deg] rounded-[5px] bg-[#64c3e7]" />
+            <div className="absolute right-4 top-0 h-5 w-5 rotate-[18deg] rounded-[5px] bg-[#64c3e7]" />
+          </div>
+          <div className="absolute inset-x-0 bottom-5 text-center text-3xl font-black text-white drop-shadow-[0_3px_0_#45aad1]">
+            두더지를 찾아라
+          </div>
+          <div className="absolute left-8 top-12 text-[#70c9e9]">✿</div>
+          <div className="absolute right-12 top-10 text-[#70c9e9]">✿</div>
+        </footer>
       </div>
 
       {status !== 'playing' && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-[#2f2a24]/55 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-[22px] bg-[#fff8ed] p-6 text-center shadow-[0_12px_0_#d8b98d,0_28px_42px_rgba(58,38,24,0.22)] ring-1 ring-[#8b674d]/10">
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-[#3d2d22]/45 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-[2rem] bg-[#fff8f3] p-6 text-center shadow-[0_18px_38px_rgba(72,45,35,0.2)]">
             <MoleFace large />
-            <h2 className="mt-4 text-2xl font-black text-[#3d2d22]">
-              {status === 'won' ? 'Burrow cleared' : 'Path blocked'}
+            <h2 className="mt-4 text-2xl font-black text-[#99545f]">
+              {status === 'won' ? '찾았다!' : '앗, 막혔어요'}
             </h2>
-            <p className="mt-2 text-sm font-semibold text-[#756454]">
+            <p className="mt-2 text-sm font-bold text-[#9a6b6f]">
               {status === 'won'
-                ? 'Every mole found a cozy room.'
-                : 'Undo the last dig or start this burrow again.'}
+                ? '모든 두더지가 자기 색상 굴을 찾았어요.'
+                : '되돌리거나 다시 시작해봐요.'}
             </p>
             <div className="mt-5 grid grid-cols-2 gap-2">
-              <button type="button" onClick={restart} className={actionButtonClass}>
-                Replay
-              </button>
-              <button type="button" onClick={nextLevel} className={actionButtonClass}>
-                Next
-              </button>
+              <ModalButton onClick={restart}>다시 하기</ModalButton>
+              <ModalButton onClick={nextLevel}>다음</ModalButton>
             </div>
           </div>
         </div>
@@ -410,21 +421,15 @@ function BoardCell({
   onClick: () => void
   onDoubleClick: () => void
 }) {
-  const regionId = level.regions[row][col]
-  const color = REGION_COLORS[regionId % REGION_COLORS.length]
+  const color = REGION_COLORS[level.regions[row][col] % REGION_COLORS.length]
 
   const style: CSSProperties = {
-    background: [
-      'radial-gradient(circle at 28% 22%, rgba(255,255,255,0.88) 0 10%, rgba(255,255,255,0.28) 11% 18%, transparent 19%)',
-      `linear-gradient(145deg, ${color.light} 0%, ${color.base} 54%, ${color.shadow} 100%)`,
-    ].join(', '),
+    background: `linear-gradient(145deg, ${color.light} 0%, ${color.base} 72%)`,
     boxShadow: [
-      'inset 0 3px 0 rgba(255,255,255,0.58)',
-      'inset 0 -5px 0 rgba(73,43,24,0.18)',
-      '0 5px 0 rgba(73,43,24,0.28)',
-      '0 9px 12px rgba(73,43,24,0.14)',
-      isHint ? '0 0 0 5px rgba(82,151,107,0.55)' : '',
-      isMistake ? '0 0 0 5px rgba(219,77,67,0.65)' : '',
+      'inset 0 2px 0 rgba(255,255,255,0.35)',
+      'inset 0 -2px 0 rgba(120,75,75,0.12)',
+      isHint ? '0 0 0 4px rgba(255,255,255,0.88), 0 0 0 7px rgba(117,198,235,0.75)' : '',
+      isMistake ? '0 0 0 5px rgba(255,105,116,0.65)' : '',
     ]
       .filter(Boolean)
       .join(', '),
@@ -435,20 +440,23 @@ function BoardCell({
       type="button"
       onClick={onClick}
       onDoubleClick={onDoubleClick}
-      className={`relative flex min-h-0 min-w-0 items-center justify-center overflow-hidden rounded-[clamp(0.55rem,1.8vw,1rem)] border border-white/40 transition duration-150 hover:-translate-y-0.5 active:translate-y-1 active:scale-[0.97] ${
-        isHint ? 'z-10' : ''
+      className={`relative flex min-h-0 min-w-0 items-center justify-center overflow-hidden rounded-[6px] transition active:scale-95 ${
+        isHint || isMistake ? 'z-10' : ''
       } ${isMistake ? 'animate-pulse' : ''}`}
       style={style}
       aria-label={`Row ${row + 1}, column ${col + 1}, ${cell === 'cat' ? 'mole' : cell}`}
     >
       {cell === 'cat' && <MoleFace />}
       {cell === 'mark' && (
-        <span className="text-[clamp(1.05rem,6vw,2.2rem)] font-black text-[#6b4b37]/65 drop-shadow-[0_1px_0_rgba(255,255,255,0.55)]">
+        <span
+          className="text-[clamp(1rem,6vw,2rem)] font-black"
+          style={{ color: color.text }}
+        >
           X
         </span>
       )}
       {isLocked && (
-        <span className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-[#2f2a24] ring-2 ring-white/70" />
+        <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-[#99545f] ring-2 ring-white" />
       )}
     </button>
   )
@@ -457,33 +465,85 @@ function BoardCell({
 function MoleFace({ large = false, tiny = false }: { large?: boolean; tiny?: boolean }) {
   return (
     <span
-      className={`relative block rounded-full bg-[#5a4636] shadow-[inset_0_-4px_0_rgba(0,0,0,0.18)] ${
-        large ? 'mx-auto h-16 w-16' : tiny ? 'h-6 w-6' : 'h-[58%] w-[58%]'
+      className={`relative block rounded-full bg-[#4e3a31] shadow-[inset_0_-3px_0_rgba(0,0,0,0.18)] ${
+        large ? 'mx-auto h-16 w-16' : tiny ? 'h-6 w-6' : 'h-[72%] w-[72%]'
       }`}
       aria-hidden="true"
     >
-      <span className="absolute left-[22%] top-[30%] h-[9%] w-[9%] rounded-full bg-[#1f1814]" />
-      <span className="absolute right-[22%] top-[30%] h-[9%] w-[9%] rounded-full bg-[#1f1814]" />
-      <span className="absolute left-1/2 top-[46%] h-[26%] w-[34%] -translate-x-1/2 rounded-full bg-[#d7ad8d]" />
-      <span className="absolute left-1/2 top-[52%] h-[10%] w-[14%] -translate-x-1/2 rounded-full bg-[#33251f]" />
-      <span className="absolute left-[10%] top-[60%] h-[13%] w-[18%] rounded-full bg-[#7b604a]" />
-      <span className="absolute right-[10%] top-[60%] h-[13%] w-[18%] rounded-full bg-[#7b604a]" />
+      <span className="absolute left-[23%] top-[29%] h-[11%] w-[11%] rounded-full bg-white" />
+      <span className="absolute right-[23%] top-[29%] h-[11%] w-[11%] rounded-full bg-white" />
+      <span className="absolute left-[26%] top-[31%] h-[6%] w-[6%] rounded-full bg-[#18110f]" />
+      <span className="absolute right-[26%] top-[31%] h-[6%] w-[6%] rounded-full bg-[#18110f]" />
+      <span className="absolute left-1/2 top-[47%] h-[26%] w-[35%] -translate-x-1/2 rounded-full bg-[#d5a889]" />
+      <span className="absolute left-1/2 top-[53%] h-[10%] w-[14%] -translate-x-1/2 rounded-full bg-[#2f201c]" />
     </span>
   )
 }
 
-function ControlGroup({ label, children }: { label: string; children: ReactNode }) {
+function RoundIconButton({
+  onClick,
+  ariaLabel,
+  children,
+}: {
+  onClick: () => void
+  ariaLabel: string
+  children: ReactNode
+}) {
   return (
-    <div>
-      <div className="mb-2 text-xs font-black uppercase tracking-[0.16em] text-[#9a6845]">
-        {label}
-      </div>
-      <div className="flex flex-wrap gap-2">{children}</div>
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={ariaLabel}
+      className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-xl font-black text-[#99545f] shadow-[0_6px_16px_rgba(132,87,80,0.13)] transition active:scale-95"
+    >
+      {children}
+    </button>
+  )
+}
+
+function DifficultyButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  children: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-full px-3 py-1.5 text-xs font-black transition active:scale-95 ${
+        active ? 'bg-[#99545f] text-white' : 'bg-white text-[#99545f]'
+      }`}
+    >
+      {children}
+    </button>
+  )
+}
+
+function StatusPill({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex min-h-8 items-center gap-1.5 rounded-full bg-white px-3 text-lg font-black shadow-[0_5px_14px_rgba(132,87,80,0.1)]">
+      {children}
     </div>
   )
 }
 
-function PillButton({
+function RuleChip({ active = false, children }: { active?: boolean; children: ReactNode }) {
+  return (
+    <div
+      className={`flex min-h-12 items-center justify-center rounded-[5px] bg-white px-1.5 text-center text-[0.69rem] font-black leading-tight text-[#99545f] shadow-[0_4px_12px_rgba(132,87,80,0.08)] ${
+        active ? 'ring-2 ring-[#99545f]' : ''
+      }`}
+    >
+      {children}
+    </div>
+  )
+}
+
+function StageDot({
   active,
   onClick,
   ariaLabel,
@@ -499,11 +559,8 @@ function PillButton({
       type="button"
       onClick={onClick}
       aria-label={ariaLabel}
-      aria-pressed={active}
-      className={`min-h-10 rounded-full px-4 text-sm font-black transition active:translate-y-1 ${
-        active
-          ? 'bg-[#5a3f2e] text-[#fff8ed] shadow-[inset_0_2px_0_rgba(255,255,255,0.18),0_5px_0_#33251f]'
-          : 'bg-[#fff7ea] text-[#6f4f37] shadow-[inset_0_2px_0_rgba(255,255,255,0.75),0_5px_0_#d1ad83] hover:bg-white'
+      className={`h-8 rounded-full text-xs font-black transition active:scale-95 ${
+        active ? 'bg-[#99545f] text-white' : 'bg-white text-[#99545f]'
       }`}
     >
       {children}
@@ -511,35 +568,7 @@ function PillButton({
   )
 }
 
-function StageButton({
-  active,
-  onClick,
-  ariaLabel,
-  children,
-}: {
-  active: boolean
-  onClick: () => void
-  ariaLabel: string
-  children: ReactNode
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={ariaLabel}
-      aria-pressed={active}
-      className={`h-10 w-10 rounded-full text-sm font-black transition active:translate-y-1 ${
-        active
-          ? 'bg-[#e98f5d] text-white shadow-[inset_0_2px_0_rgba(255,255,255,0.32),0_5px_0_#9f5a37]'
-          : 'bg-[#fff7ea] text-[#6f4f37] shadow-[inset_0_2px_0_rgba(255,255,255,0.72),0_5px_0_#d1ad83] hover:bg-white'
-      }`}
-    >
-      {children}
-    </button>
-  )
-}
-
-function ToolButton({
+function ModeButton({
   active = false,
   disabled = false,
   onClick,
@@ -559,10 +588,8 @@ function ToolButton({
       disabled={disabled}
       aria-label={ariaLabel}
       aria-pressed={active}
-      className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-[18px] px-2 text-xs font-black transition active:translate-y-1 disabled:cursor-not-allowed disabled:opacity-45 ${
-        active
-          ? 'bg-[#5a3f2e] text-[#fff8ed] shadow-[inset_0_3px_0_rgba(255,255,255,0.16),0_6px_0_#33251f]'
-          : 'bg-[#fff7ea] text-[#6f4f37] shadow-[inset_0_3px_0_rgba(255,255,255,0.78),0_6px_0_#d1ad83] hover:bg-white'
+      className={`flex h-11 items-center justify-center rounded-full text-sm font-black shadow-[0_5px_14px_rgba(132,87,80,0.1)] transition active:scale-95 disabled:opacity-40 ${
+        active ? 'bg-[#99545f] text-white' : 'bg-white text-[#99545f]'
       }`}
     >
       {children}
@@ -570,5 +597,14 @@ function ToolButton({
   )
 }
 
-const actionButtonClass =
-  'rounded-full bg-[#5a3f2e] px-4 py-3 text-sm font-black text-[#fff8ed] shadow-[inset_0_2px_0_rgba(255,255,255,0.18),0_5px_0_#33251f] transition active:translate-y-1'
+function ModalButton({ onClick, children }: { onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded-full bg-[#99545f] px-4 py-3 text-sm font-black text-white shadow-[0_5px_14px_rgba(132,87,80,0.18)] transition active:scale-95"
+    >
+      {children}
+    </button>
+  )
+}
