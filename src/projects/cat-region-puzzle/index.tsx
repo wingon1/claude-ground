@@ -362,7 +362,7 @@ function GameSession({
             <span />
           </div>
 
-          <div className="mt-7 flex items-center justify-center gap-4">
+          <div className="mt-8 flex items-center justify-center gap-5">
             <StatusPill>
               <MoleFace tiny />
               <span className="text-[#1fb26d]">
@@ -383,7 +383,7 @@ function GameSession({
 
         </header>
 
-        <main className="relative z-10 flex flex-1 flex-col items-center px-7 pb-10 pt-12">
+        <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-7 pb-12 pt-10">
           <div
             className="grid w-full max-w-[21rem] touch-manipulation gap-2 rounded-[18px] bg-white p-2 shadow-[0_10px_24px_rgba(125,85,78,0.14)]"
             style={{
@@ -410,12 +410,12 @@ function GameSession({
             )}
           </div>
 
-          <div className="mt-10 grid w-full max-w-[21rem] grid-cols-2 gap-4">
-            <RuleChip>색상마다 두더지 1마리</RuleChip>
-            <RuleChip>열과 행마다 두더지 1마리</RuleChip>
+          <div className="mt-12 flex w-full max-w-[21rem] flex-col items-center gap-3 text-center text-sm font-black leading-relaxed text-[#99545f]">
+            <p>색상마다 두더지 1마리</p>
+            <p>열과 행마다 두더지 1마리</p>
           </div>
 
-          <p className="mt-8 min-h-5 text-center text-sm font-black text-[#a06970]">{notice}</p>
+          <p className="mt-7 min-h-5 text-center text-sm font-black text-[#a06970]">{notice}</p>
 
           <div className="mt-8 grid w-full max-w-[21rem] grid-cols-4 gap-4">
             <ModeButton active={mode === 'cat'} onClick={() => setMode('cat')} ariaLabel="두더지 놓기">
@@ -435,18 +435,18 @@ function GameSession({
       </div>
 
       {status !== 'playing' && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-[#3d2d22]/45 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-[2rem] bg-[#fff8f3] p-6 text-center shadow-[0_18px_38px_rgba(72,45,35,0.2)]">
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-[#3d2d22]/45 p-8 backdrop-blur-sm">
+          <div className="w-full max-w-[20rem] rounded-[2rem] bg-[#fff8f3] px-7 py-8 text-center shadow-[0_18px_38px_rgba(72,45,35,0.2)]">
             <MoleFace large />
-            <h2 className="mt-4 text-2xl font-black text-[#99545f]">
+            <h2 className="mt-6 text-2xl font-black text-[#99545f]">
               {status === 'won' ? '찾았다!' : '앗, 막혔어요'}
             </h2>
-            <p className="mt-2 text-sm font-bold text-[#9a6b6f]">
+            <p className="mt-4 text-sm font-bold leading-relaxed text-[#9a6b6f]">
               {status === 'won'
                 ? '모든 두더지가 자기 색상 굴을 찾았어요.'
                 : '되돌리거나 다시 시작해봐요.'}
             </p>
-            <div className="mt-5 grid grid-cols-2 gap-2">
+            <div className="mt-7 grid grid-cols-2 gap-4">
               <ModalButton onClick={restart}>다시 하기</ModalButton>
               <ModalButton onClick={nextLevel}>다음</ModalButton>
             </div>
@@ -560,15 +560,7 @@ function RoundIconButton({
 
 function StatusPill({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-8 items-center gap-1.5 rounded-full bg-white px-3 text-lg font-black shadow-[0_5px_14px_rgba(132,87,80,0.1)]">
-      {children}
-    </div>
-  )
-}
-
-function RuleChip({ children }: { children: ReactNode }) {
-  return (
-    <div className="flex min-h-14 items-center justify-center rounded-[16px] bg-white/70 px-4 py-3 text-center text-sm font-black leading-tight text-[#99545f]">
+    <div className="flex min-h-11 items-center gap-2.5 rounded-full bg-white px-5 py-2 text-lg font-black shadow-[0_5px_14px_rgba(132,87,80,0.1)]">
       {children}
     </div>
   )
@@ -608,7 +600,7 @@ function ModalButton({ onClick, children }: { onClick: () => void; children: Rea
     <button
       type="button"
       onClick={onClick}
-      className="rounded-full bg-[#99545f] px-4 py-3 text-sm font-black text-white shadow-[0_5px_14px_rgba(132,87,80,0.18)] transition active:scale-95"
+      className="min-h-12 rounded-full bg-[#99545f] px-5 py-3 text-sm font-black text-white shadow-[0_5px_14px_rgba(132,87,80,0.18)] transition active:scale-95"
     >
       {children}
     </button>
