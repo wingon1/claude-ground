@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useId,
   useMemo,
   useState,
   type CSSProperties,
@@ -49,6 +50,26 @@ const REGION_COLORS: CellColor[] = [
 ]
 
 const DIFFICULTIES: Difficulty[] = ['5x5', '6x6', '7x7']
+
+// Self-contained keyframes for the mole's blink + mouth animation. Rendered via
+// a hoisted <style> (deduped by `href` in React 19) so we never touch the shared
+// global stylesheet. Geometry uses `transform-box: fill-box` so each element
+// scales around its own centre regardless of where it sits in the SVG.
+const MOLE_CSS = `
+.moledoku-eye{transform-box:fill-box;transform-origin:center;animation:moledoku-blink 4.8s ease-in-out infinite}
+.moledoku-mouth{transform-box:fill-box;transform-origin:center;animation:moledoku-mouth 1.9s ease-in-out infinite}
+@keyframes moledoku-blink{0%,88%,100%{transform:scaleY(1)}93%{transform:scaleY(0.08)}}
+@keyframes moledoku-mouth{0%,100%{transform:scaleY(0.5)}50%{transform:scaleY(1.12)}}
+@media (prefers-reduced-motion:reduce){.moledoku-eye,.moledoku-mouth{animation:none}}
+`
+
+function MoleStyles() {
+  return (
+    <style href="moledoku-anim" precedence="default">
+      {MOLE_CSS}
+    </style>
+  )
+}
 
 function cloneBoard(board: Board): Board {
   return board.map((row) => [...row])
@@ -131,28 +152,36 @@ function MainMenu({
 
   return (
     <div className="min-h-full w-full overflow-auto bg-[#f8f3ef] text-[#87515b]">
+      <MoleStyles />
       <div className="relative mx-auto flex min-h-dvh w-full max-w-[30rem] flex-col overflow-hidden">
-        <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-8 py-14 text-center">
-          <div className="flex h-28 w-28 items-center justify-center rounded-full bg-white shadow-[0_12px_30px_rgba(132,87,80,0.12)]">
-            <MoleFace large />
+        <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-8 py-16 text-center">
+          <div className="flex h-28 w-28 items-center justify-center rounded-[34px] bg-white shadow-[0_16px_34px_rgba(132,87,80,0.16)]">
+            <MoleFace large seed={1} />
           </div>
-          <p className="mt-9 text-xs font-black uppercase tracking-[0.24em] text-[#b27782]">
-            Burrow Puzzle
+          <p className="mt-8 text-[11px] font-bold uppercase tracking-[0.34em] text-[#c08a93]">
+            Moledoku
           </p>
-          <h1 className="mt-3 text-5xl font-black text-[#99545f]">두더지 스토쿠</h1>
-          <p className="mt-6 max-w-xs text-base font-black leading-relaxed text-[#a06b72]">
-            색상마다 한 마리씩, 행과 열마다 한 마리씩 두더지를 찾아요.
+          <h1 className="mt-2.5 text-[2.75rem] font-black leading-none tracking-tight text-[#99545f]">
+            두더지 스도쿠
+          </h1>
+          <p className="mt-5 max-w-[17rem] text-[15px] font-medium leading-relaxed text-[#ab7d83]">
+            색상·가로줄·세로줄마다 두더지를 한 마리씩 숨겨봐요.
           </p>
 
-          <div className="mt-12 grid w-full max-w-[21rem] gap-5">
-            {DIFFICULTIES.map((difficulty) => (
+          <div className="mt-12 grid w-full max-w-[19.5rem] gap-3.5">
+            {DIFFICULTIES.map((difficulty, index) => (
               <button
                 key={difficulty}
                 type="button"
                 onClick={() => openStagePicker(difficulty)}
-                className="rounded-[24px] bg-white px-8 py-6 text-2xl font-black text-[#99545f] shadow-[0_10px_24px_rgba(132,87,80,0.12)] transition active:scale-95"
+                className="flex items-center justify-between rounded-[22px] bg-white px-7 py-5 text-left shadow-[0_10px_22px_rgba(132,87,80,0.12)] transition active:scale-[0.97]"
               >
-                {difficulty}
+                <span className="text-xl font-extrabold tracking-tight text-[#99545f]">
+                  {difficulty}
+                </span>
+                <span className="text-xs font-semibold tracking-wide text-[#bd8d94]">
+                  {['쉬움', '보통', '어려움'][index]}
+                </span>
               </button>
             ))}
           </div>
@@ -183,28 +212,30 @@ function StagePicker({
   onStart: (index: number) => void
 }) {
   return (
-    <div className="absolute inset-0 z-30 flex items-center justify-center bg-[#3d2d22]/30 p-10 backdrop-blur-sm">
-      <div className="w-full max-w-[24rem] overflow-hidden rounded-[32px] bg-[#fff8f3] px-10 py-10 text-center shadow-[0_18px_38px_rgba(72,45,35,0.2)]">
+    <div className="absolute inset-0 z-30 flex items-center justify-center bg-[#3d2d22]/35 p-8 backdrop-blur-sm">
+      <div className="w-full max-w-[22rem] overflow-hidden rounded-[30px] bg-[#fff8f3] px-8 pb-9 pt-7 text-center shadow-[0_20px_42px_rgba(72,45,35,0.22)]">
         <div className="flex items-center justify-between">
-          <span className="w-11" />
-          <h2 className="text-3xl font-black text-[#99545f]">{difficulty}</h2>
+          <span className="h-10 w-10" />
+          <div>
+            <h2 className="text-2xl font-black tracking-tight text-[#99545f]">{difficulty}</h2>
+            <p className="mt-1 text-[13px] font-medium text-[#b1838a]">스테이지를 골라요</p>
+          </div>
           <button
             type="button"
             onClick={onClose}
             aria-label="스테이지 선택 닫기"
-            className="flex h-11 w-11 items-center justify-center rounded-full border-0 bg-[#f1e5df] text-lg font-black text-[#99545f] outline-none"
+            className="flex h-10 w-10 items-center justify-center rounded-full border-0 bg-[#f1e5df] text-xl font-semibold leading-none text-[#a4707a] outline-none transition active:scale-90"
           >
-            X
+            ×
           </button>
         </div>
-        <p className="mt-4 text-base font-black text-[#a06b72]">스테이지를 선택해요</p>
-        <div className="mx-auto mt-10 grid w-full max-w-[18.5rem] grid-cols-5 gap-3">
+        <div className="mx-auto mt-8 grid w-full max-w-[17.5rem] grid-cols-5 gap-2.5">
           {pickerLevels.map((item, index) => (
             <button
               key={item.id}
               type="button"
               onClick={() => onStart(index)}
-              className="h-16 rounded-[18px] border-0 bg-white text-lg font-black text-[#99545f] shadow-[0_6px_16px_rgba(132,87,80,0.12)] outline-none transition active:scale-95"
+              className="flex aspect-square items-center justify-center rounded-[16px] border-0 bg-white text-lg font-extrabold text-[#99545f] shadow-[0_5px_14px_rgba(132,87,80,0.12)] outline-none transition active:scale-90"
             >
               {index + 1}
             </button>
@@ -350,21 +381,34 @@ function GameSession({
 
   return (
     <div className="min-h-full w-full overflow-auto bg-[#f8f3ef] text-[#87515b]">
+      <MoleStyles />
       <div className="mx-auto flex min-h-dvh w-full max-w-[30rem] flex-col overflow-hidden">
-        <header className="px-7 pt-8">
+        <header className="px-6 pt-6">
           <div className="grid grid-cols-[2.75rem_1fr_2.75rem] items-center">
-            <RoundIconButton ariaLabel="메인으로 돌아가기" onClick={returnToMenu}>
-              &lt;
-            </RoundIconButton>
-            <h1 className="text-center text-2xl font-black text-[#99545f]">
+            <span />
+            <h1 className="text-center text-xl font-black tracking-tight text-[#99545f]">
               레벨 {levelIndex + 1}
             </h1>
-            <span />
+            <RoundIconButton ariaLabel="메인 메뉴로 돌아가기" onClick={returnToMenu}>
+              <svg
+                viewBox="0 0 24 24"
+                className="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2.4}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M4 11l8-7 8 7" />
+                <path d="M6 10v9h12v-9" />
+              </svg>
+            </RoundIconButton>
           </div>
 
-          <div className="mt-8 flex items-center justify-center gap-5">
+          <div className="mt-7 flex items-center justify-center gap-3">
             <StatusPill>
-              <MoleFace tiny />
+              <MoleFace tiny seed={2} />
               <span className="text-[#1fb26d]">
                 {catsPlaced}/{level.size}
               </span>
@@ -373,19 +417,18 @@ function GameSession({
               {Array.from({ length: 3 }, (_, index) => (
                 <span
                   key={index}
-                  className={index < hearts ? 'text-[#f0444d]' : 'text-[#d8ccc7]'}
+                  className={index < hearts ? 'text-[#f0444d]' : 'text-[#dccfca]'}
                 >
                   ♥
                 </span>
               ))}
             </StatusPill>
           </div>
-
         </header>
 
-        <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-7 pb-12 pt-10">
+        <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-7 pb-12 pt-8">
           <div
-            className="grid w-full max-w-[21rem] touch-manipulation gap-2 rounded-[18px] bg-white p-2 shadow-[0_10px_24px_rgba(125,85,78,0.14)]"
+            className="grid w-full max-w-[21rem] touch-manipulation gap-1.5 rounded-[22px] bg-white p-2.5 shadow-[0_12px_28px_rgba(125,85,78,0.16)]"
             style={{
               gridTemplateColumns: `repeat(${level.size}, minmax(0, 1fr))`,
               aspectRatio: '1 / 1',
@@ -410,38 +453,42 @@ function GameSession({
             )}
           </div>
 
-          <p className="mt-12 min-h-5 text-center text-sm font-black text-[#a06970]">{notice}</p>
+          <p className="mt-9 min-h-[1.25rem] text-center text-sm font-semibold text-[#a87f85]">
+            {notice}
+          </p>
 
-          <div className="mt-8 grid w-full max-w-[21rem] grid-cols-4 gap-4">
+          <div className="mt-7 grid w-full max-w-[21rem] grid-cols-4 gap-3">
             <ModeButton active={mode === 'cat'} onClick={() => setMode('cat')} ariaLabel="두더지 놓기">
-              <MoleFace tiny />
+              <MoleFace tiny seed={3} />
             </ModeButton>
             <ModeButton active={mode === 'mark'} onClick={() => setMode('mark')} ariaLabel="X 표시">
-              X
+              <span className="text-lg leading-none">✕</span>
             </ModeButton>
             <ModeButton onClick={undo} disabled={history.length === 0} ariaLabel="되돌리기">
-              Undo
+              되돌리기
             </ModeButton>
             <ModeButton onClick={showHint} ariaLabel="힌트">
-              Hint
+              힌트
             </ModeButton>
           </div>
         </main>
       </div>
 
       {status !== 'playing' && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-[#3d2d22]/45 p-10 backdrop-blur-sm">
-          <div className="w-full max-w-[21rem] overflow-hidden rounded-[32px] bg-[#fff8f3] px-10 py-10 text-center shadow-[0_18px_38px_rgba(72,45,35,0.2)]">
-            <MoleFace large />
-            <h2 className="mt-6 text-2xl font-black text-[#99545f]">
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-[#3d2d22]/45 p-8 backdrop-blur-sm">
+          <div className="w-full max-w-[20rem] overflow-hidden rounded-[30px] bg-[#fff8f3] px-9 pb-9 pt-8 text-center shadow-[0_20px_42px_rgba(72,45,35,0.24)]">
+            <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-[30px] bg-[#f7ede6]">
+              <MoleFace large seed={status === 'won' ? 4 : 7} />
+            </div>
+            <h2 className="mt-5 text-2xl font-black tracking-tight text-[#99545f]">
               {status === 'won' ? '찾았다!' : '앗, 막혔어요'}
             </h2>
-            <p className="mt-4 text-sm font-bold leading-relaxed text-[#9a6b6f]">
+            <p className="mt-2.5 text-sm font-medium leading-relaxed text-[#a87d81]">
               {status === 'won'
-                ? '모든 두더지가 자기 색상 굴을 찾았어요.'
+                ? '모든 두더지가 자기 색깔 굴을 찾았어요.'
                 : '되돌리거나 다시 시작해봐요.'}
             </p>
-            <div className="mx-auto mt-9 grid w-full max-w-[15rem] grid-cols-2 gap-4">
+            <div className="mx-auto mt-7 grid w-full max-w-[15rem] grid-cols-2 gap-3">
               <ModalButton onClick={restart}>다시 하기</ModalButton>
               <ModalButton onClick={nextLevel}>다음</ModalButton>
             </div>
@@ -492,19 +539,19 @@ function BoardCell({
       type="button"
       onClick={onClick}
       onDoubleClick={onDoubleClick}
-      className={`relative flex min-h-0 min-w-0 items-center justify-center overflow-hidden rounded-[6px] transition active:scale-95 ${
+      className={`relative flex min-h-0 min-w-0 items-center justify-center overflow-hidden rounded-[10px] transition active:scale-95 ${
         isHint || isMistake ? 'z-10' : ''
       } ${isMistake ? 'animate-pulse' : ''}`}
       style={style}
       aria-label={`Row ${row + 1}, column ${col + 1}, ${cell === 'cat' ? 'mole' : cell}`}
     >
-      {cell === 'cat' && <MoleFace />}
+      {cell === 'cat' && <MoleFace seed={row * 7 + col + 1} />}
       {cell === 'mark' && (
         <span
-          className="text-[clamp(1rem,6vw,2rem)] font-black"
+          className="text-[clamp(0.9rem,5.5vw,1.75rem)] font-bold leading-none"
           style={{ color: color.text }}
         >
-          X
+          ✕
         </span>
       )}
       {isLocked && (
@@ -514,21 +561,76 @@ function BoardCell({
   )
 }
 
-function MoleFace({ large = false, tiny = false }: { large?: boolean; tiny?: boolean }) {
+function MoleFace({
+  large = false,
+  tiny = false,
+  seed = 0,
+}: {
+  large?: boolean
+  tiny?: boolean
+  seed?: number
+}) {
+  const gid = useId()
+  const grad = `mole-grad-${gid}`
+  // Desync instances a little so a board full of moles doesn't blink in unison.
+  const blinkDelay = `${-((seed * 0.53) % 4.8).toFixed(2)}s`
+  const mouthDelay = `${-((seed * 0.37) % 1.9).toFixed(2)}s`
+  const sizeClass = large ? 'mx-auto h-16 w-16' : tiny ? 'h-6 w-6' : 'h-[74%] w-[74%]'
+
   return (
-    <span
-      className={`relative block rounded-full bg-[#4e3a31] shadow-[inset_0_-3px_0_rgba(0,0,0,0.18)] ${
-        large ? 'mx-auto h-16 w-16' : tiny ? 'h-6 w-6' : 'h-[72%] w-[72%]'
-      }`}
-      aria-hidden="true"
-    >
-      <span className="absolute left-[23%] top-[29%] h-[11%] w-[11%] rounded-full bg-white" />
-      <span className="absolute right-[23%] top-[29%] h-[11%] w-[11%] rounded-full bg-white" />
-      <span className="absolute left-[26%] top-[31%] h-[6%] w-[6%] rounded-full bg-[#18110f]" />
-      <span className="absolute right-[26%] top-[31%] h-[6%] w-[6%] rounded-full bg-[#18110f]" />
-      <span className="absolute left-1/2 top-[47%] h-[26%] w-[35%] -translate-x-1/2 rounded-full bg-[#d5a889]" />
-      <span className="absolute left-1/2 top-[53%] h-[10%] w-[14%] -translate-x-1/2 rounded-full bg-[#2f201c]" />
-    </span>
+    <svg viewBox="0 0 100 100" className={`block ${sizeClass}`} aria-hidden="true">
+      <defs>
+        <radialGradient id={grad} cx="38%" cy="26%" r="80%">
+          <stop offset="0%" stopColor="#8c6856" />
+          <stop offset="60%" stopColor="#6d4c3e" />
+          <stop offset="100%" stopColor="#573b30" />
+        </radialGradient>
+      </defs>
+
+      {/* ears */}
+      <circle cx="21" cy="27" r="11" fill="#684739" />
+      <circle cx="79" cy="27" r="11" fill="#684739" />
+      <circle cx="21" cy="27" r="5" fill="#f3a4b7" />
+      <circle cx="79" cy="27" r="5" fill="#f3a4b7" />
+
+      {/* head */}
+      <ellipse cx="50" cy="55" rx="40" ry="39" fill={`url(#${grad})`} />
+
+      {/* blush */}
+      <ellipse cx="25" cy="64" rx="7" ry="4.3" fill="#f493ab" opacity="0.5" />
+      <ellipse cx="75" cy="64" rx="7" ry="4.3" fill="#f493ab" opacity="0.5" />
+
+      {/* eyes (blink together) */}
+      <g className="moledoku-eye" style={{ animationDelay: blinkDelay }}>
+        <ellipse cx="37" cy="49.5" rx="7.4" ry="8.6" fill="#211711" />
+        <circle cx="34.2" cy="46.2" r="2.7" fill="#ffffff" />
+        <circle cx="39.2" cy="52.4" r="1.3" fill="#ffffff" opacity="0.7" />
+      </g>
+      <g className="moledoku-eye" style={{ animationDelay: blinkDelay }}>
+        <ellipse cx="63" cy="49.5" rx="7.4" ry="8.6" fill="#211711" />
+        <circle cx="60.2" cy="46.2" r="2.7" fill="#ffffff" />
+        <circle cx="65.2" cy="52.4" r="1.3" fill="#ffffff" opacity="0.7" />
+      </g>
+
+      {/* nose */}
+      <ellipse cx="50" cy="61" rx="5.6" ry="4.6" fill="#ec84a0" />
+      <circle cx="48" cy="59.3" r="1.6" fill="#ffffff" opacity="0.65" />
+
+      {/* teeth */}
+      <rect x="46.6" y="65.6" width="3.1" height="4.1" rx="1.2" fill="#fffdf7" />
+      <rect x="50.3" y="65.6" width="3.1" height="4.1" rx="1.2" fill="#fffdf7" />
+
+      {/* mouth (puckers) */}
+      <ellipse
+        className="moledoku-mouth"
+        style={{ animationDelay: mouthDelay }}
+        cx="50"
+        cy="72.4"
+        rx="3.6"
+        ry="2.9"
+        fill="#6c3c31"
+      />
+    </svg>
   )
 }
 
@@ -546,7 +648,7 @@ function RoundIconButton({
       type="button"
       onClick={onClick}
       aria-label={ariaLabel}
-      className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-xl font-black text-[#99545f] shadow-[0_6px_16px_rgba(132,87,80,0.13)] transition active:scale-95"
+      className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-[#99545f] shadow-[0_6px_16px_rgba(132,87,80,0.13)] transition active:scale-90"
     >
       {children}
     </button>
@@ -555,7 +657,7 @@ function RoundIconButton({
 
 function StatusPill({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-11 items-center gap-2.5 rounded-full bg-white px-5 py-2 text-lg font-black shadow-[0_5px_14px_rgba(132,87,80,0.1)]">
+    <div className="flex min-h-11 items-center gap-2 rounded-full bg-white px-4 py-2 text-base font-extrabold tracking-tight shadow-[0_5px_14px_rgba(132,87,80,0.1)]">
       {children}
     </div>
   )
@@ -581,7 +683,7 @@ function ModeButton({
       disabled={disabled}
       aria-label={ariaLabel}
       aria-pressed={active}
-      className={`flex h-14 items-center justify-center rounded-full px-2 text-sm font-black shadow-[0_5px_14px_rgba(132,87,80,0.1)] transition active:scale-95 disabled:opacity-40 ${
+      className={`flex h-[3.25rem] items-center justify-center rounded-[20px] px-2 text-sm font-bold shadow-[0_5px_14px_rgba(132,87,80,0.1)] transition active:scale-95 disabled:opacity-40 ${
         active ? 'bg-[#99545f] text-white' : 'bg-white text-[#99545f]'
       }`}
     >
@@ -595,7 +697,7 @@ function ModalButton({ onClick, children }: { onClick: () => void; children: Rea
     <button
       type="button"
       onClick={onClick}
-      className="min-h-14 rounded-full border-0 bg-[#99545f] px-6 py-4 text-sm font-black text-white shadow-[0_5px_14px_rgba(132,87,80,0.18)] outline-none transition active:scale-95"
+      className="min-h-[3.25rem] rounded-[20px] border-0 bg-[#99545f] px-6 py-4 text-sm font-bold text-white shadow-[0_5px_14px_rgba(132,87,80,0.18)] outline-none transition active:scale-95"
     >
       {children}
     </button>
