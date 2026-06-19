@@ -15,10 +15,10 @@ import {
   getCats,
   getConflicts,
   isLocked,
-  isSolutionCell,
   type Board,
   type CellState,
   type Coord,
+  type Difficulty,
   type Level,
 } from './gameLogic'
 import { levelPackSummary, levels } from './levels'
@@ -41,6 +41,8 @@ const REGION_COLORS = [
   '#ffc6ff',
 ]
 
+const DIFFICULTIES: Difficulty[] = ['5x5', '6x6', '7x7']
+
 function cloneBoard(board: Board): Board {
   return board.map((row) => [...row])
 }
@@ -53,25 +55,32 @@ function createSnapshot(board: Board, hearts: number, status: Status): Snapshot 
   }
 }
 
-function difficultyLabel(level: Level): string {
-  if (level.difficulty === 'normal') return 'Normal'
-  if (level.difficulty === 'hard') return 'Hard'
-  return 'Ultra'
-}
-
-function nextPlayableLevel(currentIndex: number): number {
-  return (currentIndex + 1) % levels.length
+function nextPlayableLevel(currentIndex: number, count: number): number {
+  return (currentIndex + 1) % count
 }
 
 export default function CatRegionPuzzle() {
+  const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty>('5x5')
   const [levelIndex, setLevelIndex] = useState(0)
-  const level = levels[levelIndex]
+  const availableLevels = useMemo(
+    () => levels.filter((item) => item.difficulty === selectedDifficulty),
+    [selectedDifficulty],
+  )
+  const level = availableLevels[levelIndex] ?? availableLevels[0]
+
+  const selectDifficulty = (difficulty: Difficulty) => {
+    setSelectedDifficulty(difficulty)
+    setLevelIndex(0)
+  }
 
   return (
     <GameSession
       key={level.id}
       level={level}
       levelIndex={levelIndex}
+      availableLevels={availableLevels}
+      selectedDifficulty={selectedDifficulty}
+      selectDifficulty={selectDifficulty}
       setLevelIndex={setLevelIndex}
     />
   )
@@ -80,10 +89,16 @@ export default function CatRegionPuzzle() {
 function GameSession({
   level,
   levelIndex,
+  availableLevels,
+  selectedDifficulty,
+  selectDifficulty,
   setLevelIndex,
 }: {
   level: Level
   levelIndex: number
+  availableLevels: Level[]
+  selectedDifficulty: Difficulty
+  selectDifficulty: (difficulty: Difficulty) => void
   setLevelIndex: Dispatch<SetStateAction<number>>
 }) {
   const [board, setBoard] = useState<Board>(() => createBoard(level))
@@ -139,11 +154,6 @@ function GameSession({
     if (!canPlaceCat(board, level, row, col)) {
       const conflicts = getConflicts(board, level, row, col)
       loseHeart(row, col, `Conflict: ${conflicts.join(', ') || 'blocked cell'}.`)
-      return
-    }
-
-    if (!isSolutionCell(level, row, col)) {
-      loseHeart(row, col, 'That mole does not fit the final logic.')
       return
     }
 
@@ -213,7 +223,7 @@ function GameSession({
   }
 
   const nextLevel = () => {
-    setLevelIndex((index) => nextPlayableLevel(index))
+    setLevelIndex((index) => nextPlayableLevel(index, availableLevels.length))
   }
 
   return (
@@ -229,9 +239,9 @@ function GameSession({
             </h1>
           </div>
           <div className="grid grid-cols-3 gap-2 text-center text-xs font-bold sm:min-w-72">
-            <Stat label="Level" value={`${level.id}/${levels.length}`} />
+            <Stat label="Puzzle" value={`${levelIndex + 1}/${availableLevels.length}`} />
             <Stat label="Size" value={`${level.size}x${level.size}`} />
-            <Stat label="Mode" value={difficultyLabel(level)} />
+            <Stat label="Mode" value={selectedDifficulty} />
           </div>
         </header>
 
@@ -314,6 +324,25 @@ function GameSession({
 
           <aside className="flex flex-col gap-3">
             <Panel>
+              <h2 className="text-sm font-black uppercase tracking-[0.16em] text-[#7a5136]">
+                Difficulty
+              </h2>
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                {DIFFICULTIES.map((difficulty) => (
+                  <button
+                    key={difficulty}
+                    type="button"
+                    onClick={() => selectDifficulty(difficulty)}
+                    className={toolClass(selectedDifficulty === difficulty)}
+                    aria-pressed={selectedDifficulty === difficulty}
+                  >
+                    {difficulty}
+                  </button>
+                ))}
+              </div>
+            </Panel>
+
+            <Panel>
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-black uppercase tracking-[0.16em] text-[#7a5136]">
                   Tools
@@ -331,10 +360,10 @@ function GameSession({
                 </button>
               </div>
               <div className="mt-4 grid grid-cols-2 gap-2 text-xs font-bold text-[#6f5f50]">
-                <span>{levelPackSummary.normal} normal</span>
-                <span>{levelPackSummary.hard} hard</span>
-                <span>{levelPackSummary.ultra} ultra</span>
-                <span>{levelPackSummary.uniqueSolutions ? 'unique' : 'check'}</span>
+                <span>{levelPackSummary.five} 5x5</span>
+                <span>{levelPackSummary.six} 6x6</span>
+                <span>{levelPackSummary.seven} 7x7</span>
+                <span>{levelPackSummary.solvable ? 'solvable' : 'check'}</span>
                 <span>{levelPackSummary.noLocks ? 'no locks' : 'locks'}</span>
               </div>
             </Panel>
@@ -344,7 +373,7 @@ function GameSession({
                 Levels
               </h2>
               <div className="mt-4 grid max-h-56 grid-cols-5 gap-1.5 overflow-auto pr-1">
-                {levels.map((item, index) => (
+                {availableLevels.map((item, index) => (
                   <button
                     key={item.id}
                     type="button"
@@ -354,9 +383,9 @@ function GameSession({
                         ? 'bg-[#2f2a24] text-white'
                         : 'bg-[#efe2d0] text-[#5c4c3e] hover:bg-[#e5d1b7]'
                     }`}
-                    aria-label={`Open level ${item.id}`}
+                    aria-label={`Open ${selectedDifficulty} puzzle ${index + 1}`}
                   >
-                    {item.id}
+                    {index + 1}
                   </button>
                 ))}
               </div>

@@ -1,4 +1,4 @@
-export type Difficulty = 'normal' | 'hard' | 'ultra'
+export type Difficulty = '5x5' | '6x6' | '7x7'
 
 export type Coord = {
   row: number
@@ -133,7 +133,7 @@ export function checkWin(board: Board, level: Level): boolean {
     }
   }
 
-  return level.solution.every((cat) => board[cat.row][cat.col] === 'cat')
+  return true
 }
 
 export function validateRegionConnectivity(level: Level): boolean {
@@ -283,6 +283,5 @@ export function solveLevel(level: Level, limit = 2): SolveResult {
 export function validateLevel(level: Level): boolean {
   if (!validateSolution(level)) return false
   if (!validateRegionConnectivity(level)) return false
-  return solveLevel(level, 2).count === 1
+  return solveLevel(level, 1).count >= 1
 }
-

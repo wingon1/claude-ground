@@ -114,18 +114,18 @@ function createRegions(size: number, solution: Coord[], rng: Rng): number[][] | 
 
 function createRegionTargets(size: number, rng: Rng): number[] {
   const targetsBySize: Record<number, number[]> = {
-    4: [1, 2, 3, 10],
     5: [1, 2, 3, 8, 11],
     6: [1, 2, 3, 6, 10, 14],
+    7: [1, 2, 3, 5, 8, 12, 18],
   }
 
   return shuffle(targetsBySize[size], rng)
 }
 
 function sizeForDifficulty(difficulty: Difficulty): number {
-  if (difficulty === 'normal') return 4
-  if (difficulty === 'hard') return 5
-  return 6
+  if (difficulty === '5x5') return 5
+  if (difficulty === '6x6') return 6
+  return 7
 }
 
 function createLevel(id: number, difficulty: Difficulty, seed: number): Level {
@@ -157,9 +157,9 @@ function createLevel(id: number, difficulty: Difficulty, seed: number): Level {
 function buildLevelPack(): Level[] {
   const levels: Level[] = []
   const groups: { difficulty: Difficulty; count: number; seed: number }[] = [
-    { difficulty: 'normal', count: 10, seed: 12000 },
-    { difficulty: 'hard', count: 10, seed: 22000 },
-    { difficulty: 'ultra', count: 10, seed: 32000 },
+    { difficulty: '5x5', count: 10, seed: 22000 },
+    { difficulty: '6x6', count: 10, seed: 32000 },
+    { difficulty: '7x7', count: 10, seed: 42000 },
   ]
 
   for (const group of groups) {
@@ -175,9 +175,9 @@ export const levels = buildLevelPack()
 
 export const levelPackSummary = {
   total: levels.length,
-  normal: levels.filter((level) => level.difficulty === 'normal').length,
-  hard: levels.filter((level) => level.difficulty === 'hard').length,
-  ultra: levels.filter((level) => level.difficulty === 'ultra').length,
-  uniqueSolutions: levels.every((level) => solveLevel(level, 2).count === 1),
+  five: levels.filter((level) => level.difficulty === '5x5').length,
+  six: levels.filter((level) => level.difficulty === '6x6').length,
+  seven: levels.filter((level) => level.difficulty === '7x7').length,
+  solvable: levels.every((level) => solveLevel(level, 1).count >= 1),
   noLocks: levels.every((level) => level.lockedCats.length === 0),
 }
