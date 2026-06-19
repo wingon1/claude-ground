@@ -1,6 +1,5 @@
 import {
   useEffect,
-  useId,
   useMemo,
   useState,
   type CSSProperties,
@@ -570,8 +569,6 @@ function MoleFace({
   tiny?: boolean
   seed?: number
 }) {
-  const gid = useId()
-  const headClip = `mole-head-${gid}`
   // Desync instances a little so a board full of moles doesn't blink in unison.
   const blinkDelay = `${-((seed * 0.53) % 4.8).toFixed(2)}s`
   const toothDelay = `${-((seed * 0.37) % 1.9).toFixed(2)}s`
@@ -579,39 +576,33 @@ function MoleFace({
 
   return (
     <svg viewBox="0 0 100 100" className={`block ${sizeClass}`} aria-hidden="true">
-      <defs>
-        <clipPath id={headClip}>
-          <path d="M6 50 A44 44 0 0 1 94 50 L94 86 Q94 96 84 96 L16 96 Q6 96 6 86 Z" />
-        </clipPath>
-      </defs>
-
-      {/* head — warm two-tone (lighter left, terracotta right) */}
-      <g clipPath={`url(#${headClip})`}>
-        <rect x="0" y="0" width="50" height="100" fill="#d99c75" />
-        <rect x="50" y="0" width="50" height="100" fill="#c06f56" />
-      </g>
+      {/* head — single terracotta tone */}
+      <path
+        d="M6 50 A44 44 0 0 1 94 50 L94 86 Q94 96 84 96 L16 96 Q6 96 6 86 Z"
+        fill="#c06f56"
+      />
 
       {/* eyes (simple dots, blink together) */}
       <g className="moledoku-eye" style={{ animationDelay: blinkDelay }}>
-        <circle cx="32" cy="40" r="4.4" fill="#45454f" />
+        <circle cx="32" cy="40" r="4.4" fill="#3a322c" />
       </g>
       <g className="moledoku-eye" style={{ animationDelay: blinkDelay }}>
-        <circle cx="68" cy="40" r="4.4" fill="#38302b" />
+        <circle cx="68" cy="40" r="4.4" fill="#3a322c" />
       </g>
 
-      {/* muzzle — cream left, golden right */}
-      <ellipse cx="37" cy="70" rx="16.5" ry="15.5" fill="#f0e5ca" />
+      {/* muzzle — single golden tone */}
+      <ellipse cx="37" cy="70" rx="16.5" ry="15.5" fill="#e7c887" />
       <ellipse cx="63" cy="70" rx="16.5" ry="15.5" fill="#e7c887" />
 
-      {/* tooth tucked into the muzzle (gentle nibble) */}
+      {/* tooth tucked into the muzzle, long and squared (gentle nibble) */}
       <rect
         className="moledoku-tooth"
         style={{ animationDelay: toothDelay }}
-        x="46.6"
-        y="75"
-        width="6.8"
-        height="9"
-        rx="3"
+        x="46.4"
+        y="73.5"
+        width="7.2"
+        height="14"
+        rx="1.5"
         fill="#fffdf7"
       />
 
