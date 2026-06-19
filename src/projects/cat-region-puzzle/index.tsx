@@ -130,40 +130,33 @@ function MainMenu({
     : []
 
   return (
-    <div className="min-h-full w-full overflow-auto bg-[#f7f7f7] px-3 py-5 text-[#87515b]">
-      <div className="relative mx-auto flex min-h-[calc(100dvh-2.5rem)] w-full max-w-[28rem] flex-col overflow-hidden rounded-[2.25rem] border border-[#eadfd8] bg-[#f8f3ef] shadow-[0_16px_40px_rgba(96,68,52,0.16)]">
-        <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 py-10 text-center">
-          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-white shadow-[0_10px_26px_rgba(132,87,80,0.12)]">
+    <div className="min-h-full w-full overflow-auto bg-[#f8f3ef] text-[#87515b]">
+      <div className="relative mx-auto flex min-h-dvh w-full max-w-[30rem] flex-col overflow-hidden">
+        <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-8 py-14 text-center">
+          <div className="flex h-28 w-28 items-center justify-center rounded-full bg-white shadow-[0_12px_30px_rgba(132,87,80,0.12)]">
             <MoleFace large />
           </div>
-          <p className="mt-6 text-xs font-black uppercase tracking-[0.24em] text-[#b27782]">
+          <p className="mt-9 text-xs font-black uppercase tracking-[0.24em] text-[#b27782]">
             Burrow Puzzle
           </p>
-          <h1 className="mt-2 text-5xl font-black text-[#99545f]">Moledoku</h1>
-          <p className="mt-3 max-w-xs text-sm font-black leading-relaxed text-[#a06b72]">
+          <h1 className="mt-3 text-5xl font-black text-[#99545f]">두더지 스토쿠</h1>
+          <p className="mt-6 max-w-xs text-base font-black leading-relaxed text-[#a06b72]">
             색상마다 한 마리씩, 행과 열마다 한 마리씩 두더지를 찾아요.
           </p>
 
-          <div className="mt-9 grid w-full max-w-[19rem] gap-3">
+          <div className="mt-12 grid w-full max-w-[21rem] gap-5">
             {DIFFICULTIES.map((difficulty) => (
               <button
                 key={difficulty}
                 type="button"
                 onClick={() => openStagePicker(difficulty)}
-                className="rounded-[18px] bg-white px-5 py-4 text-xl font-black text-[#99545f] shadow-[0_7px_18px_rgba(132,87,80,0.12)] transition active:scale-95"
+                className="rounded-[24px] bg-white px-8 py-6 text-2xl font-black text-[#99545f] shadow-[0_10px_24px_rgba(132,87,80,0.12)] transition active:scale-95"
               >
                 {difficulty}
               </button>
             ))}
           </div>
         </main>
-
-        <footer className="relative mt-auto h-28 overflow-hidden bg-[#8edaf4]">
-          <div className="absolute -top-9 left-1/2 h-20 w-[120%] -translate-x-1/2 rounded-[50%] bg-[#f8f3ef]" />
-          <div className="absolute inset-x-0 bottom-5 text-center text-3xl font-black text-white drop-shadow-[0_3px_0_#45aad1]">
-            난이도 선택
-          </div>
-        </footer>
 
         {stagePickerDifficulty && (
           <StagePicker
@@ -190,28 +183,28 @@ function StagePicker({
   onStart: (index: number) => void
 }) {
   return (
-    <div className="absolute inset-0 z-30 flex items-center justify-center bg-[#3d2d22]/30 p-5 backdrop-blur-sm">
-      <div className="w-full max-w-xs rounded-[1.75rem] bg-[#fff8f3] p-5 text-center shadow-[0_18px_38px_rgba(72,45,35,0.2)]">
+    <div className="absolute inset-0 z-30 flex items-center justify-center bg-[#3d2d22]/30 p-8 backdrop-blur-sm">
+      <div className="w-full max-w-sm rounded-[2rem] bg-[#fff8f3] p-8 text-center shadow-[0_18px_38px_rgba(72,45,35,0.2)]">
         <div className="flex items-center justify-between">
-          <span className="w-9" />
-          <h2 className="text-2xl font-black text-[#99545f]">{difficulty}</h2>
+          <span className="w-11" />
+          <h2 className="text-3xl font-black text-[#99545f]">{difficulty}</h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="스테이지 선택 닫기"
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-[#f1e5df] text-lg font-black text-[#99545f]"
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-[#f1e5df] text-lg font-black text-[#99545f]"
           >
             X
           </button>
         </div>
-        <p className="mt-2 text-sm font-black text-[#a06b72]">스테이지를 선택해요</p>
-        <div className="mt-5 grid grid-cols-5 gap-2">
+        <p className="mt-4 text-base font-black text-[#a06b72]">스테이지를 선택해요</p>
+        <div className="mt-8 grid grid-cols-5 gap-3">
           {pickerLevels.map((item, index) => (
             <button
               key={item.id}
               type="button"
               onClick={() => onStart(index)}
-              className="h-12 rounded-[12px] bg-white text-sm font-black text-[#99545f] shadow-[0_5px_14px_rgba(132,87,80,0.12)] transition active:scale-95"
+              className="h-14 rounded-[16px] bg-white text-base font-black text-[#99545f] shadow-[0_6px_16px_rgba(132,87,80,0.12)] transition active:scale-95"
             >
               {index + 1}
             </button>
@@ -356,9 +349,9 @@ function GameSession({
   }
 
   return (
-    <div className="min-h-full w-full overflow-auto bg-[#f7f7f7] px-3 py-5 text-[#87515b]">
-      <div className="mx-auto flex min-h-[calc(100dvh-2.5rem)] w-full max-w-[28rem] flex-col overflow-hidden rounded-[2.25rem] border border-[#eadfd8] bg-[#f8f3ef] shadow-[0_16px_40px_rgba(96,68,52,0.16)]">
-        <header className="px-5 pt-8">
+    <div className="min-h-full w-full overflow-auto bg-[#f8f3ef] text-[#87515b]">
+      <div className="mx-auto flex min-h-dvh w-full max-w-[30rem] flex-col overflow-hidden">
+        <header className="px-7 pt-8">
           <div className="grid grid-cols-[2.75rem_1fr_2.75rem] items-center">
             <RoundIconButton ariaLabel="메인으로 돌아가기" onClick={returnToMenu}>
               &lt;
@@ -366,12 +359,10 @@ function GameSession({
             <h1 className="text-center text-2xl font-black text-[#99545f]">
               레벨 {levelIndex + 1}
             </h1>
-            <RoundIconButton ariaLabel="다시 시작" onClick={restart}>
-              S
-            </RoundIconButton>
+            <span />
           </div>
 
-          <div className="mt-3 flex items-center justify-center gap-3">
+          <div className="mt-7 flex items-center justify-center gap-4">
             <StatusPill>
               <MoleFace tiny />
               <span className="text-[#1fb26d]">
@@ -390,16 +381,11 @@ function GameSession({
             </StatusPill>
           </div>
 
-          <div className="mt-4 grid grid-cols-3 gap-1.5">
-            <RuleChip active>색상마다 두더지 1마리</RuleChip>
-            <RuleChip>열과 행마다 두더지 1마리</RuleChip>
-            <RuleChip>대각선은 허용</RuleChip>
-          </div>
         </header>
 
-        <main className="relative z-10 flex flex-1 flex-col items-center px-5 pb-4 pt-8">
+        <main className="relative z-10 flex flex-1 flex-col items-center px-7 pb-10 pt-12">
           <div
-            className="grid w-full max-w-[19.5rem] touch-manipulation gap-1.5 rounded-[14px] bg-white p-1.5 shadow-[0_8px_20px_rgba(125,85,78,0.14)]"
+            className="grid w-full max-w-[21rem] touch-manipulation gap-2 rounded-[18px] bg-white p-2 shadow-[0_10px_24px_rgba(125,85,78,0.14)]"
             style={{
               gridTemplateColumns: `repeat(${level.size}, minmax(0, 1fr))`,
               aspectRatio: '1 / 1',
@@ -424,9 +410,14 @@ function GameSession({
             )}
           </div>
 
-          <p className="mt-4 min-h-5 text-center text-xs font-black text-[#a06970]">{notice}</p>
+          <div className="mt-10 grid w-full max-w-[21rem] grid-cols-2 gap-4">
+            <RuleChip>색상마다 두더지 1마리</RuleChip>
+            <RuleChip>열과 행마다 두더지 1마리</RuleChip>
+          </div>
 
-          <div className="mt-4 grid w-full max-w-[19.5rem] grid-cols-5 gap-2">
+          <p className="mt-8 min-h-5 text-center text-sm font-black text-[#a06970]">{notice}</p>
+
+          <div className="mt-8 grid w-full max-w-[21rem] grid-cols-4 gap-4">
             <ModeButton active={mode === 'cat'} onClick={() => setMode('cat')} ariaLabel="두더지 놓기">
               <MoleFace tiny />
             </ModeButton>
@@ -434,30 +425,13 @@ function GameSession({
               X
             </ModeButton>
             <ModeButton onClick={undo} disabled={history.length === 0} ariaLabel="되돌리기">
-              U
+              Undo
             </ModeButton>
             <ModeButton onClick={showHint} ariaLabel="힌트">
-              ?
-            </ModeButton>
-            <ModeButton onClick={nextLevel} ariaLabel="다음 스테이지">
-              &gt;
+              Hint
             </ModeButton>
           </div>
         </main>
-
-        <footer className="relative mt-auto h-28 overflow-hidden bg-[#8edaf4]">
-          <div className="absolute -top-9 left-1/2 h-20 w-[120%] -translate-x-1/2 rounded-[50%] bg-[#f8f3ef]" />
-          <div className="absolute left-1/2 top-2 h-11 w-16 -translate-x-1/2">
-            <div className="absolute bottom-0 left-1/2 h-9 w-11 -translate-x-1/2 rounded-t-full bg-[#64c3e7]" />
-            <div className="absolute left-4 top-0 h-5 w-5 rotate-[-18deg] rounded-[5px] bg-[#64c3e7]" />
-            <div className="absolute right-4 top-0 h-5 w-5 rotate-[18deg] rounded-[5px] bg-[#64c3e7]" />
-          </div>
-          <div className="absolute inset-x-0 bottom-5 text-center text-3xl font-black text-white drop-shadow-[0_3px_0_#45aad1]">
-            두더지를 찾아라
-          </div>
-          <div className="absolute left-8 top-12 text-[#70c9e9]">✿</div>
-          <div className="absolute right-12 top-10 text-[#70c9e9]">✿</div>
-        </footer>
       </div>
 
       {status !== 'playing' && (
@@ -577,7 +551,7 @@ function RoundIconButton({
       type="button"
       onClick={onClick}
       aria-label={ariaLabel}
-      className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-xl font-black text-[#99545f] shadow-[0_6px_16px_rgba(132,87,80,0.13)] transition active:scale-95"
+      className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-xl font-black text-[#99545f] shadow-[0_6px_16px_rgba(132,87,80,0.13)] transition active:scale-95"
     >
       {children}
     </button>
@@ -592,13 +566,9 @@ function StatusPill({ children }: { children: ReactNode }) {
   )
 }
 
-function RuleChip({ active = false, children }: { active?: boolean; children: ReactNode }) {
+function RuleChip({ children }: { children: ReactNode }) {
   return (
-    <div
-      className={`flex min-h-12 items-center justify-center rounded-[5px] bg-white px-1.5 text-center text-[0.69rem] font-black leading-tight text-[#99545f] shadow-[0_4px_12px_rgba(132,87,80,0.08)] ${
-        active ? 'ring-2 ring-[#99545f]' : ''
-      }`}
-    >
+    <div className="flex min-h-14 items-center justify-center rounded-[16px] bg-white/70 px-4 py-3 text-center text-sm font-black leading-tight text-[#99545f]">
       {children}
     </div>
   )
@@ -624,7 +594,7 @@ function ModeButton({
       disabled={disabled}
       aria-label={ariaLabel}
       aria-pressed={active}
-      className={`flex h-11 items-center justify-center rounded-full text-sm font-black shadow-[0_5px_14px_rgba(132,87,80,0.1)] transition active:scale-95 disabled:opacity-40 ${
+      className={`flex h-14 items-center justify-center rounded-full px-2 text-sm font-black shadow-[0_5px_14px_rgba(132,87,80,0.1)] transition active:scale-95 disabled:opacity-40 ${
         active ? 'bg-[#99545f] text-white' : 'bg-white text-[#99545f]'
       }`}
     >
