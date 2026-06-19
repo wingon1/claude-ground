@@ -183,8 +183,8 @@ function StagePicker({
   onStart: (index: number) => void
 }) {
   return (
-    <div className="absolute inset-0 z-30 flex items-center justify-center bg-[#3d2d22]/30 p-8 backdrop-blur-sm">
-      <div className="w-full max-w-[22rem] overflow-hidden rounded-[32px] bg-[#fff8f3] px-8 py-9 text-center shadow-[0_18px_38px_rgba(72,45,35,0.2)]">
+    <div className="absolute inset-0 z-30 flex items-center justify-center bg-[#3d2d22]/30 p-10 backdrop-blur-sm">
+      <div className="w-full max-w-[24rem] overflow-hidden rounded-[32px] bg-[#fff8f3] px-10 py-10 text-center shadow-[0_18px_38px_rgba(72,45,35,0.2)]">
         <div className="flex items-center justify-between">
           <span className="w-11" />
           <h2 className="text-3xl font-black text-[#99545f]">{difficulty}</h2>
@@ -198,7 +198,7 @@ function StagePicker({
           </button>
         </div>
         <p className="mt-4 text-base font-black text-[#a06b72]">스테이지를 선택해요</p>
-        <div className="mx-auto mt-9 grid w-full max-w-[17rem] grid-cols-2 gap-4">
+        <div className="mx-auto mt-10 grid w-full max-w-[18.5rem] grid-cols-5 gap-3">
           {pickerLevels.map((item, index) => (
             <button
               key={item.id}
@@ -430,8 +430,8 @@ function GameSession({
       </div>
 
       {status !== 'playing' && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-[#3d2d22]/45 p-8 backdrop-blur-sm">
-          <div className="w-full max-w-[21rem] overflow-hidden rounded-[32px] bg-[#fff8f3] px-9 py-10 text-center shadow-[0_18px_38px_rgba(72,45,35,0.2)]">
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-[#3d2d22]/45 p-10 backdrop-blur-sm">
+          <div className="w-full max-w-[21rem] overflow-hidden rounded-[32px] bg-[#fff8f3] px-10 py-10 text-center shadow-[0_18px_38px_rgba(72,45,35,0.2)]">
             <MoleFace large />
             <h2 className="mt-6 text-2xl font-black text-[#99545f]">
               {status === 'won' ? '찾았다!' : '앗, 막혔어요'}
@@ -441,7 +441,7 @@ function GameSession({
                 ? '모든 두더지가 자기 색상 굴을 찾았어요.'
                 : '되돌리거나 다시 시작해봐요.'}
             </p>
-            <div className="mx-auto mt-8 grid w-full max-w-[16rem] grid-cols-2 gap-4">
+            <div className="mx-auto mt-9 grid w-full max-w-[15rem] grid-cols-2 gap-4">
               <ModalButton onClick={restart}>다시 하기</ModalButton>
               <ModalButton onClick={nextLevel}>다음</ModalButton>
             </div>
