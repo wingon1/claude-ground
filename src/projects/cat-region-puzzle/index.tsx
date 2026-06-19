@@ -1,9 +1,11 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type CSSProperties,
   type Dispatch,
+  type PointerEvent,
   type ReactNode,
   type SetStateAction,
 } from 'react'
@@ -30,6 +32,15 @@ type Snapshot = {
   board: Board
   hearts: number
   status: Status
+}
+
+type MarkDragState = {
+  active: boolean
+  pointerId: number | null
+  start: Coord | null
+  startX: number
+  startY: number
+  visited: Set<string>
 }
 
 type CellColor = {
@@ -399,6 +410,15 @@ function GameSession({
   const [hint, setHint] = useState<Coord | null>(null)
   const [mistake, setMistake] = useState<Coord | null>(null)
   const [notice, setNotice] = useState('색상, 열, 행마다 두더지 1마리')
+  const markDrag = useRef<MarkDragState>({
+    active: false,
+    pointerId: null,
+    start: null,
+    startX: 0,
+    startY: 0,
+    visited: new Set(),
+  })
+  const suppressNextCellClick = useRef(false)
 
   const catsPlaced = useMemo(() => getCats(board).length, [board])
   const lockedKeys = useMemo(
@@ -473,7 +493,111 @@ function GameSession({
     setNotice(next[row][col] === 'mark' ? '여긴 아니라고 표시했어요.' : '표시를 지웠어요.')
   }
 
+  const paintMark = (row: number, col: number) => {
+    const key = `${row}:${col}`
+    if (markDrag.current.visited.has(key)) return
+
+    markDrag.current.visited.add(key)
+    setBoard((current) => {
+      if (current[row][col] !== 'empty') return current
+
+      const next = cloneBoard(current)
+      next[row][col] = 'mark'
+      return next
+    })
+  }
+
+  const beginMarkDrag = (coord: Coord) => {
+    if (!markDrag.current.active) {
+      markDrag.current.active = true
+      markDrag.current.visited = new Set()
+      pushHistory()
+      setHint(null)
+      setNotice('표시했어요.')
+
+      if (markDrag.current.start) {
+        paintMark(markDrag.current.start.row, markDrag.current.start.col)
+      }
+    }
+
+    paintMark(coord.row, coord.col)
+  }
+
+  const getPointerCell = (clientX: number, clientY: number): Coord | null => {
+    const element = document.elementFromPoint(clientX, clientY)
+    const cellElement = element?.closest('[data-moledoku-cell]')
+    if (!(cellElement instanceof HTMLElement)) return null
+
+    const row = Number(cellElement.dataset.row)
+    const col = Number(cellElement.dataset.col)
+    if (!Number.isInteger(row) || !Number.isInteger(col)) return null
+
+    return { row, col }
+  }
+
+  const handleMarkPointerDown = (
+    event: PointerEvent<HTMLButtonElement>,
+    row: number,
+    col: number,
+  ) => {
+    if (mode !== 'mark' || status !== 'playing') return
+
+    event.currentTarget.setPointerCapture(event.pointerId)
+    markDrag.current = {
+      active: false,
+      pointerId: event.pointerId,
+      start: { row, col },
+      startX: event.clientX,
+      startY: event.clientY,
+      visited: new Set(),
+    }
+  }
+
+  const handleBoardPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    const drag = markDrag.current
+    if (mode !== 'mark' || status !== 'playing' || drag.pointerId !== event.pointerId) return
+
+    const coord = getPointerCell(event.clientX, event.clientY)
+    if (!coord) return
+
+    const movedFromStart = drag.start
+      ? coord.row !== drag.start.row || coord.col !== drag.start.col
+      : false
+    const movedFar =
+      Math.abs(event.clientX - drag.startX) > 8 || Math.abs(event.clientY - drag.startY) > 8
+
+    if (drag.active || movedFromStart || movedFar) {
+      event.preventDefault()
+      beginMarkDrag(coord)
+    }
+  }
+
+  const endMarkDrag = (event: PointerEvent<HTMLDivElement>) => {
+    if (markDrag.current.pointerId !== event.pointerId) return
+
+    if (markDrag.current.active) {
+      suppressNextCellClick.current = true
+      window.setTimeout(() => {
+        suppressNextCellClick.current = false
+      }, 250)
+    }
+
+    markDrag.current = {
+      active: false,
+      pointerId: null,
+      start: null,
+      startX: 0,
+      startY: 0,
+      visited: new Set(),
+    }
+  }
+
   const handleCell = (row: number, col: number) => {
+    if (suppressNextCellClick.current) {
+      suppressNextCellClick.current = false
+      return
+    }
+
     if (mode === 'cat') placeCat(row, col)
     else toggleMark(row, col)
   }
@@ -561,13 +685,18 @@ function GameSession({
           </div>
 
           <div
-            className="mt-11 grid w-full max-w-[21rem] touch-manipulation gap-1.5 rounded-[22px] bg-white p-2.5 shadow-[0_12px_28px_rgba(125,85,78,0.16)]"
+            className={`mt-11 grid w-full max-w-[21rem] gap-1.5 rounded-[22px] bg-white p-2.5 shadow-[0_12px_28px_rgba(125,85,78,0.16)] ${
+              mode === 'mark' ? 'touch-none' : 'touch-manipulation'
+            }`}
             style={{
               gridTemplateColumns: `repeat(${level.size}, minmax(0, 1fr))`,
               gridTemplateRows: `repeat(${level.size}, minmax(0, 1fr))`,
               aspectRatio: '1 / 1',
             }}
             aria-label={`Level ${level.id} board`}
+            onPointerMove={handleBoardPointerMove}
+            onPointerUp={endMarkDrag}
+            onPointerCancel={endMarkDrag}
           >
             {board.map((row, rowIndex) =>
               row.map((cell, colIndex) => (
@@ -581,6 +710,7 @@ function GameSession({
                   isMistake={mistake?.row === rowIndex && mistake.col === colIndex}
                   isLocked={lockedKeys.has(`${rowIndex}:${colIndex}`)}
                   onClick={() => handleCell(rowIndex, colIndex)}
+                  onPointerDown={(event) => handleMarkPointerDown(event, rowIndex, colIndex)}
                 />
               )),
             )}
@@ -644,6 +774,7 @@ function BoardCell({
   isMistake,
   isLocked,
   onClick,
+  onPointerDown,
 }: {
   cell: CellState
   level: Level
@@ -653,6 +784,7 @@ function BoardCell({
   isMistake: boolean
   isLocked: boolean
   onClick: () => void
+  onPointerDown: (event: PointerEvent<HTMLButtonElement>) => void
 }) {
   const color = REGION_COLORS[level.regions[row][col] % REGION_COLORS.length]
 
@@ -671,7 +803,11 @@ function BoardCell({
   return (
     <button
       type="button"
+      data-moledoku-cell
+      data-row={row}
+      data-col={col}
       onClick={onClick}
+      onPointerDown={onPointerDown}
       className={`relative flex min-h-0 min-w-0 items-center justify-center overflow-hidden rounded-[10px] transition active:scale-95 ${
         isHint || isMistake ? 'z-10' : ''
       } ${isMistake ? 'animate-pulse' : ''}`}
