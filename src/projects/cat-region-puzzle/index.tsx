@@ -163,7 +163,7 @@ function MainMenu({
           <h1 className="mt-2.5 text-[2.75rem] font-black leading-none tracking-tight text-[#99545f]">
             두더지 스도쿠
           </h1>
-          <p className="mt-5 max-w-[17rem] text-[15px] font-medium leading-relaxed text-[#ab7d83]">
+          <p className="mt-5 max-w-[18rem] break-keep text-[15px] font-medium leading-relaxed text-[#ab7d83]">
             색상·가로줄·세로줄마다 두더지를 한 마리씩 숨겨봐요.
           </p>
 
@@ -659,7 +659,7 @@ function ModeButton({
       disabled={disabled}
       aria-label={ariaLabel}
       aria-pressed={active}
-      className={`flex min-h-[3.5rem] items-center justify-center rounded-[20px] px-3 py-4 text-sm font-bold shadow-[0_5px_14px_rgba(132,87,80,0.1)] transition active:scale-95 disabled:opacity-40 ${
+      className={`flex min-h-[3.5rem] items-center justify-center whitespace-nowrap rounded-[20px] px-2 py-4 text-xs font-bold shadow-[0_5px_14px_rgba(132,87,80,0.1)] transition active:scale-95 disabled:opacity-40 ${
         active ? 'bg-[#99545f] text-white' : 'bg-white text-[#99545f]'
       }`}
     >
@@ -673,7 +673,7 @@ function ModalButton({ onClick, children }: { onClick: () => void; children: Rea
     <button
       type="button"
       onClick={onClick}
-      className="min-h-[3.5rem] rounded-[20px] border-0 bg-[#99545f] px-7 py-[1.1rem] text-sm font-bold text-white shadow-[0_5px_14px_rgba(132,87,80,0.18)] outline-none transition active:scale-95"
+      className="min-h-[3.5rem] whitespace-nowrap rounded-[20px] border-0 bg-[#99545f] px-4 py-[1.1rem] text-sm font-bold text-white shadow-[0_5px_14px_rgba(132,87,80,0.18)] outline-none transition active:scale-95"
     >
       {children}
     </button>

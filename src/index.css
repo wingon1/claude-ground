@@ -1,9 +1,11 @@
 @import "tailwindcss";
 
+/* Keep border-box sizing globally. We intentionally do NOT reset margin/padding
+   on the universal selector here: this rule is unlayered, so it would override
+   Tailwind's layered spacing utilities (mt-*, p-*, …) and silently zero them.
+   Tailwind's Preflight already provides the sensible default margin resets. */
 * {
   box-sizing: border-box;
-  margin: 0;
-  padding: 0;
 }
 
 html,
