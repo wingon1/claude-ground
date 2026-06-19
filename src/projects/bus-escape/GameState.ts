@@ -1,7 +1,7 @@
 // Owns the live level state + persisted progress.
 
 import { SIZE_DEFS, COLOR_KEYS, type ColorKey, type Level, type SizeKey, type Vehicle } from './types'
-import { makeGrid, place, exitClear, type Grid } from './GridLogic'
+import { makeGrid, place, type Grid } from './GridLogic'
 import { findParkingPlacement } from './LevelGenerator'
 
 export interface ZoneSlot {
@@ -29,7 +29,7 @@ export const MAX_LEVEL = 100
 export const ZONE_SLOTS = 4
 export const ENDLESS_SIZE = 7
 export const HOLDING_COUNT = 5
-const QUEUE_TARGET = 6
+const QUEUE_TARGET = 18
 const ENDLESS_FILL = 0.6 // starting parking-lot density (looks full, stays playable)
 
 export function loadProgress(): Progress {
@@ -168,22 +168,14 @@ export class GameState {
   }
 
   refillQueue(): void {
-    // Only spawn passengers whose colour the player can serve RIGHT NOW — a car
-    // already in the zone (with capacity) or an exitable grid car that can be
-    // sent to a slot. This keeps a packed lot a fair "dig-out" (no passenger of
-    // a colour whose cars are all blocked). Fallback to any parked colour.
+    // Passengers are drawn from colours actually present in play (grid + zone +
+    // holding), weighted by how many cars of each colour exist. A long visible
+    // line builds up; if you fill the slots with the wrong colours you can still
+    // gridlock (handled as game over).
     const pool: ColorKey[] = []
-    const add = (c: ColorKey, w: number) => { for (let i = 0; i < w; i++) pool.push(c) }
-    for (const s of this.zone) {
-      if (s && s.vehicle.boarded < s.vehicle.capacity) add(s.vehicle.color, 3)
-    }
-    for (const v of this.vehicles.values()) {
-      if (exitClear(this.grid, v)) add(v.color, 2)
-    }
-    if (pool.length === 0) {
-      for (const v of this.vehicles.values()) add(v.color, 1)
-      for (const v of this.holding) add(v.color, 1)
-    }
+    for (const v of this.vehicles.values()) pool.push(v.color)
+    for (const s of this.zone) if (s) pool.push(s.vehicle.color)
+    for (const v of this.holding) pool.push(v.color)
     if (pool.length === 0) return
     while (this.queue.length < QUEUE_TARGET) {
       this.queue.push(pool[Math.floor(Math.random() * pool.length)])

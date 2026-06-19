@@ -279,17 +279,18 @@ export class Game {
     }
   }
 
-  // Endless game-over: no legal move left (can't park, can't send to a slot,
-  // and no passenger can board now).
+  // Endless game-over: when no progress is possible. In particular, if every
+  // slot is full and the front passenger can't board any of them, boarding can
+  // never advance → game over (parking incoming cars wouldn't free a slot).
   private endlessStuck(): boolean {
     if (this.state.matchForFront()) return false
+    if (this.state.freeSlotIndex() === -1) return true // slots full + front can't board
+    // Slots have room: can we still act (send a car to a slot, or park one)?
+    for (const v of this.state.vehicles.values()) {
+      if (exitClear(this.state.grid, v)) return false
+    }
     for (const h of this.state.holding) {
       if (findParkingPlacement(this.state.grid, h.length, Math.random)) return false
-    }
-    if (this.state.freeSlotIndex() !== -1) {
-      for (const v of this.state.vehicles.values()) {
-        if (exitClear(this.state.grid, v)) return false
-      }
     }
     return true
   }
