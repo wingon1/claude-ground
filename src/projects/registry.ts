@@ -61,7 +61,7 @@ export const projects: Project[] = [
     title: 'Moledoku',
     description:
       'A mole-region logic puzzle with solver-verified levels: one mole per row, column, and color region, with no diagonal touching.',
-    emoji: 'M',
+    emoji: '🐭',
     tags: ['react', 'logic', 'puzzle', 'levels'],
     kind: 'react',
     load: () => import('./cat-region-puzzle'),
