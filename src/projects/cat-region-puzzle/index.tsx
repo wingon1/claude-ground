@@ -581,7 +581,6 @@ function GameSession({
                   isMistake={mistake?.row === rowIndex && mistake.col === colIndex}
                   isLocked={lockedKeys.has(`${rowIndex}:${colIndex}`)}
                   onClick={() => handleCell(rowIndex, colIndex)}
-                  onDoubleClick={() => placeCat(rowIndex, colIndex)}
                 />
               )),
             )}
@@ -645,7 +644,6 @@ function BoardCell({
   isMistake,
   isLocked,
   onClick,
-  onDoubleClick,
 }: {
   cell: CellState
   level: Level
@@ -655,7 +653,6 @@ function BoardCell({
   isMistake: boolean
   isLocked: boolean
   onClick: () => void
-  onDoubleClick: () => void
 }) {
   const color = REGION_COLORS[level.regions[row][col] % REGION_COLORS.length]
 
@@ -675,7 +672,6 @@ function BoardCell({
     <button
       type="button"
       onClick={onClick}
-      onDoubleClick={onDoubleClick}
       className={`relative flex min-h-0 min-w-0 items-center justify-center overflow-hidden rounded-[10px] transition active:scale-95 ${
         isHint || isMistake ? 'z-10' : ''
       } ${isMistake ? 'animate-pulse' : ''}`}
