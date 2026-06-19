@@ -572,7 +572,6 @@ function MoleFace({
 }) {
   const gid = useId()
   const headClip = `mole-head-${gid}`
-  const noseClip = `mole-nose-${gid}`
   // Desync instances a little so a board full of moles doesn't blink in unison.
   const blinkDelay = `${-((seed * 0.53) % 4.8).toFixed(2)}s`
   const toothDelay = `${-((seed * 0.37) % 1.9).toFixed(2)}s`
@@ -584,9 +583,6 @@ function MoleFace({
         <clipPath id={headClip}>
           <path d="M6 50 A44 44 0 0 1 94 50 L94 86 Q94 96 84 96 L16 96 Q6 96 6 86 Z" />
         </clipPath>
-        <clipPath id={noseClip}>
-          <rect x="44.2" y="48.5" width="11.6" height="11.6" rx="3.8" />
-        </clipPath>
       </defs>
 
       {/* head — warm two-tone (lighter left, terracotta right) */}
@@ -597,33 +593,30 @@ function MoleFace({
 
       {/* eyes (simple dots, blink together) */}
       <g className="moledoku-eye" style={{ animationDelay: blinkDelay }}>
-        <circle cx="31" cy="40" r="5.6" fill="#45454f" />
+        <circle cx="32" cy="40" r="4.4" fill="#45454f" />
       </g>
       <g className="moledoku-eye" style={{ animationDelay: blinkDelay }}>
-        <circle cx="69" cy="40" r="5.6" fill="#38302b" />
+        <circle cx="68" cy="40" r="4.4" fill="#38302b" />
       </g>
 
       {/* muzzle — cream left, golden right */}
       <ellipse cx="37" cy="70" rx="16.5" ry="15.5" fill="#f0e5ca" />
       <ellipse cx="63" cy="70" rx="16.5" ry="15.5" fill="#e7c887" />
 
-      {/* tooth (gentle nibble) */}
+      {/* tooth tucked into the muzzle (gentle nibble) */}
       <rect
         className="moledoku-tooth"
         style={{ animationDelay: toothDelay }}
-        x="46.3"
-        y="79"
-        width="7.4"
-        height="12.5"
+        x="46.6"
+        y="75"
+        width="6.8"
+        height="9"
         rx="3"
         fill="#fffdf7"
       />
 
-      {/* nose — slate, two-tone */}
-      <rect x="44.2" y="48.5" width="11.6" height="11.6" rx="3.8" fill="#6e6e7d" />
-      <g clipPath={`url(#${noseClip})`}>
-        <rect x="50" y="0" width="50" height="100" fill="#45444f" />
-      </g>
+      {/* nose — round, slate */}
+      <circle cx="50" cy="55" r="7.2" fill="#45444f" />
     </svg>
   )
 }
