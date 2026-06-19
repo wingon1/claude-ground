@@ -291,14 +291,17 @@ export class Renderer {
     this.size = state.size
     const half = (this.size - 1) / 2
     this.slotSpacing = Math.max(1.7, Math.min(2.5, this.size * 0.32))
-    this.zoneZ = -half - 3.2
-    this.queueFrameZ = this.zoneZ - 3.0
-    // Frame first (pinned to queueFrameZ) so grid/zone size & position are fixed,
-    // then raise the actual queue ~30% of the screen height up over the HUD.
+    const zoneBaseZ = -half - 3.2
+    this.queueFrameZ = zoneBaseZ - 3.0
+    // Frame first (pinned to the original zone/queue z) so the grid framing and
+    // overall proportions stay fixed, then nudge the zone + queue up 5% of the
+    // screen height each.
+    this.zoneZ = zoneBaseZ
     this.queueZ = this.queueFrameZ
     this.frameContent()
     const sp = Math.sin((56 * Math.PI) / 180)
     const raise = 0.05 * (this.camera.top - this.camera.bottom) / sp
+    this.zoneZ = zoneBaseZ - raise
     this.queueZ = this.queueFrameZ - raise
 
     this.buildBoard()
