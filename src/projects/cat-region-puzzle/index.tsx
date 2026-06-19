@@ -183,8 +183,8 @@ function StagePicker({
   onStart: (index: number) => void
 }) {
   return (
-    <div className="absolute inset-0 z-30 flex items-center justify-center bg-[#3d2d22]/30 p-8 backdrop-blur-sm">
-      <div className="w-full max-w-sm rounded-[2rem] bg-[#fff8f3] p-8 text-center shadow-[0_18px_38px_rgba(72,45,35,0.2)]">
+    <div className="absolute inset-0 z-30 flex items-center justify-center bg-[#3d2d22]/30 p-6 backdrop-blur-sm">
+      <div className="w-full max-w-[24rem] rounded-[2rem] bg-[#fff8f3] px-7 py-8 text-center shadow-[0_18px_38px_rgba(72,45,35,0.2)]">
         <div className="flex items-center justify-between">
           <span className="w-11" />
           <h2 className="text-3xl font-black text-[#99545f]">{difficulty}</h2>
@@ -192,19 +192,19 @@ function StagePicker({
             type="button"
             onClick={onClose}
             aria-label="스테이지 선택 닫기"
-            className="flex h-11 w-11 items-center justify-center rounded-full bg-[#f1e5df] text-lg font-black text-[#99545f]"
+            className="flex h-11 w-11 items-center justify-center rounded-full border-0 bg-[#f1e5df] text-lg font-black text-[#99545f] outline-none"
           >
             X
           </button>
         </div>
         <p className="mt-4 text-base font-black text-[#a06b72]">스테이지를 선택해요</p>
-        <div className="mt-8 grid grid-cols-5 gap-3">
+        <div className="mt-9 grid grid-cols-5 gap-x-4 gap-y-5">
           {pickerLevels.map((item, index) => (
             <button
               key={item.id}
               type="button"
               onClick={() => onStart(index)}
-              className="h-14 rounded-[16px] bg-white text-base font-black text-[#99545f] shadow-[0_6px_16px_rgba(132,87,80,0.12)] transition active:scale-95"
+              className="h-14 rounded-[16px] border-0 bg-white text-base font-black text-[#99545f] shadow-[0_6px_16px_rgba(132,87,80,0.12)] outline-none transition active:scale-95"
             >
               {index + 1}
             </button>
@@ -410,12 +410,7 @@ function GameSession({
             )}
           </div>
 
-          <div className="mt-12 flex w-full max-w-[21rem] flex-col items-center gap-3 text-center text-sm font-black leading-relaxed text-[#99545f]">
-            <p>색상마다 두더지 1마리</p>
-            <p>열과 행마다 두더지 1마리</p>
-          </div>
-
-          <p className="mt-7 min-h-5 text-center text-sm font-black text-[#a06970]">{notice}</p>
+          <p className="mt-12 min-h-5 text-center text-sm font-black text-[#a06970]">{notice}</p>
 
           <div className="mt-8 grid w-full max-w-[21rem] grid-cols-4 gap-4">
             <ModeButton active={mode === 'cat'} onClick={() => setMode('cat')} ariaLabel="두더지 놓기">
@@ -435,8 +430,8 @@ function GameSession({
       </div>
 
       {status !== 'playing' && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-[#3d2d22]/45 p-8 backdrop-blur-sm">
-          <div className="w-full max-w-[20rem] rounded-[2rem] bg-[#fff8f3] px-7 py-8 text-center shadow-[0_18px_38px_rgba(72,45,35,0.2)]">
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-[#3d2d22]/45 p-6 backdrop-blur-sm">
+          <div className="w-full max-w-[22rem] rounded-[2rem] bg-[#fff8f3] px-8 py-9 text-center shadow-[0_18px_38px_rgba(72,45,35,0.2)]">
             <MoleFace large />
             <h2 className="mt-6 text-2xl font-black text-[#99545f]">
               {status === 'won' ? '찾았다!' : '앗, 막혔어요'}
@@ -446,7 +441,7 @@ function GameSession({
                 ? '모든 두더지가 자기 색상 굴을 찾았어요.'
                 : '되돌리거나 다시 시작해봐요.'}
             </p>
-            <div className="mt-7 grid grid-cols-2 gap-4">
+            <div className="mt-8 grid grid-cols-2 gap-5 px-1">
               <ModalButton onClick={restart}>다시 하기</ModalButton>
               <ModalButton onClick={nextLevel}>다음</ModalButton>
             </div>
@@ -600,7 +595,7 @@ function ModalButton({ onClick, children }: { onClick: () => void; children: Rea
     <button
       type="button"
       onClick={onClick}
-      className="min-h-12 rounded-full bg-[#99545f] px-5 py-3 text-sm font-black text-white shadow-[0_5px_14px_rgba(132,87,80,0.18)] transition active:scale-95"
+      className="min-h-14 rounded-full border-0 bg-[#99545f] px-6 py-4 text-sm font-black text-white shadow-[0_5px_14px_rgba(132,87,80,0.18)] outline-none transition active:scale-95"
     >
       {children}
     </button>
