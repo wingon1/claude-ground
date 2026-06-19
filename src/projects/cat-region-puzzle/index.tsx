@@ -404,7 +404,7 @@ function GameSession({
 }) {
   const [board, setBoard] = useState<Board>(() => createBoard(level))
   const [hearts, setHearts] = useState(3)
-  const [mode, setMode] = useState<Mode>('cat')
+  const [mode, setMode] = useState<Mode>('mark')
   const [status, setStatus] = useState<Status>('playing')
   const [history, setHistory] = useState<Snapshot[]>([])
   const [hint, setHint] = useState<Coord | null>(null)
@@ -478,19 +478,15 @@ function GameSession({
     }
   }
 
-  const toggleMark = (row: number, col: number) => {
+  const placeMark = (row: number, col: number) => {
     if (status !== 'playing') return
-    if (board[row][col] === 'cat') {
-      placeCat(row, col)
-      return
-    }
 
     pushHistory()
     const next = cloneBoard(board)
-    next[row][col] = board[row][col] === 'mark' ? 'empty' : 'mark'
+    next[row][col] = 'mark'
     setBoard(next)
     setHint(null)
-    setNotice(next[row][col] === 'mark' ? '여긴 아니라고 표시했어요.' : '표시를 지웠어요.')
+    setNotice('여긴 아니라고 표시했어요.')
   }
 
   const paintMark = (row: number, col: number) => {
@@ -598,8 +594,12 @@ function GameSession({
       return
     }
 
-    if (mode === 'cat') placeCat(row, col)
-    else toggleMark(row, col)
+    if (board[row][col] === 'cat' || board[row][col] === 'mark' || mode === 'cat') {
+      placeCat(row, col)
+      return
+    }
+
+    placeMark(row, col)
   }
 
   const undo = () => {
