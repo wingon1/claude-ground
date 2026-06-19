@@ -381,31 +381,31 @@ function GameSession({
   return (
     <div className="min-h-full w-full overflow-auto bg-[#f8f3ef] text-[#87515b]">
       <MoleStyles />
-      <div className="mx-auto flex min-h-dvh w-full max-w-[30rem] flex-col overflow-hidden">
-        <header className="px-6 pt-6">
-          <div className="grid grid-cols-[2.75rem_1fr_2.75rem] items-center">
-            <span />
-            <h1 className="text-center text-xl font-black tracking-tight text-[#99545f]">
-              레벨 {levelIndex + 1}
-            </h1>
-            <RoundIconButton ariaLabel="메인 메뉴로 돌아가기" onClick={returnToMenu}>
-              <svg
-                viewBox="0 0 24 24"
-                className="h-5 w-5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2.4}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M4 11l8-7 8 7" />
-                <path d="M6 10v9h12v-9" />
-              </svg>
-            </RoundIconButton>
-          </div>
+      <div className="relative mx-auto flex min-h-dvh w-full max-w-[30rem] flex-col overflow-hidden px-7">
+        <div className="absolute right-5 top-5 z-20">
+          <RoundIconButton ariaLabel="메인 메뉴로 돌아가기" onClick={returnToMenu}>
+            <svg
+              viewBox="0 0 24 24"
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2.4}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M4 11l8-7 8 7" />
+              <path d="M6 10v9h12v-9" />
+            </svg>
+          </RoundIconButton>
+        </div>
 
-          <div className="mt-7 flex items-center justify-center gap-3">
+        <main className="relative z-10 flex flex-1 flex-col items-center justify-center py-12">
+          <h1 className="text-xl font-black tracking-tight text-[#99545f]">
+            레벨 {levelIndex + 1}
+          </h1>
+
+          <div className="mt-6 flex items-center justify-center gap-3">
             <StatusPill>
               <MoleFace tiny seed={2} />
               <span className="text-[#1fb26d]">
@@ -423,11 +423,9 @@ function GameSession({
               ))}
             </StatusPill>
           </div>
-        </header>
 
-        <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-7 pb-12 pt-8">
           <div
-            className="grid w-full max-w-[21rem] touch-manipulation gap-1.5 rounded-[22px] bg-white p-2.5 shadow-[0_12px_28px_rgba(125,85,78,0.16)]"
+            className="mt-11 grid w-full max-w-[21rem] touch-manipulation gap-1.5 rounded-[22px] bg-white p-2.5 shadow-[0_12px_28px_rgba(125,85,78,0.16)]"
             style={{
               gridTemplateColumns: `repeat(${level.size}, minmax(0, 1fr))`,
               aspectRatio: '1 / 1',
@@ -452,11 +450,11 @@ function GameSession({
             )}
           </div>
 
-          <p className="mt-9 min-h-[1.25rem] text-center text-sm font-semibold text-[#a87f85]">
+          <p className="mt-11 min-h-[1.25rem] text-center text-sm font-semibold text-[#a87f85]">
             {notice}
           </p>
 
-          <div className="mt-7 grid w-full max-w-[21rem] grid-cols-4 gap-3">
+          <div className="mt-10 grid w-full max-w-[21rem] grid-cols-4 gap-3">
             <ModeButton active={mode === 'cat'} onClick={() => setMode('cat')} ariaLabel="두더지 놓기">
               <MoleFace tiny seed={3} />
             </ModeButton>
