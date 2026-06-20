@@ -15,7 +15,37 @@ const GROUPS = [
   { difficulty: '7x7', count: 50, seed: 42000 },
 ]
 
-const signature = `// moledoku-levels:${JSON.stringify({ version: 5, groups: GROUPS })}`
+const DIFFICULTY_RULES = {
+  '5x5': {
+    minSolutions: 2,
+    maxSolutions: 10,
+    maxSolutionsWithoutSmallRegions: 10,
+    minSmallRegions: 1,
+    maxSmallRegions: 3,
+    smallRegionBudget: 50,
+    singletonBudget: 14,
+  },
+  '6x6': {
+    minSolutions: 2,
+    maxSolutions: 10,
+    maxSolutionsWithoutSmallRegions: 24,
+    minSmallRegions: 0,
+    maxSmallRegions: 2,
+    smallRegionBudget: 50,
+    singletonBudget: 6,
+  },
+  '7x7': {
+    minSolutions: 2,
+    maxSolutions: 12,
+    maxSolutionsWithoutSmallRegions: 36,
+    minSmallRegions: 0,
+    maxSmallRegions: 1,
+    smallRegionBudget: 50,
+    singletonBudget: 3,
+  },
+}
+
+const signature = `// moledoku-levels:${JSON.stringify({ version: 9, groups: GROUPS, rules: DIFFICULTY_RULES })}`
 const force = process.argv.includes('--force')
 const outputPath = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -68,11 +98,22 @@ function createSolution(size, rng) {
   return shuffle(columns, rng).map((col, row) => ({ row, col }))
 }
 
-function createRegionTargets(size, rng) {
+function pickSmallRegionSize(rng, allowSingleton) {
+  const candidates = allowSingleton ? [1, 2, 3, 4] : [2, 3, 4]
+  return candidates[Math.floor(rng() * candidates.length)]
+}
+
+function createRegionTargets(size, rng, rules, allowSingleton, allowSmallRegion) {
   const total = size * size
   const maxRegionSize = Math.ceil(total * 0.46)
   const minDistinctSizes = Math.max(3, Math.ceil(size * 0.6))
+  const singletonLimit = allowSingleton ? 1 : 0
+  const minSmallRegions = allowSmallRegion ? rules.minSmallRegions : 0
+  const maxSmallRegions = allowSmallRegion ? rules.maxSmallRegions : 0
 
+  // Region size targets are the first difficulty gate:
+  // 5x5 may keep a few small areas, while larger boards prefer fewer small hints.
+  // Small areas and 1-cell areas both use per-difficulty budgets to avoid repetition.
   for (let attempt = 0; attempt < 500; attempt++) {
     const cuts = new Set()
     while (cuts.size < size - 1) {
@@ -91,15 +132,26 @@ function createRegionTargets(size, rng) {
     if (
       largest <= maxRegionSize &&
       distinctSizes >= minDistinctSizes &&
-      singletonCount === 0 &&
-      smallRegionCount <= 2
+      singletonCount <= singletonLimit &&
+      smallRegionCount >= minSmallRegions &&
+      smallRegionCount <= maxSmallRegions
     ) {
       return shuffle(targets, rng)
     }
   }
 
   const targets = Array.from({ length: size }, () => 5)
+  let smallRegions = 0
   let remaining = total - size * 5
+
+  while (smallRegions < minSmallRegions) {
+    const index = smallRegions
+    const smallSize = pickSmallRegionSize(rng, allowSingleton && smallRegions === 0)
+    targets[index] = smallSize
+    remaining += 5 - smallSize
+    smallRegions += 1
+  }
+
   while (remaining > 0) {
     const candidates = targets
       .map((target, index) => ({ target, index }))
@@ -113,8 +165,8 @@ function createRegionTargets(size, rng) {
   return shuffle(targets, rng)
 }
 
-function createRegions(size, solution, rng) {
-  const targetSizes = createRegionTargets(size, rng)
+function createRegions(size, solution, rng, rules, allowSingleton, allowSmallRegion) {
+  const targetSizes = createRegionTargets(size, rng, rules, allowSingleton, allowSmallRegion)
   const regions = Array.from({ length: size }, () => Array.from({ length: size }).fill(-1))
   const regionSizes = Array.from({ length: size }).fill(0)
 
@@ -259,6 +311,25 @@ function countSmallRegions(level) {
   return counts.filter((count) => count <= 4).length
 }
 
+function canonicalRegionFingerprint(regions) {
+  const labels = new Map()
+  let nextLabel = 0
+
+  return regions
+    .map((row) =>
+      row
+        .map((regionId) => {
+          if (!labels.has(regionId)) {
+            labels.set(regionId, nextLabel)
+            nextLabel += 1
+          }
+          return labels.get(regionId)
+        })
+        .join(','),
+    )
+    .join('|')
+}
+
 function solveLevel(level, limit = 2) {
   const lockedByRow = new Map()
   const usedColumns = new Set()
@@ -306,38 +377,39 @@ function solveLevel(level, limit = 2) {
   return count
 }
 
-function validateLevel(level) {
-  return (
-    countSingletonRegions(level) === 0 &&
-    countSmallRegions(level) <= 2 &&
-    validateSolution(level) &&
-    validateRegionConnectivity(level) &&
-    solveLevel(level, 2) === 1
-  )
+function validateLevel(level, rules, allowSingleton, allowSmallRegion, usedFingerprints) {
+  if (level.lockedCats.length > 0) return false
+  if (!validateSolution(level) || !validateRegionConnectivity(level)) return false
+
+  const singletonCount = countSingletonRegions(level)
+  const smallRegionCount = countSmallRegions(level)
+  const minSmallRegions = allowSmallRegion ? rules.minSmallRegions : 0
+  const maxSmallRegions = allowSmallRegion ? rules.maxSmallRegions : 0
+  if (singletonCount > (allowSingleton ? 1 : 0)) return false
+  if (smallRegionCount < minSmallRegions || smallRegionCount > maxSmallRegions) return false
+
+  // Difficulty is controlled by bounded ambiguity instead of fixed moles.
+  // Too many solutions feels like guessing; one unique solution pushes the generator
+  // back toward obvious 1-cell regions. Each difficulty keeps a narrow solution range.
+  const maxSolutions =
+    smallRegionCount === 0 ? rules.maxSolutionsWithoutSmallRegions : rules.maxSolutions
+  const solutionCount = solveLevel(level, maxSolutions + 1)
+  if (solutionCount < rules.minSolutions || solutionCount > maxSolutions) return false
+
+  const fingerprint = canonicalRegionFingerprint(level.regions)
+  return !usedFingerprints.has(fingerprint)
 }
 
-function withMinimalLocks(level, rng) {
-  if (solveLevel(level, 2) === 1) return level
-
-  const lockedCats = []
-  for (const mole of shuffle(level.solution, rng)) {
-    lockedCats.push(mole)
-    const candidate = { ...level, lockedCats: [...lockedCats] }
-    if (solveLevel(candidate, 2) === 1) return candidate
-  }
-
-  return null
-}
-
-function createLevel(id, difficulty, seed) {
+function createLevel(id, difficulty, seed, allowSingleton, allowSmallRegion, usedFingerprints) {
   const size = sizeForDifficulty(difficulty)
+  const rules = DIFFICULTY_RULES[difficulty]
 
-  for (let seedVariant = 0; seedVariant < 240; seedVariant++) {
+  for (let seedVariant = 0; seedVariant < 360; seedVariant++) {
     const rng = makeRng(seed + seedVariant * 1000003)
 
-    for (let attempt = 0; attempt < 12000; attempt++) {
+    for (let attempt = 0; attempt < 16000; attempt++) {
       const solution = createSolution(size, rng)
-      const regions = createRegions(size, solution, rng)
+      const regions = createRegions(size, solution, rng, rules, allowSingleton, allowSmallRegion)
       if (!regions) continue
 
       const level = {
@@ -349,17 +421,7 @@ function createLevel(id, difficulty, seed) {
         lockedCats: [],
       }
 
-      if (
-        countSingletonRegions(level) === 0 &&
-        countSmallRegions(level) <= 2 &&
-        validateSolution(level) &&
-        validateRegionConnectivity(level)
-      ) {
-        const lockedLevel = withMinimalLocks(level, rng)
-        if (lockedLevel && lockedLevel.lockedCats.length <= Math.ceil(size / 3) && validateLevel(lockedLevel)) {
-          return lockedLevel
-        }
-      }
+      if (validateLevel(level, rules, allowSingleton, allowSmallRegion, usedFingerprints)) return level
     }
   }
 
@@ -370,9 +432,28 @@ function buildLevelPack() {
   const levels = []
 
   for (const group of GROUPS) {
+    const rules = DIFFICULTY_RULES[group.difficulty]
+    const usedFingerprints = new Set()
+    let singletonLevels = 0
+    let smallRegionLevels = 0
+
     for (let index = 0; index < group.count; index++) {
       const levelId = levels.length + 1
-      levels.push(createLevel(levelId, group.difficulty, group.seed + index * 97))
+      const allowSingleton = singletonLevels < rules.singletonBudget
+      const allowSmallRegion = smallRegionLevels < rules.smallRegionBudget
+      const level = createLevel(
+        levelId,
+        group.difficulty,
+        group.seed + index * 97,
+        allowSingleton,
+        allowSmallRegion,
+        usedFingerprints,
+      )
+
+      if (countSingletonRegions(level) > 0) singletonLevels += 1
+      if (countSmallRegions(level) > 0) smallRegionLevels += 1
+      usedFingerprints.add(canonicalRegionFingerprint(level.regions))
+      levels.push(level)
       if (force) console.log(`Generated level ${levelId} (${group.difficulty})`)
     }
   }
@@ -386,9 +467,7 @@ const summary = {
   five: levels.filter((level) => level.difficulty === '5x5').length,
   six: levels.filter((level) => level.difficulty === '6x6').length,
   seven: levels.filter((level) => level.difficulty === '7x7').length,
-  unique: levels.every((level) => solveLevel(level, 2) === 1),
-  singletonLimited: levels.every((level) => countSingletonRegions(level) === 0),
-  smallRegionLimited: levels.every((level) => countSmallRegions(level) <= 2),
+  noLocks: levels.every((level) => level.lockedCats.length === 0),
   singletonCounts: levels.reduce(
     (counts, level) => {
       const singletonCount = countSingletonRegions(level)
@@ -405,14 +484,15 @@ const summary = {
     },
     {},
   ),
-  noLocks: levels.every((level) => level.lockedCats.length === 0),
-  lockedMoleCounts: levels.reduce(
+  solutionCounts: levels.reduce(
     (counts, level) => {
-      counts[level.lockedCats.length] = (counts[level.lockedCats.length] ?? 0) + 1
+      const solutionCount = solveLevel(level, DIFFICULTY_RULES[level.difficulty].maxSolutions + 1)
+      counts[solutionCount] = (counts[solutionCount] ?? 0) + 1
       return counts
     },
     {},
   ),
+  difficultyRules: DIFFICULTY_RULES,
 }
 
 const output = `${signature}
