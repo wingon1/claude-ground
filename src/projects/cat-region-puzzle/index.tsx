@@ -1092,9 +1092,13 @@ function GameSession({
                 {clearReward > 0 ? `+${clearReward} Coin` : '이미 받은 보상이에요'}
               </p>
             )}
-            <div className="mx-auto mt-8 grid w-full max-w-[15rem] grid-cols-2 gap-3.5">
+            <div
+              className={`mx-auto mt-8 grid w-full max-w-[15rem] gap-3.5 ${
+                status === 'won' ? 'grid-cols-2' : 'grid-cols-1'
+              }`}
+            >
               <ModalButton onClick={restart}>다시 하기</ModalButton>
-              <ModalButton onClick={nextLevel}>다음</ModalButton>
+              {status === 'won' && <ModalButton onClick={nextLevel}>다음</ModalButton>}
             </div>
           </div>
         </div>
