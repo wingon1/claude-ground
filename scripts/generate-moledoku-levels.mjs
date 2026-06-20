@@ -14,7 +14,7 @@ const GROUPS = [
   { difficulty: '6x6', count: 50, seed: 32000 },
   { difficulty: '7x7', count: 50, seed: 42000 },
   { difficulty: '8x8', count: 30, seed: 52000 },
-  { difficulty: '9x9', count: 16, seed: 62000 },
+  { difficulty: '9x9', count: 30, seed: 62000 },
 ]
 
 const DIFFICULTY_RULES = {
@@ -45,27 +45,31 @@ const DIFFICULTY_RULES = {
     smallRegionBudget: 50,
     singletonBudget: 3,
   },
+  // 8x8/9x9: ~70% of stages get a foothold small region (forced, moderately
+  // tight solution count) so they stay doable; the remaining ~30% have no
+  // small region (budget exhausted) and lean on the bigger board for
+  // difficulty, with a generous cap so they still generate quickly.
   '8x8': {
     minSolutions: 2,
     maxSolutions: 40,
-    maxSolutionsWithoutSmallRegions: 160,
-    minSmallRegions: 0,
+    maxSolutionsWithoutSmallRegions: 400,
+    minSmallRegions: 1,
     maxSmallRegions: 1,
-    smallRegionBudget: 50,
-    singletonBudget: 2,
+    smallRegionBudget: 21,
+    singletonBudget: 9,
   },
   '9x9': {
     minSolutions: 2,
-    maxSolutions: 2000,
+    maxSolutions: 150,
     maxSolutionsWithoutSmallRegions: 2000,
-    minSmallRegions: 0,
+    minSmallRegions: 1,
     maxSmallRegions: 1,
-    smallRegionBudget: 50,
-    singletonBudget: 1,
+    smallRegionBudget: 21,
+    singletonBudget: 9,
   },
 }
 
-const signature = `// moledoku-levels:${JSON.stringify({ version: 10, groups: GROUPS, rules: DIFFICULTY_RULES })}`
+const signature = `// moledoku-levels:${JSON.stringify({ version: 12, groups: GROUPS, rules: DIFFICULTY_RULES })}`
 const force = process.argv.includes('--force')
 const outputPath = resolve(
   dirname(fileURLToPath(import.meta.url)),
