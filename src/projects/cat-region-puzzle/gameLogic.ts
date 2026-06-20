@@ -18,7 +18,7 @@ export type CellState = 'empty' | 'cat' | 'mark'
 
 export type Board = CellState[][]
 
-export type ConflictReason = 'row' | 'column' | 'region' | 'locked'
+export type ConflictReason = 'row' | 'column' | 'region' | 'locked' | 'adjacent'
 
 export type SolveResult = {
   count: number
@@ -34,6 +34,15 @@ const ORTHOGONAL = [
 
 export function coordKey(coord: Coord): string {
   return `${coord.row}:${coord.col}`
+}
+
+/**
+ * Two moles are "adjacent" when they touch — including diagonally (king move).
+ * Same row / same column are already forbidden by the per-line rule, so in
+ * practice this adds the no-diagonal-neighbour constraint.
+ */
+export function isAdjacent(a: Coord, b: Coord): boolean {
+  return Math.max(Math.abs(a.row - b.row), Math.abs(a.col - b.col)) === 1
 }
 
 export function createBoard(level: Level): Board {
@@ -92,6 +101,7 @@ export function getConflicts(
     if (cat.row === row) reasons.add('row')
     if (cat.col === col) reasons.add('column')
     if (level.regions[cat.row][cat.col] === regionId) reasons.add('region')
+    if (isAdjacent(cat, { row, col })) reasons.add('adjacent')
   }
 
   return [...reasons]
@@ -117,6 +127,12 @@ export function checkWin(board: Board, level: Level): boolean {
 
   if (rows.size !== level.size || cols.size !== level.size || regions.size !== level.size) {
     return false
+  }
+
+  for (let i = 0; i < cats.length; i++) {
+    for (let j = i + 1; j < cats.length; j++) {
+      if (isAdjacent(cats[i], cats[j])) return false
+    }
   }
 
   return true
@@ -185,6 +201,12 @@ export function validateSolution(level: Level): boolean {
     return false
   }
 
+  for (let i = 0; i < level.solution.length; i++) {
+    for (let j = i + 1; j < level.solution.length; j++) {
+      if (isAdjacent(level.solution[i], level.solution[j])) return false
+    }
+  }
+
   return level.lockedCats.every((cat) => isSolutionCell(level, cat.row, cat.col))
 }
 
@@ -192,6 +214,7 @@ export function solveLevel(level: Level, limit = 2): SolveResult {
   const lockedByRow = new Map<number, Coord>()
   const usedColumns = new Set<number>()
   const usedRegions = new Set<number>()
+  const colOfRow = new Array<number>(level.size).fill(-1)
   const placed: Coord[] = []
   let count = 0
   let firstSolution: Coord[] = []
@@ -205,6 +228,7 @@ export function solveLevel(level: Level, limit = 2): SolveResult {
     lockedByRow.set(cat.row, cat)
     usedColumns.add(cat.col)
     usedRegions.add(regionId)
+    colOfRow[cat.row] = cat.col
     placed.push(cat)
   }
 
@@ -223,15 +247,21 @@ export function solveLevel(level: Level, limit = 2): SolveResult {
       return
     }
 
+    // Moles in consecutive rows must not be diagonally adjacent.
+    const prevCol = row > 0 ? colOfRow[row - 1] : -1
+
     for (let col = 0; col < level.size; col++) {
       const regionId = level.regions[row][col]
       if (usedColumns.has(col) || usedRegions.has(regionId)) continue
+      if (prevCol !== -1 && Math.abs(col - prevCol) === 1) continue
 
       usedColumns.add(col)
       usedRegions.add(regionId)
+      colOfRow[row] = col
       placed.push({ row, col })
       place(row + 1)
       placed.pop()
+      colOfRow[row] = -1
       usedColumns.delete(col)
       usedRegions.delete(regionId)
 

@@ -375,6 +375,7 @@ function conflictText(reasons: string[]): string {
   if (reasons.includes('row')) return '같은 행에는 한 마리만 들어갈 수 있어요.'
   if (reasons.includes('column')) return '같은 열에는 한 마리만 들어갈 수 있어요.'
   if (reasons.includes('region')) return '같은 색상에는 한 마리만 들어갈 수 있어요.'
+  if (reasons.includes('adjacent')) return '두더지끼리 바로 옆·대각선엔 놓을 수 없어요.'
   return '여기에는 놓을 수 없어요.'
 }
 
@@ -522,7 +523,7 @@ function MainMenu({
             두더지 스도쿠
           </h1>
           <p className="mt-4 max-w-[18rem] break-keep text-sm font-medium leading-relaxed text-[#ab7d83]">
-            색상·가로줄·세로줄마다 두더지를 한 마리씩 숨겨봐요.
+            색상·가로줄·세로줄마다 한 마리씩, 서로 옆·대각선엔 못 놓아요.
           </p>
 
           <div className="mt-8 grid w-full max-w-[15rem] gap-2">

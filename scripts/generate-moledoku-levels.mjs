@@ -69,7 +69,10 @@ const DIFFICULTY_RULES = {
   },
 }
 
-const signature = `// moledoku-levels:${JSON.stringify({ version: 12, groups: GROUPS, rules: DIFFICULTY_RULES })}`
+// Bump when the generation/solver logic changes in a way the signature (groups +
+// rules) wouldn't otherwise capture — e.g. the no-diagonal-adjacency rule (v13).
+const VERSION = 13
+const signature = `// moledoku-levels:${JSON.stringify({ version: VERSION, groups: GROUPS, rules: DIFFICULTY_RULES })}`
 const force = process.argv.includes('--force')
 // Regenerate only the listed difficulties (comma-separated) and reuse the
 // existing levels for the rest — e.g. `--only=8x8,9x9`. Much faster when only
@@ -123,6 +126,7 @@ if (!force && !onlyDifficulties) {
 // count, seed and rules for that difficulty, so its levels are still valid.
 function canReuseGroup(group) {
   if (!existingPack) return false
+  if (existingPack.sig.version !== VERSION) return false
   const old = (existingPack.sig.groups ?? []).find((g) => g.difficulty === group.difficulty)
   if (!old || old.count !== group.count || old.seed !== group.seed) return false
   if (
@@ -165,9 +169,34 @@ function sizeForDifficulty(difficulty) {
   return 9
 }
 
+// A solution is a column permutation (one mole per row/column). The mole rule
+// also forbids diagonal neighbours, so consecutive rows must differ by >= 2 in
+// column. Build such a permutation by backtracking; returns null on dead-end so
+// the caller can retry with a fresh shuffle.
 function createSolution(size, rng) {
-  const columns = Array.from({ length: size }, (_, index) => index)
-  return shuffle(columns, rng).map((col, row) => ({ row, col }))
+  const columns = shuffle(
+    Array.from({ length: size }, (_, index) => index),
+    rng,
+  )
+  const used = new Array(size).fill(false)
+  const placement = new Array(size)
+
+  const place = (row) => {
+    if (row === size) return true
+    const order = shuffle(columns, rng)
+    for (const col of order) {
+      if (used[col]) continue
+      if (row > 0 && Math.abs(col - placement[row - 1]) === 1) continue
+      used[col] = true
+      placement[row] = col
+      if (place(row + 1)) return true
+      used[col] = false
+    }
+    return false
+  }
+
+  if (!place(0)) return null
+  return placement.map((col, row) => ({ row, col }))
 }
 
 function pickSmallRegionSize(rng, allowSingleton) {
@@ -338,6 +367,10 @@ function validateRegionConnectivity(level) {
   return true
 }
 
+function isAdjacent(a, b) {
+  return Math.max(Math.abs(a.row - b.row), Math.abs(a.col - b.col)) === 1
+}
+
 function validateSolution(level) {
   const rows = new Set()
   const cols = new Set()
@@ -347,6 +380,12 @@ function validateSolution(level) {
     rows.add(mole.row)
     cols.add(mole.col)
     regions.add(level.regions[mole.row][mole.col])
+  }
+
+  for (let i = 0; i < level.solution.length; i++) {
+    for (let j = i + 1; j < level.solution.length; j++) {
+      if (isAdjacent(level.solution[i], level.solution[j])) return false
+    }
   }
 
   return (
@@ -406,6 +445,7 @@ function solveLevel(level, limit = 2) {
   const lockedByRow = new Map()
   const usedColumns = new Set()
   const usedRegions = new Set()
+  const colOfRow = new Array(level.size).fill(-1)
   let count = 0
 
   for (const mole of level.lockedCats) {
@@ -417,6 +457,7 @@ function solveLevel(level, limit = 2) {
     lockedByRow.set(mole.row, mole)
     usedColumns.add(mole.col)
     usedRegions.add(regionId)
+    colOfRow[mole.row] = mole.col
   }
 
   const place = (row) => {
@@ -431,13 +472,19 @@ function solveLevel(level, limit = 2) {
       return
     }
 
+    // Moles in consecutive rows must not be diagonally adjacent.
+    const prevCol = row > 0 ? colOfRow[row - 1] : -1
+
     for (let col = 0; col < level.size; col++) {
       const regionId = level.regions[row][col]
       if (usedColumns.has(col) || usedRegions.has(regionId)) continue
+      if (prevCol !== -1 && Math.abs(col - prevCol) === 1) continue
 
       usedColumns.add(col)
       usedRegions.add(regionId)
+      colOfRow[row] = col
       place(row + 1)
+      colOfRow[row] = -1
       usedColumns.delete(col)
       usedRegions.delete(regionId)
 
@@ -481,6 +528,7 @@ function createLevel(id, difficulty, seed, allowSingleton, allowSmallRegion, use
 
     for (let attempt = 0; attempt < 16000; attempt++) {
       const solution = createSolution(size, rng)
+      if (!solution) continue
       const regions = createRegions(size, solution, rng, rules, allowSingleton, allowSmallRegion)
       if (!regions) continue
 
