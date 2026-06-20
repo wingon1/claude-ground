@@ -483,32 +483,32 @@ function MainMenu({
     <div className="min-h-full w-full overflow-auto bg-[#f8f3ef] text-[#87515b]">
       <MoleStyles />
       <div className="relative mx-auto flex min-h-dvh w-full max-w-[30rem] flex-col overflow-hidden">
-        <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-8 py-16 text-center">
-          <div className="absolute right-6 top-6 rounded-full bg-white px-4 py-2 text-sm font-black text-[#9a5963] shadow-[0_8px_18px_rgba(132,87,80,0.12)]">
+        <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-8 py-10 text-center">
+          <div className="absolute right-5 top-5 rounded-full bg-white px-3.5 py-1.5 text-xs font-black text-[#9a5963] shadow-[0_8px_18px_rgba(132,87,80,0.12)]">
             Coin {coins}
           </div>
-          <div className="flex h-28 w-28 items-center justify-center rounded-[34px] bg-white shadow-[0_16px_34px_rgba(132,87,80,0.16)]">
+          <div className="flex h-24 w-24 items-center justify-center rounded-[30px] bg-white shadow-[0_16px_34px_rgba(132,87,80,0.16)]">
             <MoleFace large seed={1} skin={equippedSkin} />
           </div>
-          <p className="mt-8 text-[11px] font-bold uppercase tracking-[0.34em] text-[#c08a93]">
+          <p className="mt-6 text-[10px] font-bold uppercase tracking-[0.3em] text-[#c08a93]">
             Moledoku
           </p>
-          <h1 className="mt-2.5 text-[2.75rem] font-black leading-none tracking-tight text-[#99545f]">
+          <h1 className="mt-2 text-[2.35rem] font-black leading-none tracking-tight text-[#99545f]">
             두더지 스도쿠
           </h1>
-          <p className="mt-5 max-w-[18rem] break-keep text-[15px] font-medium leading-relaxed text-[#ab7d83]">
+          <p className="mt-4 max-w-[18rem] break-keep text-sm font-medium leading-relaxed text-[#ab7d83]">
             색상·가로줄·세로줄마다 두더지를 한 마리씩 숨겨봐요.
           </p>
 
-          <div className="mt-12 grid w-full max-w-[19.5rem] gap-3.5">
+          <div className="mt-8 grid w-full max-w-[18.5rem] gap-3">
             {DIFFICULTIES.map((difficulty, index) => (
               <button
                 key={difficulty}
                 type="button"
                 onClick={() => openStagePicker(difficulty)}
-                className="flex items-center justify-between rounded-[22px] bg-white px-8 py-6 text-left shadow-[0_10px_22px_rgba(132,87,80,0.12)] transition active:scale-[0.97]"
+                className="flex items-center justify-between rounded-[20px] bg-white px-7 py-4 text-left shadow-[0_10px_22px_rgba(132,87,80,0.12)] transition active:scale-[0.97]"
               >
-                <span className="text-xl font-extrabold tracking-tight text-[#99545f]">
+                <span className="text-lg font-extrabold tracking-tight text-[#99545f]">
                   {difficulty}
                 </span>
                 <span className="text-xs font-semibold tracking-wide text-[#bd8d94]">
@@ -519,7 +519,7 @@ function MainMenu({
             <button
               type="button"
               onClick={() => setIsShopOpen(true)}
-              className="mt-3 rounded-[22px] bg-[#99545f] px-8 py-5 text-base font-black text-white shadow-[0_12px_24px_rgba(132,87,80,0.18)] transition active:scale-[0.97]"
+              className="mt-1 rounded-[20px] bg-[#99545f] px-7 py-4 text-sm font-black text-white shadow-[0_12px_24px_rgba(132,87,80,0.18)] transition active:scale-[0.97]"
             >
               상점
             </button>
