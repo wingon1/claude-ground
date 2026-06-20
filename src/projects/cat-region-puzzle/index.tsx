@@ -27,6 +27,7 @@ import { levels } from './levels'
 
 type Mode = 'cat' | 'mark'
 type Status = 'playing' | 'won' | 'lost'
+type MoleSkinId = 'classic' | 'sprout' | 'miner' | 'berry' | 'star'
 
 type Snapshot = {
   board: Board
@@ -49,6 +50,16 @@ type CellColor = {
   text: string
 }
 
+type MoleSkin = {
+  id: MoleSkinId
+  name: string
+  price: number
+  head: string
+  muzzle: string
+  nose: string
+  accessory: 'none' | 'sprout' | 'helmet' | 'berry' | 'star'
+}
+
 const REGION_COLORS: CellColor[] = [
   { base: '#f36f9e', light: '#ff9ec0', text: '#9b375e' },
   { base: '#ffd04a', light: '#ffe27a', text: '#9f7221' },
@@ -61,6 +72,60 @@ const REGION_COLORS: CellColor[] = [
 
 const DIFFICULTIES: Difficulty[] = ['5x5', '6x6', '7x7']
 const COMPLETED_STAGE_STORAGE_KEY = 'moledoku.completedStages.v1'
+const COIN_STORAGE_KEY = 'moledoku.coins.v1'
+const OWNED_SKINS_STORAGE_KEY = 'moledoku.ownedSkins.v1'
+const EQUIPPED_SKIN_STORAGE_KEY = 'moledoku.equippedSkin.v1'
+const CLEAR_REWARD_COINS = 10
+
+const MOLE_SKINS: MoleSkin[] = [
+  {
+    id: 'classic',
+    name: '기본 두더지',
+    price: 0,
+    head: '#c06f56',
+    muzzle: '#e7c887',
+    nose: '#45444f',
+    accessory: 'none',
+  },
+  {
+    id: 'sprout',
+    name: '새싹 두더지',
+    price: 50,
+    head: '#b87958',
+    muzzle: '#f0d08d',
+    nose: '#3f4540',
+    accessory: 'sprout',
+  },
+  {
+    id: 'miner',
+    name: '광부 두더지',
+    price: 90,
+    head: '#a7654f',
+    muzzle: '#e6c27c',
+    nose: '#38343d',
+    accessory: 'helmet',
+  },
+  {
+    id: 'berry',
+    name: '딸기 두더지',
+    price: 130,
+    head: '#c86f75',
+    muzzle: '#f3c997',
+    nose: '#4a3a43',
+    accessory: 'berry',
+  },
+  {
+    id: 'star',
+    name: '별잠옷 두더지',
+    price: 180,
+    head: '#8973b8',
+    muzzle: '#f0d7a0',
+    nose: '#3d3850',
+    accessory: 'star',
+  },
+]
+
+const DEFAULT_SKIN_ID: MoleSkinId = 'classic'
 
 function stageCompletionKey(difficulty: Difficulty, index: number): string {
   return `${difficulty}:${index + 1}`
@@ -89,6 +154,87 @@ function saveCompletedStageKeys(keys: Set<string>) {
     window.localStorage.setItem(COMPLETED_STAGE_STORAGE_KEY, JSON.stringify([...keys].sort()))
   } catch {
     // Progress coloring is optional; gameplay should continue if storage is unavailable.
+  }
+}
+
+function isMoleSkinId(value: unknown): value is MoleSkinId {
+  return typeof value === 'string' && MOLE_SKINS.some((skin) => skin.id === value)
+}
+
+function getSkin(id: MoleSkinId): MoleSkin {
+  return MOLE_SKINS.find((skin) => skin.id === id) ?? MOLE_SKINS[0]
+}
+
+function loadCoins(): number {
+  if (typeof window === 'undefined') return 0
+
+  try {
+    const raw = window.localStorage.getItem(COIN_STORAGE_KEY)
+    const parsed = Number(raw)
+    return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 0
+  } catch {
+    return 0
+  }
+}
+
+function saveCoins(coins: number) {
+  if (typeof window === 'undefined') return
+
+  try {
+    window.localStorage.setItem(COIN_STORAGE_KEY, String(Math.max(0, Math.floor(coins))))
+  } catch {
+    // Coins are a bonus economy; gameplay still works when storage is blocked.
+  }
+}
+
+function loadOwnedSkinIds(): Set<MoleSkinId> {
+  if (typeof window === 'undefined') return new Set([DEFAULT_SKIN_ID])
+
+  try {
+    const raw = window.localStorage.getItem(OWNED_SKINS_STORAGE_KEY)
+    const parsed = raw ? JSON.parse(raw) : []
+    const owned = new Set<MoleSkinId>([DEFAULT_SKIN_ID])
+
+    if (Array.isArray(parsed)) {
+      for (const item of parsed) {
+        if (isMoleSkinId(item)) owned.add(item)
+      }
+    }
+
+    return owned
+  } catch {
+    return new Set([DEFAULT_SKIN_ID])
+  }
+}
+
+function saveOwnedSkinIds(ids: Set<MoleSkinId>) {
+  if (typeof window === 'undefined') return
+
+  try {
+    window.localStorage.setItem(OWNED_SKINS_STORAGE_KEY, JSON.stringify([...ids].sort()))
+  } catch {
+    // Cosmetic ownership is local-only; failing to persist should not block play.
+  }
+}
+
+function loadEquippedSkinId(ownedSkinIds: Set<MoleSkinId>): MoleSkinId {
+  if (typeof window === 'undefined') return DEFAULT_SKIN_ID
+
+  try {
+    const raw = window.localStorage.getItem(EQUIPPED_SKIN_STORAGE_KEY)
+    return isMoleSkinId(raw) && ownedSkinIds.has(raw) ? raw : DEFAULT_SKIN_ID
+  } catch {
+    return DEFAULT_SKIN_ID
+  }
+}
+
+function saveEquippedSkinId(id: MoleSkinId) {
+  if (typeof window === 'undefined') return
+
+  try {
+    window.localStorage.setItem(EQUIPPED_SKIN_STORAGE_KEY, id)
+  } catch {
+    // The default skin remains available if storage is blocked.
   }
 }
 
@@ -215,11 +361,17 @@ export default function CatRegionPuzzle() {
   const [completedStageKeys, setCompletedStageKeys] = useState<Set<string>>(
     () => loadCompletedStageKeys(),
   )
+  const [coins, setCoins] = useState(() => loadCoins())
+  const [ownedSkinIds, setOwnedSkinIds] = useState<Set<MoleSkinId>>(() => loadOwnedSkinIds())
+  const [equippedSkinId, setEquippedSkinId] = useState<MoleSkinId>(() =>
+    loadEquippedSkinId(loadOwnedSkinIds()),
+  )
   const availableLevels = useMemo(
     () => levels.filter((item) => item.difficulty === activeDifficulty),
     [activeDifficulty],
   )
   const level = availableLevels[levelIndex] ?? availableLevels[0]
+  const equippedSkin = getSkin(equippedSkinId)
 
   const startStage = (difficulty: Difficulty, index: number) => {
     setActiveDifficulty(difficulty)
@@ -228,16 +380,43 @@ export default function CatRegionPuzzle() {
     setIsPlaying(true)
   }
 
-  const markStageComplete = (difficulty: Difficulty, index: number) => {
-    const key = stageCompletionKey(difficulty, index)
-    setCompletedStageKeys((current) => {
-      if (current.has(key)) return current
+  const buySkin = (skinId: MoleSkinId) => {
+    const skin = getSkin(skinId)
+    if (ownedSkinIds.has(skinId) || coins < skin.price) return
 
-      const next = new Set(current)
-      next.add(key)
-      saveCompletedStageKeys(next)
-      return next
-    })
+    const nextOwnedSkinIds = new Set(ownedSkinIds)
+    nextOwnedSkinIds.add(skinId)
+    const nextCoins = coins - skin.price
+
+    setOwnedSkinIds(nextOwnedSkinIds)
+    saveOwnedSkinIds(nextOwnedSkinIds)
+    setCoins(nextCoins)
+    saveCoins(nextCoins)
+    setEquippedSkinId(skinId)
+    saveEquippedSkinId(skinId)
+  }
+
+  const equipSkin = (skinId: MoleSkinId) => {
+    if (!ownedSkinIds.has(skinId)) return
+
+    setEquippedSkinId(skinId)
+    saveEquippedSkinId(skinId)
+  }
+
+  const markStageComplete = (difficulty: Difficulty, index: number): boolean => {
+    const key = stageCompletionKey(difficulty, index)
+    if (completedStageKeys.has(key)) return false
+
+    const nextCompletedStageKeys = new Set(completedStageKeys)
+    nextCompletedStageKeys.add(key)
+    saveCompletedStageKeys(nextCompletedStageKeys)
+    setCompletedStageKeys(nextCompletedStageKeys)
+
+    const nextCoins = coins + CLEAR_REWARD_COINS
+    setCoins(nextCoins)
+    saveCoins(nextCoins)
+
+    return true
   }
 
   if (!isPlaying) {
@@ -245,9 +424,14 @@ export default function CatRegionPuzzle() {
       <MainMenu
         stagePickerDifficulty={stagePickerDifficulty}
         completedStageKeys={completedStageKeys}
+        coins={coins}
+        ownedSkinIds={ownedSkinIds}
+        equippedSkinId={equippedSkinId}
         openStagePicker={setStagePickerDifficulty}
         closeStagePicker={() => setStagePickerDifficulty(null)}
         startStage={startStage}
+        buySkin={buySkin}
+        equipSkin={equipSkin}
       />
     )
   }
@@ -261,6 +445,7 @@ export default function CatRegionPuzzle() {
       setLevelIndex={setLevelIndex}
       returnToMenu={() => setIsPlaying(false)}
       markStageComplete={markStageComplete}
+      equippedSkin={equippedSkin}
     />
   )
 }
@@ -268,27 +453,42 @@ export default function CatRegionPuzzle() {
 function MainMenu({
   stagePickerDifficulty,
   completedStageKeys,
+  coins,
+  ownedSkinIds,
+  equippedSkinId,
   openStagePicker,
   closeStagePicker,
   startStage,
+  buySkin,
+  equipSkin,
 }: {
   stagePickerDifficulty: Difficulty | null
   completedStageKeys: Set<string>
+  coins: number
+  ownedSkinIds: Set<MoleSkinId>
+  equippedSkinId: MoleSkinId
   openStagePicker: (difficulty: Difficulty) => void
   closeStagePicker: () => void
   startStage: (difficulty: Difficulty, index: number) => void
+  buySkin: (skinId: MoleSkinId) => void
+  equipSkin: (skinId: MoleSkinId) => void
 }) {
+  const [isShopOpen, setIsShopOpen] = useState(false)
   const pickerLevels = stagePickerDifficulty
     ? levels.filter((item) => item.difficulty === stagePickerDifficulty)
     : []
+  const equippedSkin = getSkin(equippedSkinId)
 
   return (
     <div className="min-h-full w-full overflow-auto bg-[#f8f3ef] text-[#87515b]">
       <MoleStyles />
       <div className="relative mx-auto flex min-h-dvh w-full max-w-[30rem] flex-col overflow-hidden">
         <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-8 py-16 text-center">
+          <div className="absolute right-6 top-6 rounded-full bg-white px-4 py-2 text-sm font-black text-[#9a5963] shadow-[0_8px_18px_rgba(132,87,80,0.12)]">
+            Coin {coins}
+          </div>
           <div className="flex h-28 w-28 items-center justify-center rounded-[34px] bg-white shadow-[0_16px_34px_rgba(132,87,80,0.16)]">
-            <MoleFace large seed={1} />
+            <MoleFace large seed={1} skin={equippedSkin} />
           </div>
           <p className="mt-8 text-[11px] font-bold uppercase tracking-[0.34em] text-[#c08a93]">
             Moledoku
@@ -316,6 +516,13 @@ function MainMenu({
                 </span>
               </button>
             ))}
+            <button
+              type="button"
+              onClick={() => setIsShopOpen(true)}
+              className="mt-3 rounded-[22px] bg-[#99545f] px-8 py-5 text-base font-black text-white shadow-[0_12px_24px_rgba(132,87,80,0.18)] transition active:scale-[0.97]"
+            >
+              상점
+            </button>
           </div>
         </main>
 
@@ -326,6 +533,16 @@ function MainMenu({
             completedStageKeys={completedStageKeys}
             onClose={closeStagePicker}
             onStart={(index) => startStage(stagePickerDifficulty, index)}
+          />
+        )}
+        {isShopOpen && (
+          <SkinShop
+            coins={coins}
+            ownedSkinIds={ownedSkinIds}
+            equippedSkinId={equippedSkinId}
+            onClose={() => setIsShopOpen(false)}
+            onBuy={buySkin}
+            onEquip={equipSkin}
           />
         )}
       </div>
@@ -387,6 +604,89 @@ function StagePicker({
   )
 }
 
+function SkinShop({
+  coins,
+  ownedSkinIds,
+  equippedSkinId,
+  onClose,
+  onBuy,
+  onEquip,
+}: {
+  coins: number
+  ownedSkinIds: Set<MoleSkinId>
+  equippedSkinId: MoleSkinId
+  onClose: () => void
+  onBuy: (skinId: MoleSkinId) => void
+  onEquip: (skinId: MoleSkinId) => void
+}) {
+  return (
+    <div className="absolute inset-0 z-40 flex items-center justify-center bg-[#3d2d22]/35 p-7 backdrop-blur-sm">
+      <div className="max-h-[calc(100dvh-3rem)] w-full max-w-[24rem] overflow-y-auto rounded-[30px] bg-[#fff8f3] px-7 pb-9 pt-7 text-center shadow-[0_20px_42px_rgba(72,45,35,0.24)]">
+        <div className="flex items-center justify-between gap-4">
+          <div className="text-left">
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-[#c08a93]">Shop</p>
+            <h2 className="mt-1 text-2xl font-black tracking-tight text-[#99545f]">두더지 상점</h2>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="rounded-full bg-white px-3 py-2 text-sm font-black text-[#9a5963] shadow-[0_5px_14px_rgba(132,87,80,0.1)]">
+              Coin {coins}
+            </span>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="상점 닫기"
+              className="flex h-10 w-10 items-center justify-center rounded-full border-0 bg-[#f1e5df] text-xl font-semibold leading-none text-[#a4707a] outline-none transition active:scale-90"
+            >
+              x
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-7 grid grid-cols-2 gap-3.5">
+          {MOLE_SKINS.map((skin) => {
+            const isOwned = ownedSkinIds.has(skin.id)
+            const isEquipped = equippedSkinId === skin.id
+            const canBuy = coins >= skin.price
+            const actionText = isEquipped ? '장착중' : isOwned ? '장착' : canBuy ? '구매' : '부족'
+
+            return (
+              <div
+                key={skin.id}
+                className="rounded-[22px] bg-white p-4 shadow-[0_8px_18px_rgba(132,87,80,0.1)]"
+              >
+                <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[24px] bg-[#f7ede6]">
+                  <MoleFace large seed={skin.price + 11} skin={skin} />
+                </div>
+                <h3 className="mt-3 break-keep text-sm font-black text-[#99545f]">{skin.name}</h3>
+                <p className="mt-1 text-xs font-bold text-[#b7868c]">
+                  {skin.price === 0 ? 'Free' : `Coin ${skin.price}`}
+                </p>
+                <button
+                  type="button"
+                  disabled={isEquipped || (!isOwned && !canBuy)}
+                  onClick={() => {
+                    if (isOwned) onEquip(skin.id)
+                    else onBuy(skin.id)
+                  }}
+                  className={`mt-3 w-full rounded-[14px] px-3 py-2 text-sm font-black transition active:scale-95 disabled:active:scale-100 ${
+                    isEquipped
+                      ? 'bg-[#eadbd4] text-[#8f5360]'
+                      : isOwned || canBuy
+                        ? 'bg-[#99545f] text-white'
+                        : 'bg-[#eee3dd] text-[#b99ca0]'
+                  }`}
+                >
+                  {actionText}
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function GameSession({
   level,
   levelIndex,
@@ -394,13 +694,15 @@ function GameSession({
   setLevelIndex,
   returnToMenu,
   markStageComplete,
+  equippedSkin,
 }: {
   level: Level
   levelIndex: number
   availableLevels: Level[]
   setLevelIndex: Dispatch<SetStateAction<number>>
   returnToMenu: () => void
-  markStageComplete: (difficulty: Difficulty, index: number) => void
+  markStageComplete: (difficulty: Difficulty, index: number) => boolean
+  equippedSkin: MoleSkin
 }) {
   const [board, setBoard] = useState<Board>(() => createBoard(level))
   const [hearts, setHearts] = useState(3)
@@ -409,6 +711,7 @@ function GameSession({
   const [history, setHistory] = useState<Snapshot[]>([])
   const [hint, setHint] = useState<Coord | null>(null)
   const [mistake, setMistake] = useState<Coord | null>(null)
+  const [clearReward, setClearReward] = useState<number | null>(null)
   const [notice, setNotice] = useState('색상, 열, 행마다 두더지 1마리')
   const markDrag = useRef<MarkDragState>({
     active: false,
@@ -473,7 +776,8 @@ function GameSession({
     setHint(null)
     setNotice('좋아요!')
     if (checkWin(next, level)) {
-      markStageComplete(level.difficulty, levelIndex)
+      const rewarded = markStageComplete(level.difficulty, levelIndex)
+      setClearReward(rewarded ? CLEAR_REWARD_COINS : 0)
       setStatus('won')
     }
   }
@@ -621,6 +925,7 @@ function GameSession({
     setHistory([])
     setHint(null)
     setMistake(null)
+    setClearReward(null)
     setNotice('다시 시작해요.')
   }
 
@@ -667,7 +972,7 @@ function GameSession({
 
           <div className="mt-6 flex items-center justify-center gap-3">
             <StatusPill>
-              <MoleFace tiny seed={2} />
+              <MoleFace tiny seed={2} skin={equippedSkin} />
               <span className="text-[#1fb26d]">
                 {catsPlaced}/{level.size}
               </span>
@@ -709,6 +1014,7 @@ function GameSession({
                   isHint={hint?.row === rowIndex && hint.col === colIndex}
                   isMistake={mistake?.row === rowIndex && mistake.col === colIndex}
                   isLocked={lockedKeys.has(`${rowIndex}:${colIndex}`)}
+                  skin={equippedSkin}
                   onClick={() => handleCell(rowIndex, colIndex)}
                   onPointerDown={(event) => handleMarkPointerDown(event, rowIndex, colIndex)}
                 />
@@ -724,7 +1030,7 @@ function GameSession({
 
           <div className="mt-6 grid w-full max-w-[21rem] grid-cols-4 gap-3">
             <ModeButton active={mode === 'cat'} onClick={() => setMode('cat')} ariaLabel="두더지 놓기">
-              <MoleFace tiny seed={3} />
+              <MoleFace tiny seed={3} skin={equippedSkin} />
             </ModeButton>
             <ModeButton active={mode === 'mark'} onClick={() => setMode('mark')} ariaLabel="X 표시">
               <span className="text-lg leading-none">✕</span>
@@ -744,7 +1050,7 @@ function GameSession({
           <div className="relative w-full max-w-[20.5rem] overflow-hidden rounded-[30px] bg-[#fff8f3] px-9 pb-11 pt-9 text-center shadow-[0_20px_42px_rgba(72,45,35,0.24)]">
             {status === 'won' && <Confetti />}
             <div className="relative z-10 mx-auto flex h-24 w-24 items-center justify-center rounded-[30px] bg-[#f7ede6]">
-              <MoleFace large seed={status === 'won' ? 4 : 7} />
+              <MoleFace large seed={status === 'won' ? 4 : 7} skin={equippedSkin} />
             </div>
             <h2 className="mt-5 text-2xl font-black tracking-tight text-[#99545f]">
               {status === 'won' ? '찾았다!' : '앗, 막혔어요'}
@@ -754,6 +1060,11 @@ function GameSession({
                 ? '모든 두더지가 자기 색깔 굴을 찾았어요.'
                 : '되돌리거나 다시 시작해봐요.'}
             </p>
+            {status === 'won' && clearReward !== null && (
+              <p className="mt-3 rounded-full bg-white px-4 py-2 text-sm font-black text-[#c07a3f] shadow-[0_5px_14px_rgba(132,87,80,0.1)]">
+                {clearReward > 0 ? `+${clearReward} Coin` : 'Reward already claimed'}
+              </p>
+            )}
             <div className="mx-auto mt-8 grid w-full max-w-[15rem] grid-cols-2 gap-3.5">
               <ModalButton onClick={restart}>다시 하기</ModalButton>
               <ModalButton onClick={nextLevel}>다음</ModalButton>
@@ -773,6 +1084,7 @@ function BoardCell({
   isHint,
   isMistake,
   isLocked,
+  skin,
   onClick,
   onPointerDown,
 }: {
@@ -783,6 +1095,7 @@ function BoardCell({
   isHint: boolean
   isMistake: boolean
   isLocked: boolean
+  skin: MoleSkin
   onClick: () => void
   onPointerDown: (event: PointerEvent<HTMLButtonElement>) => void
 }) {
@@ -814,7 +1127,7 @@ function BoardCell({
       style={style}
       aria-label={`Row ${row + 1}, column ${col + 1}, ${cell === 'cat' ? 'mole' : cell}`}
     >
-      {cell === 'cat' && <MoleFace seed={row * 7 + col + 1} />}
+      {cell === 'cat' && <MoleFace seed={row * 7 + col + 1} skin={skin} />}
       {cell === 'mark' && (
         <span
           className="text-[clamp(0.9rem,5.5vw,1.75rem)] font-bold leading-none"
@@ -834,10 +1147,12 @@ function MoleFace({
   large = false,
   tiny = false,
   seed = 0,
+  skin = getSkin(DEFAULT_SKIN_ID),
 }: {
   large?: boolean
   tiny?: boolean
   seed?: number
+  skin?: MoleSkin
 }) {
   // Desync instances a little so a board full of moles doesn't blink in unison.
   const blinkDelay = `${-((seed * 0.53) % 4.8).toFixed(2)}s`
@@ -846,11 +1161,56 @@ function MoleFace({
 
   return (
     <svg viewBox="0 0 100 100" className={`block ${sizeClass}`} aria-hidden="true">
+      {skin.accessory === 'helmet' && (
+        <path d="M21 33 Q50 6 79 33 L74 43 Q50 29 26 43 Z" fill="#f2c94c" />
+      )}
+      {skin.accessory === 'sprout' && (
+        <g>
+          <path d="M50 19 C49 12 50 8 53 4" fill="none" stroke="#5aa85f" strokeWidth="4" />
+          <ellipse cx="43" cy="14" rx="8" ry="5" fill="#7fca74" transform="rotate(-25 43 14)" />
+          <ellipse cx="58" cy="12" rx="8" ry="5" fill="#6fbd68" transform="rotate(24 58 12)" />
+        </g>
+      )}
+      {skin.accessory === 'berry' && (
+        <g>
+          <circle cx="50" cy="20" r="10" fill="#ef5f72" />
+          <path d="M45 12 L50 7 L55 12" fill="none" stroke="#6baa60" strokeWidth="3" />
+        </g>
+      )}
+      {skin.accessory === 'star' && (
+        <path
+          d="M50 8 L54 18 L65 18 L56 24 L60 35 L50 28 L40 35 L44 24 L35 18 L46 18 Z"
+          fill="#ffd65a"
+        />
+      )}
       {/* head — single terracotta tone */}
       <path
         d="M6 50 A44 44 0 0 1 94 50 L94 86 Q94 96 84 96 L16 96 Q6 96 6 86 Z"
-        fill="#c06f56"
+        fill={skin.head}
       />
+
+      {skin.accessory === 'helmet' && (
+        <path d="M21 33 Q50 6 79 33 L74 43 Q50 29 26 43 Z" fill="#f2c94c" />
+      )}
+      {skin.accessory === 'sprout' && (
+        <g>
+          <path d="M50 19 C49 12 50 8 53 4" fill="none" stroke="#5aa85f" strokeWidth="4" />
+          <ellipse cx="43" cy="14" rx="8" ry="5" fill="#7fca74" transform="rotate(-25 43 14)" />
+          <ellipse cx="58" cy="12" rx="8" ry="5" fill="#6fbd68" transform="rotate(24 58 12)" />
+        </g>
+      )}
+      {skin.accessory === 'berry' && (
+        <g>
+          <circle cx="50" cy="20" r="10" fill="#ef5f72" />
+          <path d="M45 12 L50 7 L55 12" fill="none" stroke="#6baa60" strokeWidth="3" />
+        </g>
+      )}
+      {skin.accessory === 'star' && (
+        <path
+          d="M50 8 L54 18 L65 18 L56 24 L60 35 L50 28 L40 35 L44 24 L35 18 L46 18 Z"
+          fill="#ffd65a"
+        />
+      )}
 
       {/* eyes (simple dots, blink together) */}
       <g className="moledoku-eye" style={{ animationDelay: blinkDelay }}>
@@ -861,8 +1221,8 @@ function MoleFace({
       </g>
 
       {/* muzzle — single golden tone */}
-      <ellipse cx="37" cy="70" rx="16.5" ry="15.5" fill="#e7c887" />
-      <ellipse cx="63" cy="70" rx="16.5" ry="15.5" fill="#e7c887" />
+      <ellipse cx="37" cy="70" rx="16.5" ry="15.5" fill={skin.muzzle} />
+      <ellipse cx="63" cy="70" rx="16.5" ry="15.5" fill={skin.muzzle} />
 
       {/* tooth tucked into the muzzle, long and squared (gentle nibble) */}
       <rect
@@ -877,7 +1237,7 @@ function MoleFace({
       />
 
       {/* nose — round, slate */}
-      <circle cx="50" cy="55" r="7.2" fill="#45444f" />
+      <circle cx="50" cy="55" r="7.2" fill={skin.nose} />
     </svg>
   )
 }
