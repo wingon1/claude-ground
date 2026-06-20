@@ -1177,6 +1177,21 @@ function RoundStar({ cx, cy, r, fill }: { cx: number; cy: number; r: number; fil
   )
 }
 
+// A single cotyledon leaf (rounded base, pointed tip) with a midrib, drawn in
+// local coords and positioned via the transform props.
+const SPROUT_LEAF = 'M0 -15 Q9 -3 5.5 9 Q2.5 14.5 0 14.5 Q-2.5 14.5 -5.5 9 Q-9 -3 0 -15 Z'
+const SPROUT_MIDRIB = 'M0 13 Q1.4 0 0 -12.5'
+
+function SproutLeaf({ cx, cy, rot, scale }: { cx: number; cy: number; rot: number; scale: number }) {
+  return (
+    <g transform={`translate(${cx} ${cy}) rotate(${rot}) scale(${scale})`}>
+      <path d={SPROUT_LEAF} fill="#5fb24f" stroke="#4a9a45" strokeWidth={1} strokeLinejoin="round" />
+      <path d={SPROUT_LEAF} transform="translate(0 2) scale(0.6)" fill="#86d56f" />
+      <path d={SPROUT_MIDRIB} fill="none" stroke="#4a9a45" strokeWidth={1.3} strokeLinecap="round" />
+    </g>
+  )
+}
+
 function MoleFace({
   large = false,
   tiny = false,
@@ -1268,9 +1283,9 @@ function MoleFace({
       )}
       {skin.accessory === 'sprout' && (
         <g>
-          <path d="M50 19 C49 12 50 8 53 4" fill="none" stroke="#5aa85f" strokeWidth="4" />
-          <ellipse cx="43" cy="14" rx="8" ry="5" fill="#7fca74" transform="rotate(-25 43 14)" />
-          <ellipse cx="58" cy="12" rx="8" ry="5" fill="#6fbd68" transform="rotate(24 58 12)" />
+          <path d="M50 27 Q47 17 50 8" fill="none" stroke="#4a9a45" strokeWidth={3.4} strokeLinecap="round" />
+          <SproutLeaf cx={43} cy={9} rot={-48} scale={1} />
+          <SproutLeaf cx={58} cy={7} rot={44} scale={1.12} />
         </g>
       )}
       {skin.accessory === 'berry' && (
