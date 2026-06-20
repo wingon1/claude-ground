@@ -1140,7 +1140,7 @@ function BoardCell({
       style={style}
       aria-label={`Row ${row + 1}, column ${col + 1}, ${cell === 'cat' ? 'mole' : cell}`}
     >
-      {cell === 'cat' && <MoleFace seed={row * 7 + col + 1} skin={skin} />}
+      {cell === 'cat' && <MoleFace outline seed={row * 7 + col + 1} skin={skin} />}
       {cell === 'mark' && (
         <span
           className="text-[clamp(0.9rem,5.5vw,1.75rem)] font-bold leading-none"
@@ -1214,11 +1214,14 @@ function MoleFace({
   tiny = false,
   seed = 0,
   skin = getSkin(DEFAULT_SKIN_ID),
+  outline = false,
 }: {
   large?: boolean
   tiny?: boolean
   seed?: number
   skin?: MoleSkin
+  /** Crisp off-white rim — only used on the game board, where cells can share the character's tone. */
+  outline?: boolean
 }) {
   // Desync instances a little so a board full of moles doesn't blink in unison.
   const blinkDelay = `${-((seed * 0.53) % 4.8).toFixed(2)}s`
@@ -1226,6 +1229,7 @@ function MoleFace({
   const sizeClass = large ? 'mx-auto h-16 w-16' : tiny ? 'h-6 w-6' : 'h-[78%] w-[78%]'
   const gid = useId()
   const outlineId = `outline-${gid}`
+  const filterRef = outline ? `url(#${outlineId})` : undefined
 
   // overflow visible lets tall hats and chubby cheeks spill past the viewBox.
   const svgProps = {
@@ -1239,21 +1243,19 @@ function MoleFace({
   if (skin.kind === 'hamster') {
     return (
       <svg {...svgProps}>
-        <defs>
-          <OutlineFilter id={outlineId} />
-        </defs>
-        <g filter={`url(#${outlineId})`}>
+        <defs>{outline && <OutlineFilter id={outlineId} />}</defs>
+        <g filter={filterRef}>
         {/* ears */}
         <circle cx="25" cy="17" r="12" fill={skin.head} />
         <circle cx="75" cy="17" r="12" fill={skin.head} />
         <circle cx="25" cy="18" r="6" fill="#f2b6bf" />
         <circle cx="75" cy="18" r="6" fill="#f2b6bf" />
         {/* head + cheeks (same colour, bulging past the sides for a chubby look) */}
-        <circle cx="11" cy="72" r="19" fill={skin.head} />
-        <circle cx="89" cy="72" r="19" fill={skin.head} />
+        <circle cx="15" cy="69" r="17.5" fill={skin.head} />
+        <circle cx="85" cy="69" r="17.5" fill={skin.head} />
         <path d={HEAD_D} fill={skin.head} />
-        <circle cx="11" cy="72" r="19" fill={skin.head} />
-        <circle cx="89" cy="72" r="19" fill={skin.head} />
+        <circle cx="15" cy="69" r="17.5" fill={skin.head} />
+        <circle cx="85" cy="69" r="17.5" fill={skin.head} />
         {/* eyes */}
         <g className="moledoku-eye" style={{ animationDelay: blinkDelay }}>
           <circle cx="34" cy="43" r="4.6" fill="#3a2f24" />
@@ -1289,7 +1291,7 @@ function MoleFace({
   return (
     <svg {...svgProps}>
       <defs>
-        <OutlineFilter id={outlineId} />
+        {outline && <OutlineFilter id={outlineId} />}
         {isStar && (
           <clipPath id={headClip}>
             {/* keep the head below the cap brim so it never pokes out the top */}
@@ -1297,7 +1299,7 @@ function MoleFace({
           </clipPath>
         )}
       </defs>
-      <g filter={`url(#${outlineId})`}>
+      <g filter={filterRef}>
 
       {/* head */}
       <path d={HEAD_D} fill={skin.head} clipPath={isStar ? `url(#${headClip})` : undefined} />
