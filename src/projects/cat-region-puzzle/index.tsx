@@ -1192,6 +1192,23 @@ function SproutLeaf({ cx, cy, rot, scale }: { cx: number; cy: number; rot: numbe
   )
 }
 
+// A crisp off-white sticker outline around the whole character, so it stays
+// readable on same-tone board cells. feMorphology dilate keeps the edge sharp
+// (no blur) and uniform regardless of how the character is layered.
+function OutlineFilter({ id }: { id: string }) {
+  return (
+    <filter id={id} x="-20%" y="-20%" width="140%" height="140%">
+      <feMorphology in="SourceAlpha" operator="dilate" radius="3" result="spread" />
+      <feFlood floodColor="#fdf7f0" />
+      <feComposite in2="spread" operator="in" result="outline" />
+      <feMerge>
+        <feMergeNode in="outline" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  )
+}
+
 function MoleFace({
   large = false,
   tiny = false,
@@ -1208,6 +1225,7 @@ function MoleFace({
   const toothDelay = `${-((seed * 0.37) % 1.9).toFixed(2)}s`
   const sizeClass = large ? 'mx-auto h-16 w-16' : tiny ? 'h-6 w-6' : 'h-[78%] w-[78%]'
   const gid = useId()
+  const outlineId = `outline-${gid}`
 
   // overflow visible lets tall hats and chubby cheeks spill past the viewBox.
   const svgProps = {
@@ -1221,6 +1239,10 @@ function MoleFace({
   if (skin.kind === 'hamster') {
     return (
       <svg {...svgProps}>
+        <defs>
+          <OutlineFilter id={outlineId} />
+        </defs>
+        <g filter={`url(#${outlineId})`}>
         {/* ears */}
         <circle cx="25" cy="17" r="12" fill={skin.head} />
         <circle cx="75" cy="17" r="12" fill={skin.head} />
@@ -1255,6 +1277,7 @@ function MoleFace({
           <rect x="47.2" y="58" width="2.8" height="8" rx="1.1" fill="#fffdf7" />
           <rect x="50" y="58" width="2.8" height="8" rx="1.1" fill="#fffdf7" />
         </g>
+        </g>
       </svg>
     )
   }
@@ -1265,14 +1288,16 @@ function MoleFace({
 
   return (
     <svg {...svgProps}>
-      {isStar && (
-        <defs>
+      <defs>
+        <OutlineFilter id={outlineId} />
+        {isStar && (
           <clipPath id={headClip}>
             {/* keep the head below the cap brim so it never pokes out the top */}
             <rect x="-12" y="33" width="124" height="80" />
           </clipPath>
-        </defs>
-      )}
+        )}
+      </defs>
+      <g filter={`url(#${outlineId})`}>
 
       {/* head */}
       <path d={HEAD_D} fill={skin.head} clipPath={isStar ? `url(#${headClip})` : undefined} />
@@ -1369,6 +1394,7 @@ function MoleFace({
           <RoundStar cx={49} cy={10} r={2.2} fill="#ffe27a" />
         </>
       )}
+      </g>
     </svg>
   )
 }
