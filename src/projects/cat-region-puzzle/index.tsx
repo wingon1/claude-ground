@@ -1302,8 +1302,23 @@ function MoleFace({
       )}
       {skin.accessory === 'berry' && (
         <g>
-          <circle cx="50" cy="20" r="10" fill="#ef5f72" />
-          <path d="M45 12 L50 7 L55 12" fill="none" stroke="#6baa60" strokeWidth="3" />
+          {/* strawberry cap */}
+          <path d="M32 19 Q32 2 50 1 Q68 2 68 19 Q50 24.5 32 19 Z" fill="#e2474f" />
+          <path d="M34 7 Q41 3 50 2.5 Q45 7 40 11 Q36 9 34 7 Z" fill="#ee6a6f" opacity="0.55" />
+          {/* seeds */}
+          <g fill="#ffe49b">
+            <ellipse cx="41" cy="9" rx="1" ry="1.6" transform="rotate(-20 41 9)" />
+            <ellipse cx="59" cy="9" rx="1" ry="1.6" transform="rotate(20 59 9)" />
+            <ellipse cx="50" cy="11.5" rx="1" ry="1.6" />
+            <ellipse cx="37" cy="14" rx="1" ry="1.6" transform="rotate(-12 37 14)" />
+            <ellipse cx="63" cy="14" rx="1" ry="1.6" transform="rotate(12 63 14)" />
+            <ellipse cx="45" cy="16.5" rx="1" ry="1.6" transform="rotate(-6 45 16.5)" />
+            <ellipse cx="55" cy="16.5" rx="1" ry="1.6" transform="rotate(6 55 16.5)" />
+            <ellipse cx="50" cy="20" rx="1" ry="1.6" />
+          </g>
+          {/* green calyx + stem */}
+          <path d="M50 -1.5 Q43 2.5 38 0.5 Q43 5.5 40 9.5 Q47 6.5 50 10.5 Q53 6.5 60 9.5 Q57 5.5 62 0.5 Q57 2.5 50 -1.5 Z" fill="#5bb150" />
+          <rect x="49" y="-4" width="2.2" height="4.5" rx="1.1" fill="#4f9a45" />
         </g>
       )}
 
