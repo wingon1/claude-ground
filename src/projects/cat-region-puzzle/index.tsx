@@ -508,30 +508,30 @@ function MainMenu({
     <div className="min-h-full w-full overflow-auto bg-[#f8f3ef] text-[#87515b]">
       <MoleStyles />
       <div className="relative mx-auto flex min-h-dvh w-full max-w-[30rem] flex-col overflow-hidden">
-        <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-8 py-6 text-center">
+        <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-8 py-10 text-center">
           <div className="absolute right-5 top-5 rounded-full bg-white px-3.5 py-1.5 text-xs font-black text-[#9a5963] shadow-[0_8px_18px_rgba(132,87,80,0.12)]">
             Coin {coins}
           </div>
-          <div className="flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-[26px] bg-white shadow-[0_16px_34px_rgba(132,87,80,0.16)]">
+          <div className="flex h-24 w-24 items-center justify-center rounded-[30px] bg-white shadow-[0_16px_34px_rgba(132,87,80,0.16)]">
             <MoleFace large seed={1} skin={equippedSkin} />
           </div>
-          <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.3em] text-[#c08a93]">
+          <p className="mt-6 text-[10px] font-bold uppercase tracking-[0.3em] text-[#c08a93]">
             Moledoku
           </p>
-          <h1 className="mt-1.5 text-[2rem] font-black leading-none tracking-tight text-[#99545f]">
+          <h1 className="mt-2 text-[2.35rem] font-black leading-none tracking-tight text-[#99545f]">
             두더지 스도쿠
           </h1>
-          <p className="mt-2.5 max-w-[18rem] break-keep text-[13px] font-medium leading-relaxed text-[#ab7d83]">
+          <p className="mt-4 max-w-[18rem] break-keep text-sm font-medium leading-relaxed text-[#ab7d83]">
             색상·가로줄·세로줄마다 두더지를 한 마리씩 숨겨봐요.
           </p>
 
-          <div className="mt-5 grid w-full max-w-[18.5rem] gap-2">
+          <div className="mt-8 grid w-full max-w-[15rem] gap-2">
             {DIFFICULTIES.map((difficulty, index) => (
               <button
                 key={difficulty}
                 type="button"
                 onClick={() => openStagePicker(difficulty)}
-                className="flex items-center justify-between rounded-[16px] bg-white px-6 py-2.5 text-left shadow-[0_8px_18px_rgba(132,87,80,0.12)] transition active:scale-[0.97]"
+                className="flex items-center justify-between rounded-[16px] bg-white px-5 py-2.5 text-left shadow-[0_8px_18px_rgba(132,87,80,0.12)] transition active:scale-[0.97]"
               >
                 <span className="text-base font-extrabold tracking-tight text-[#99545f]">
                   {difficulty}
@@ -544,7 +544,7 @@ function MainMenu({
             <button
               type="button"
               onClick={() => setIsShopOpen(true)}
-              className="mt-0.5 rounded-[16px] bg-[#99545f] px-6 py-2.5 text-sm font-black text-white shadow-[0_10px_20px_rgba(132,87,80,0.18)] transition active:scale-[0.97]"
+              className="mt-0.5 rounded-[16px] bg-[#99545f] px-5 py-2.5 text-sm font-black text-white shadow-[0_10px_20px_rgba(132,87,80,0.18)] transition active:scale-[0.97]"
             >
               상점
             </button>
