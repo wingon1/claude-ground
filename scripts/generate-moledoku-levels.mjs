@@ -71,12 +71,43 @@ const DIFFICULTY_RULES = {
 
 const signature = `// moledoku-levels:${JSON.stringify({ version: 12, groups: GROUPS, rules: DIFFICULTY_RULES })}`
 const force = process.argv.includes('--force')
+// Regenerate only the listed difficulties (comma-separated) and reuse the
+// existing levels for the rest — e.g. `--only=8x8,9x9`. Much faster when only
+// the big tiers changed, since 5x5/6x6/7x7 stay byte-identical and don't need
+// recomputing. (Each group is generated from its own seed, so a group built in
+// isolation is identical to the same group built in a full run.)
+const onlyArg = process.argv.find((arg) => arg.startsWith('--only='))
+const onlyDifficulties = onlyArg
+  ? onlyArg
+      .slice('--only='.length)
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean)
+  : null
 const outputPath = resolve(
   dirname(fileURLToPath(import.meta.url)),
   '../src/projects/cat-region-puzzle/generatedLevels.ts',
 )
 
-if (!force) {
+// Load the previously generated pack (levels + the config signature it was made
+// with) so unchanged groups can be reused instead of recomputed.
+async function loadExistingPack() {
+  try {
+    const current = await readFile(outputPath, 'utf8')
+    const sig = JSON.parse(current.slice('// moledoku-levels:'.length, current.indexOf('\n')))
+    const token = 'export const generatedLevels = '
+    const start = current.indexOf(token) + token.length
+    const levels = JSON.parse(current.slice(start, current.indexOf(' satisfies Level[]', start)))
+    return { sig, levels }
+  } catch {
+    return null
+  }
+}
+
+const existingPack = onlyDifficulties ? await loadExistingPack() : null
+
+// `--only` always runs; a plain run skips when the file already matches.
+if (!force && !onlyDifficulties) {
   try {
     const current = await readFile(outputPath, 'utf8')
     if (current.startsWith(signature)) {
@@ -86,6 +117,21 @@ if (!force) {
   } catch {
     // Missing generated file; continue and create it.
   }
+}
+
+// A group can be reused only if the previous pack was built with the same
+// count, seed and rules for that difficulty, so its levels are still valid.
+function canReuseGroup(group) {
+  if (!existingPack) return false
+  const old = (existingPack.sig.groups ?? []).find((g) => g.difficulty === group.difficulty)
+  if (!old || old.count !== group.count || old.seed !== group.seed) return false
+  if (
+    JSON.stringify(existingPack.sig.rules?.[group.difficulty]) !==
+    JSON.stringify(DIFFICULTY_RULES[group.difficulty])
+  ) {
+    return false
+  }
+  return existingPack.levels.filter((level) => level.difficulty === group.difficulty).length === group.count
 }
 
 function makeRng(seed) {
@@ -458,6 +504,17 @@ function buildLevelPack() {
   const levels = []
 
   for (const group of GROUPS) {
+    // With --only, reuse the existing levels for untouched difficulties.
+    if (onlyDifficulties && !onlyDifficulties.includes(group.difficulty)) {
+      if (canReuseGroup(group)) {
+        const reused = existingPack.levels.filter((level) => level.difficulty === group.difficulty)
+        for (const level of reused) levels.push({ ...level, id: levels.length + 1 })
+        console.log(`Reused ${reused.length} ${group.difficulty} levels`)
+        continue
+      }
+      console.log(`Cannot reuse ${group.difficulty} (config/seed changed) — regenerating`)
+    }
+
     const rules = DIFFICULTY_RULES[group.difficulty]
     const usedFingerprints = new Set()
     let singletonLevels = 0
@@ -480,7 +537,7 @@ function buildLevelPack() {
       if (countSmallRegions(level) > 0) smallRegionLevels += 1
       usedFingerprints.add(canonicalRegionFingerprint(level.regions))
       levels.push(level)
-      if (force) console.log(`Generated level ${levelId} (${group.difficulty})`)
+      if (force || onlyDifficulties) console.log(`Generated level ${levelId} (${group.difficulty})`)
     }
   }
 
