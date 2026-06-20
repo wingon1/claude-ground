@@ -1210,16 +1210,10 @@ function MoleFace({
   const gid = useId()
 
   // overflow visible lets tall hats and chubby cheeks spill past the viewBox.
-  // A soft all-around shadow keeps every character legible on same-tone cells
-  // (e.g. the golden hamster on yellow/orange/tan regions).
   const svgProps = {
     viewBox: '0 0 100 100',
     overflow: 'visible',
     className: `block ${sizeClass}`,
-    style: {
-      filter:
-        'drop-shadow(0 0 0.8px rgba(60,40,30,0.55)) drop-shadow(0 1.2px 1.2px rgba(60,40,30,0.3))',
-    },
     'aria-hidden': true,
   } as const
 
