@@ -1279,7 +1279,19 @@ function MoleFace({
 
       {/* simple hats that sit on the head, behind the eyes */}
       {skin.accessory === 'helmet' && (
-        <path d="M21 33 Q50 6 79 33 L74 43 Q50 29 26 43 Z" fill="#f2c94c" />
+        <g>
+          {/* brim */}
+          <ellipse cx="50" cy="24" rx="27" ry="4.6" fill="#d8962a" />
+          {/* dome */}
+          <path d="M28 24 Q31 4 50 2 Q69 4 72 24 Z" fill="#f1b63d" />
+          {/* crest */}
+          <path d="M50 3 Q49 13 50 23" fill="none" stroke="#ffd066" strokeWidth={2.3} strokeLinecap="round" />
+          <ellipse cx="41" cy="12" rx="3.6" ry="7" fill="#ffffff" opacity="0.18" transform="rotate(-18 41 12)" />
+          {/* headlamp */}
+          <circle cx="50" cy="13.5" r="4.7" fill="#3c3a44" />
+          <circle cx="50" cy="13.5" r="2.9" fill="#fff4bd" />
+          <circle cx="49" cy="12.6" r="1" fill="#ffffff" />
+        </g>
       )}
       {skin.accessory === 'sprout' && (
         <g>
