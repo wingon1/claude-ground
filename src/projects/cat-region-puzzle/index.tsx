@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -27,7 +28,7 @@ import { levels } from './levels'
 
 type Mode = 'cat' | 'mark'
 type Status = 'playing' | 'won' | 'lost'
-type MoleSkinId = 'classic' | 'sprout' | 'miner' | 'berry' | 'star'
+type MoleSkinId = 'classic' | 'sprout' | 'miner' | 'berry' | 'star' | 'hamster'
 
 type Snapshot = {
   board: Board
@@ -54,6 +55,8 @@ type MoleSkin = {
   id: MoleSkinId
   name: string
   price: number
+  /** Base creature silhouette. Defaults to the mole when omitted. */
+  kind?: 'mole' | 'hamster'
   head: string
   muzzle: string
   nose: string
@@ -122,6 +125,16 @@ const MOLE_SKINS: MoleSkin[] = [
     muzzle: '#f0d7a0',
     nose: '#3d3850',
     accessory: 'star',
+  },
+  {
+    id: 'hamster',
+    name: '햄스터',
+    price: 150,
+    kind: 'hamster',
+    head: '#e3b06a',
+    muzzle: '#fbe9d0',
+    nose: '#cf7f86',
+    accessory: 'none',
   },
 ]
 
@@ -1143,6 +1156,27 @@ function BoardCell({
   )
 }
 
+// Shared arch-shaped head silhouette.
+const HEAD_D = 'M6 50 A44 44 0 0 1 94 50 L94 86 Q94 96 84 96 L16 96 Q6 96 6 86 Z'
+
+// A chubby five-point star: the matching-colour round-joined stroke softens the
+// points so it reads as cute rather than spiky.
+function starD(cx: number, cy: number, r: number): string {
+  let d = ''
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI) / 5
+    const rad = i % 2 ? r * 0.55 : r
+    d += `${i ? 'L' : 'M'}${(cx + Math.cos(a) * rad).toFixed(1)} ${(cy + Math.sin(a) * rad).toFixed(1)}`
+  }
+  return `${d}Z`
+}
+
+function RoundStar({ cx, cy, r, fill }: { cx: number; cy: number; r: number; fill: string }) {
+  return (
+    <path d={starD(cx, cy, r)} fill={fill} stroke={fill} strokeWidth={r * 0.4} strokeLinejoin="round" />
+  )
+}
+
 function MoleFace({
   large = false,
   tiny = false,
@@ -1158,37 +1192,77 @@ function MoleFace({
   const blinkDelay = `${-((seed * 0.53) % 4.8).toFixed(2)}s`
   const toothDelay = `${-((seed * 0.37) % 1.9).toFixed(2)}s`
   const sizeClass = large ? 'mx-auto h-16 w-16' : tiny ? 'h-6 w-6' : 'h-[78%] w-[78%]'
+  const gid = useId()
+
+  // overflow visible lets tall hats and chubby cheeks spill past the viewBox.
+  const svgProps = {
+    viewBox: '0 0 100 100',
+    overflow: 'visible',
+    className: `block ${sizeClass}`,
+    'aria-hidden': true,
+  } as const
+
+  // ── Hamster: its own chubby silhouette (round ears, bulging cheeks, buck teeth) ──
+  if (skin.kind === 'hamster') {
+    return (
+      <svg {...svgProps}>
+        {/* ears */}
+        <circle cx="25" cy="17" r="12" fill={skin.head} />
+        <circle cx="75" cy="17" r="12" fill={skin.head} />
+        <circle cx="25" cy="18" r="6" fill="#f2b6bf" />
+        <circle cx="75" cy="18" r="6" fill="#f2b6bf" />
+        {/* head + cheeks (same colour, bulging past the sides for a chubby look) */}
+        <circle cx="11" cy="72" r="19" fill={skin.head} />
+        <circle cx="89" cy="72" r="19" fill={skin.head} />
+        <path d={HEAD_D} fill={skin.head} />
+        <circle cx="11" cy="72" r="19" fill={skin.head} />
+        <circle cx="89" cy="72" r="19" fill={skin.head} />
+        {/* eyes */}
+        <g className="moledoku-eye" style={{ animationDelay: blinkDelay }}>
+          <circle cx="34" cy="43" r="4.6" fill="#3a2f24" />
+          <circle cx="35.5" cy="41.5" r="1.5" fill="#ffffff" />
+        </g>
+        <g className="moledoku-eye" style={{ animationDelay: blinkDelay }}>
+          <circle cx="66" cy="43" r="4.6" fill="#3a2f24" />
+          <circle cx="67.5" cy="41.5" r="1.5" fill="#ffffff" />
+        </g>
+        {/* whiskers */}
+        <g stroke="#a07f55" strokeWidth="1.3" strokeLinecap="round" opacity="0.7">
+          <line x1="34" y1="60" x2="14" y2="57" />
+          <line x1="34" y1="64" x2="14" y2="66" />
+          <line x1="66" y1="60" x2="86" y2="57" />
+          <line x1="66" y1="64" x2="86" y2="66" />
+        </g>
+        {/* nose */}
+        <path d="M46 53 Q50 50 54 53 Q52 58 50 58 Q48 58 46 53 Z" fill={skin.nose} />
+        {/* front teeth (gentle nibble) */}
+        <g className="moledoku-tooth" style={{ animationDelay: toothDelay }}>
+          <rect x="47.2" y="58" width="2.8" height="8" rx="1.1" fill="#fffdf7" />
+          <rect x="50" y="58" width="2.8" height="8" rx="1.1" fill="#fffdf7" />
+        </g>
+      </svg>
+    )
+  }
+
+  // ── Mole-based skins ──
+  const isStar = skin.accessory === 'star'
+  const headClip = `mole-clip-${gid}`
 
   return (
-    <svg viewBox="0 0 100 100" className={`block ${sizeClass}`} aria-hidden="true">
-      {skin.accessory === 'helmet' && (
-        <path d="M21 33 Q50 6 79 33 L74 43 Q50 29 26 43 Z" fill="#f2c94c" />
+    <svg {...svgProps}>
+      {isStar && (
+        <defs>
+          <clipPath id={headClip}>
+            {/* keep the head below the cap brim so it never pokes out the top */}
+            <rect x="-12" y="33" width="124" height="80" />
+          </clipPath>
+        </defs>
       )}
-      {skin.accessory === 'sprout' && (
-        <g>
-          <path d="M50 19 C49 12 50 8 53 4" fill="none" stroke="#5aa85f" strokeWidth="4" />
-          <ellipse cx="43" cy="14" rx="8" ry="5" fill="#7fca74" transform="rotate(-25 43 14)" />
-          <ellipse cx="58" cy="12" rx="8" ry="5" fill="#6fbd68" transform="rotate(24 58 12)" />
-        </g>
-      )}
-      {skin.accessory === 'berry' && (
-        <g>
-          <circle cx="50" cy="20" r="10" fill="#ef5f72" />
-          <path d="M45 12 L50 7 L55 12" fill="none" stroke="#6baa60" strokeWidth="3" />
-        </g>
-      )}
-      {skin.accessory === 'star' && (
-        <path
-          d="M50 8 L54 18 L65 18 L56 24 L60 35 L50 28 L40 35 L44 24 L35 18 L46 18 Z"
-          fill="#ffd65a"
-        />
-      )}
-      {/* head — single terracotta tone */}
-      <path
-        d="M6 50 A44 44 0 0 1 94 50 L94 86 Q94 96 84 96 L16 96 Q6 96 6 86 Z"
-        fill={skin.head}
-      />
 
+      {/* head */}
+      <path d={HEAD_D} fill={skin.head} clipPath={isStar ? `url(#${headClip})` : undefined} />
+
+      {/* simple hats that sit on the head, behind the eyes */}
       {skin.accessory === 'helmet' && (
         <path d="M21 33 Q50 6 79 33 L74 43 Q50 29 26 43 Z" fill="#f2c94c" />
       )}
@@ -1204,12 +1278,6 @@ function MoleFace({
           <circle cx="50" cy="20" r="10" fill="#ef5f72" />
           <path d="M45 12 L50 7 L55 12" fill="none" stroke="#6baa60" strokeWidth="3" />
         </g>
-      )}
-      {skin.accessory === 'star' && (
-        <path
-          d="M50 8 L54 18 L65 18 L56 24 L60 35 L50 28 L40 35 L44 24 L35 18 L46 18 Z"
-          fill="#ffd65a"
-        />
       )}
 
       {/* eyes (simple dots, blink together) */}
@@ -1220,11 +1288,19 @@ function MoleFace({
         <circle cx="68" cy="40" r="4.4" fill="#3a322c" />
       </g>
 
-      {/* muzzle — single golden tone */}
+      {/* star skin: sleepy blush */}
+      {isStar && (
+        <>
+          <ellipse cx="22" cy="52" rx="6" ry="4" fill="#e891ad" opacity="0.55" />
+          <ellipse cx="78" cy="52" rx="6" ry="4" fill="#e891ad" opacity="0.55" />
+        </>
+      )}
+
+      {/* muzzle */}
       <ellipse cx="37" cy="70" rx="16.5" ry="15.5" fill={skin.muzzle} />
       <ellipse cx="63" cy="70" rx="16.5" ry="15.5" fill={skin.muzzle} />
 
-      {/* tooth tucked into the muzzle, long and squared (gentle nibble) */}
+      {/* tooth tucked into the muzzle (gentle nibble) */}
       <rect
         className="moledoku-tooth"
         style={{ animationDelay: toothDelay }}
@@ -1236,8 +1312,21 @@ function MoleFace({
         fill="#fffdf7"
       />
 
-      {/* nose — round, slate */}
+      {/* nose */}
       <circle cx="50" cy="55" r="7.2" fill={skin.nose} />
+
+      {/* star skin: cone nightcap on top (head is clipped so nothing pokes out) */}
+      {isStar && (
+        <>
+          <path d="M5 34 Q26 9 49 3 Q52 1 55 3 Q74 9 95 34 Z" fill="#5b54a6" />
+          <RoundStar cx={56} cy={5} r={5.5} fill="#ffd65a" />
+          <path d="M3 34 Q50 30 97 34 L96 27 Q50 23 4 27 Z" fill="#d7caf2" />
+          <RoundStar cx={47} cy={25} r={2.6} fill="#ffe27a" />
+          <RoundStar cx={42} cy={17} r={2.3} fill="#ffe27a" />
+          <RoundStar cx={57} cy={17} r={2.3} fill="#ffe27a" />
+          <RoundStar cx={49} cy={10} r={2.2} fill="#ffe27a" />
+        </>
+      )}
     </svg>
   )
 }
