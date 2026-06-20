@@ -71,9 +71,12 @@ const REGION_COLORS: CellColor[] = [
   { base: '#9fdc9d', light: '#c6efc1', text: '#4b9456' },
   { base: '#f2ae78', light: '#ffd0a6', text: '#a66035' },
   { base: '#d6b18a', light: '#edcfac', text: '#8d6346' },
+  { base: '#37c2b4', light: '#82e0d5', text: '#23807a' },
+  { base: '#c074cf', light: '#e0a9ec', text: '#854098' },
 ]
 
-const DIFFICULTIES: Difficulty[] = ['5x5', '6x6', '7x7']
+const DIFFICULTIES: Difficulty[] = ['5x5', '6x6', '7x7', '8x8', '9x9']
+const DIFFICULTY_LABELS = ['쉬움', '보통', '어려움', '짱어려움', '짱짱어려움']
 const COMPLETED_STAGE_STORAGE_KEY = 'moledoku.completedStages.v1'
 const COIN_STORAGE_KEY = 'moledoku.coins.v1'
 const OWNED_SKINS_STORAGE_KEY = 'moledoku.ownedSkins.v1'
@@ -525,7 +528,7 @@ function MainMenu({
                   {difficulty}
                 </span>
                 <span className="text-xs font-semibold tracking-wide text-[#bd8d94]">
-                  {['쉬움', '보통', '어려움'][index]}
+                  {DIFFICULTY_LABELS[index]}
                 </span>
               </button>
             ))}

@@ -13,6 +13,8 @@ const GROUPS = [
   { difficulty: '5x5', count: 50, seed: 22000 },
   { difficulty: '6x6', count: 50, seed: 32000 },
   { difficulty: '7x7', count: 50, seed: 42000 },
+  { difficulty: '8x8', count: 30, seed: 52000 },
+  { difficulty: '9x9', count: 16, seed: 62000 },
 ]
 
 const DIFFICULTY_RULES = {
@@ -43,9 +45,27 @@ const DIFFICULTY_RULES = {
     smallRegionBudget: 50,
     singletonBudget: 3,
   },
+  '8x8': {
+    minSolutions: 2,
+    maxSolutions: 40,
+    maxSolutionsWithoutSmallRegions: 160,
+    minSmallRegions: 0,
+    maxSmallRegions: 1,
+    smallRegionBudget: 50,
+    singletonBudget: 2,
+  },
+  '9x9': {
+    minSolutions: 2,
+    maxSolutions: 2000,
+    maxSolutionsWithoutSmallRegions: 2000,
+    minSmallRegions: 0,
+    maxSmallRegions: 1,
+    smallRegionBudget: 50,
+    singletonBudget: 1,
+  },
 }
 
-const signature = `// moledoku-levels:${JSON.stringify({ version: 9, groups: GROUPS, rules: DIFFICULTY_RULES })}`
+const signature = `// moledoku-levels:${JSON.stringify({ version: 10, groups: GROUPS, rules: DIFFICULTY_RULES })}`
 const force = process.argv.includes('--force')
 const outputPath = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -90,7 +110,9 @@ function coordKey(coord) {
 function sizeForDifficulty(difficulty) {
   if (difficulty === '5x5') return 5
   if (difficulty === '6x6') return 6
-  return 7
+  if (difficulty === '7x7') return 7
+  if (difficulty === '8x8') return 8
+  return 9
 }
 
 function createSolution(size, rng) {
@@ -467,6 +489,8 @@ const summary = {
   five: levels.filter((level) => level.difficulty === '5x5').length,
   six: levels.filter((level) => level.difficulty === '6x6').length,
   seven: levels.filter((level) => level.difficulty === '7x7').length,
+  eight: levels.filter((level) => level.difficulty === '8x8').length,
+  nine: levels.filter((level) => level.difficulty === '9x9').length,
   noLocks: levels.every((level) => level.lockedCats.length === 0),
   singletonCounts: levels.reduce(
     (counts, level) => {
@@ -507,5 +531,5 @@ await mkdir(dirname(outputPath), { recursive: true })
 await writeFile(outputPath, output)
 
 console.log(
-  `Generated ${summary.total} Moledoku levels (${summary.five}/${summary.six}/${summary.seven})`,
+  `Generated ${summary.total} Moledoku levels (${summary.five}/${summary.six}/${summary.seven}/${summary.eight}/${summary.nine})`,
 )
