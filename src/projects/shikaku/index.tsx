@@ -1,0 +1,354 @@
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  rectContainsCell,
+  solvePuzzle,
+  validateSolution,
+  type Puzzle,
+  type Rect,
+} from './engine'
+import { getLevel, levelCount, TIERS, type TierId } from './levels'
+import { THEMES, type ThemeId } from './themes'
+import { loadState, saveState, type SaveState } from './store'
+import { playClear, playCoins, playTap, primeAudio, setSoundEnabled } from './audio'
+import { CSS, STYLE_ID } from './styles'
+import Board, { type Tool } from './Board'
+import Toolbar, { WAND_COST } from './Toolbar'
+import Header from './Header'
+import LevelSelect from './LevelSelect'
+import ThemeStore from './ThemeStore'
+import WinOverlay from './WinOverlay'
+import { SkipIcon } from './icons'
+
+type Screen = 'levels' | 'game'
+
+function useInjectedStyles() {
+  useEffect(() => {
+    if (document.getElementById(STYLE_ID)) return
+    const el = document.createElement('style')
+    el.id = STYLE_ID
+    el.textContent = CSS
+    document.head.appendChild(el)
+    // Leave the style mounted; it's harmless and shared if remounted.
+  }, [])
+}
+
+export default function Shikaku() {
+  useInjectedStyles()
+
+  const [state, setState] = useState<SaveState>(() => loadState())
+  const [screen, setScreen] = useState<Screen>('levels')
+  const [activeTier, setActiveTier] = useState<TierId>('easy')
+  const [levelIndex, setLevelIndex] = useState(0)
+
+  const [rects, setRects] = useState<Rect[]>([])
+  const [tool, setTool] = useState<Tool>('draw')
+  const [hintRect, setHintRect] = useState<Rect | null>(null)
+  const [storeOpen, setStoreOpen] = useState(false)
+  const [win, setWin] = useState<{ reward: number } | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
+
+  const theme = THEMES[state.activeTheme]
+  const patterns = !!theme.patterns
+
+  const puzzle: Puzzle = useMemo(
+    () => getLevel(activeTier, levelIndex),
+    [activeTier, levelIndex],
+  )
+
+  // Persist on every change.
+  const update = useCallback((fn: (s: SaveState) => SaveState) => {
+    setState((prev) => {
+      const next = fn(prev)
+      saveState(next)
+      return next
+    })
+  }, [])
+
+  useEffect(() => {
+    setSoundEnabled(state.sound)
+  }, [state.sound])
+
+  const showToast = useCallback((msg: string) => {
+    setToast(msg)
+    window.setTimeout(() => setToast((t) => (t === msg ? null : t)), 1800)
+  }, [])
+
+  // ---- Level lifecycle ----
+  const loadLevel = useCallback((tier: TierId, index: number) => {
+    setActiveTier(tier)
+    setLevelIndex(index)
+    setRects([])
+    setHintRect(null)
+    setTool('draw')
+    setWin(null)
+    setScreen('game')
+  }, [])
+
+  const clueIndexOf = useCallback(
+    (rect: Rect): number => puzzle.clues.findIndex((cl) => rectContainsCell(rect, cl.r, cl.c)),
+    [puzzle],
+  )
+
+  const coveredClueCount = useMemo(
+    () =>
+      puzzle.clues.filter((cl) => rects.some((r) => rectContainsCell(r, cl.r, cl.c))).length,
+    [puzzle, rects],
+  )
+
+  // ---- Win handling ----
+  const handleSolved = useCallback(() => {
+    const tier = activeTier
+    const idx = levelIndex
+    const alreadyCleared = state.progress[tier][idx]
+    const reward = alreadyCleared ? 0 : TIERS[tier].reward
+    update((s) => {
+      const progress = { ...s.progress, [tier]: [...s.progress[tier]] }
+      progress[tier][idx] = true
+      return { ...s, progress, coins: s.coins + reward }
+    })
+    playClear()
+    if (reward > 0) window.setTimeout(playCoins, 500)
+    setWin({ reward })
+  }, [activeTier, levelIndex, state.progress, update])
+
+  const checkWin = useCallback(
+    (nextRects: Rect[]) => {
+      const res = validateSolution(puzzle, nextRects)
+      if (res.solved) handleSolved()
+    },
+    [puzzle, handleSolved],
+  )
+
+  // ---- Board actions ----
+  const onCommit = useCallback(
+    (rect: Rect) => {
+      setHintRect(null)
+      setRects((prev) => {
+        const next = [...prev, rect]
+        checkWin(next)
+        return next
+      })
+    },
+    [checkWin],
+  )
+
+  const onErase = useCallback((index: number) => {
+    playTap()
+    setHintRect(null)
+    setRects((prev) => prev.filter((_, i) => i !== index))
+  }, [])
+
+  const onUndo = useCallback(() => {
+    setHintRect(null)
+    setRects((prev) => prev.slice(0, -1))
+  }, [])
+
+  const onToggleEraser = useCallback(() => {
+    playTap()
+    setTool((t) => (t === 'eraser' ? 'draw' : 'eraser'))
+  }, [])
+
+  // ---- Hint: outline one unsolved clue's correct rectangle ----
+  const onHint = useCallback(() => {
+    playTap()
+    const fixed = new Map<number, Rect>()
+    for (const rect of rects) {
+      const idx = clueIndexOf(rect)
+      if (idx >= 0) fixed.set(idx, rect)
+    }
+    const solution = solvePuzzle(puzzle, fixed)
+    if (!solution) {
+      showToast('No solution from here — try Undo')
+      return
+    }
+    // First unsolved clue index.
+    const unsolved = puzzle.clues
+      .map((_, i) => i)
+      .filter((i) => !fixed.has(i))
+    if (unsolved.length === 0) return
+    const target = unsolved[0]
+    const rect = solution.get(target)
+    if (rect) {
+      setHintRect(rect)
+      window.setTimeout(() => setHintRect((h) => (h === rect ? null : h)), 2600)
+    }
+  }, [puzzle, rects, clueIndexOf, showToast])
+
+  // ---- Magic Wand: solve & place the hardest remaining clue ----
+  const onWand = useCallback(() => {
+    if (state.coins < WAND_COST) {
+      showToast('Not enough coins')
+      return
+    }
+    const fixed = new Map<number, Rect>()
+    for (const rect of rects) {
+      const idx = clueIndexOf(rect)
+      if (idx >= 0) fixed.set(idx, rect)
+    }
+    const solution = solvePuzzle(puzzle, fixed)
+    if (!solution) {
+      showToast('No solution from here — try Undo')
+      return
+    }
+    const unsolved = puzzle.clues
+      .map((cl, i) => ({ i, cl }))
+      .filter(({ i }) => !fixed.has(i))
+    if (unsolved.length === 0) return
+    // "Hardest" = largest clue value.
+    unsolved.sort((a, b) => b.cl.value - a.cl.value)
+    const target = unsolved[0].i
+    const rect = solution.get(target)
+    if (!rect) return
+    playTap()
+    update((s) => ({ ...s, coins: s.coins - WAND_COST }))
+    setHintRect(null)
+    setRects((prev) => {
+      const next = [...prev, rect]
+      checkWin(next)
+      return next
+    })
+  }, [state.coins, puzzle, rects, clueIndexOf, update, checkWin, showToast])
+
+  // ---- Theme store ----
+  const onBuy = useCallback(
+    (id: ThemeId) => {
+      const t = THEMES[id]
+      if (state.coins < t.cost || state.ownedThemes.includes(id)) return
+      playCoins()
+      update((s) => ({
+        ...s,
+        coins: s.coins - t.cost,
+        ownedThemes: [...s.ownedThemes, id],
+        activeTheme: id,
+      }))
+    },
+    [state.coins, state.ownedThemes, update],
+  )
+
+  const onEquip = useCallback(
+    (id: ThemeId) => {
+      playTap()
+      update((s) => ({ ...s, activeTheme: id }))
+    },
+    [update],
+  )
+
+  const onToggleSound = useCallback(() => {
+    update((s) => {
+      const sound = !s.sound
+      setSoundEnabled(sound)
+      return { ...s, sound }
+    })
+    playTap()
+  }, [update])
+
+  // ---- Navigation ----
+  const hasNext = levelIndex + 1 < levelCount(activeTier)
+  const goNext = useCallback(() => {
+    if (hasNext) loadLevel(activeTier, levelIndex + 1)
+    else setScreen('levels')
+  }, [hasNext, activeTier, levelIndex, loadLevel])
+
+  const onSkip = useCallback(() => {
+    playTap()
+    goNext()
+  }, [goNext])
+
+  const replay = useCallback(() => {
+    setRects([])
+    setHintRect(null)
+    setTool('draw')
+    setWin(null)
+  }, [])
+
+  // Prime audio on first interaction (mobile autoplay policy).
+  const onFirstPointer = useCallback(() => primeAudio(), [])
+
+  const rootStyle = theme.vars as React.CSSProperties
+  const stageLabel = `${TIERS[activeTier].label} ${levelIndex + 1}`
+
+  return (
+    <div
+      className={`shikaku-root${patterns ? ' theme-mono' : ''}`}
+      style={rootStyle}
+      onPointerDownCapture={onFirstPointer}
+    >
+      {screen === 'levels' && (
+        <LevelSelect
+          state={state}
+          activeTier={activeTier}
+          onSelectTier={setActiveTier}
+          onPlay={loadLevel}
+          onOpenStore={() => setStoreOpen(true)}
+        />
+      )}
+
+      {screen === 'game' && (
+        <div className="sk-app">
+          <Header
+            title={stageLabel}
+            coins={state.coins}
+            onBack={() => setScreen('levels')}
+            onSettings={() => setStoreOpen(true)}
+          />
+          <div className="sk-subheader">
+            <button className="sk-skip" onClick={onSkip}>
+              {hasNext ? 'Skip' : 'Finish'}
+              <SkipIcon size={15} />
+            </button>
+          </div>
+
+          <div className="sk-board-area">
+            <div className="sk-progresshint">
+              {coveredClueCount} / {puzzle.clues.length} regions placed
+            </div>
+            <Board
+              puzzle={puzzle}
+              rects={rects}
+              tool={tool}
+              hintRect={hintRect}
+              patterns={patterns}
+              onCommit={onCommit}
+              onErase={onErase}
+            />
+          </div>
+
+          <Toolbar
+            tool={tool}
+            onToggleEraser={onToggleEraser}
+            onUndo={onUndo}
+            onHint={onHint}
+            onWand={onWand}
+            canUndo={rects.length > 0}
+            canWand={state.coins >= WAND_COST && coveredClueCount < puzzle.clues.length}
+          />
+        </div>
+      )}
+
+      {storeOpen && (
+        <ThemeStore
+          state={state}
+          onBuy={onBuy}
+          onEquip={onEquip}
+          onToggleSound={onToggleSound}
+          onClose={() => setStoreOpen(false)}
+        />
+      )}
+
+      {win && (
+        <WinOverlay
+          reward={win.reward}
+          hasNext={hasNext}
+          onNext={goNext}
+          onReplay={replay}
+          onMenu={() => {
+            setWin(null)
+            setScreen('levels')
+          }}
+        />
+      )}
+
+      {toast && <div className="sk-toast">{toast}</div>}
+    </div>
+  )
+}

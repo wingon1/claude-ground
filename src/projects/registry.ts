@@ -57,6 +57,16 @@ export type Project = ReactProject | IframeProject | ExternalProject
  */
 export const projects: Project[] = [
   {
+    id: 'shikaku',
+    title: '🧩 Shikaku — Cozy Rectangles',
+    description:
+      'A warm, tactile Shikaku puzzle: drag to divide the grid into numbered rectangles. 3 tiers × 50 curated levels, coins, and a 5-theme store.',
+    emoji: '🧩',
+    tags: ['react', 'puzzle', 'mobile', 'logic'],
+    kind: 'react',
+    load: () => import('./shikaku'),
+  },
+  {
     id: 'mole-region-puzzle',
     title: 'Moledoku',
     description:
