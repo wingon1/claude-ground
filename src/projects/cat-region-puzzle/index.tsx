@@ -1075,7 +1075,7 @@ function GameSession({
             </p>
             {status === 'won' && clearReward !== null && (
               <p className="mt-3 rounded-full bg-white px-4 py-2 text-sm font-black text-[#c07a3f] shadow-[0_5px_14px_rgba(132,87,80,0.1)]">
-                {clearReward > 0 ? `+${clearReward} Coin` : 'Reward already claimed'}
+                {clearReward > 0 ? `+${clearReward} Coin` : '이미 받은 보상이에요'}
               </p>
             )}
             <div className="mx-auto mt-8 grid w-full max-w-[15rem] grid-cols-2 gap-3.5">
