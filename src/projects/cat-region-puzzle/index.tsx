@@ -1142,12 +1142,18 @@ function BoardCell({
     >
       {cell === 'cat' && <MoleFace outline seed={row * 7 + col + 1} skin={skin} />}
       {cell === 'mark' && (
-        <span
-          className="text-[clamp(0.9rem,5.5vw,1.75rem)] font-bold leading-none"
-          style={{ color: color.text }}
+        <svg
+          viewBox="0 0 24 24"
+          className="h-[58%] w-[58%] drop-shadow-[0_1px_1.5px_rgba(80,45,45,0.22)]"
+          fill="none"
+          stroke="#ffffff"
+          strokeWidth={4.5}
+          strokeLinecap="round"
+          aria-hidden="true"
         >
-          ✕
-        </span>
+          <line x1="6.5" y1="6.5" x2="17.5" y2="17.5" />
+          <line x1="17.5" y1="6.5" x2="6.5" y2="17.5" />
+        </svg>
       )}
       {isLocked && (
         <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-[#99545f] ring-2 ring-white" />
