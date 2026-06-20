@@ -75,6 +75,15 @@ const REGION_COLORS: CellColor[] = [
   { base: '#c074cf', light: '#e0a9ec', text: '#854098' },
 ]
 
+// Tighten the grid as the board grows so the white gaps/padding and the cell
+// rounding don't look oversized on the smaller cells of 7x7+ boards (px).
+function boardSpacing(size: number): { gap: number; padding: number; radius: number } {
+  if (size <= 6) return { gap: 6, padding: 10, radius: 10 }
+  if (size === 7) return { gap: 4.5, padding: 8, radius: 8 }
+  if (size === 8) return { gap: 3.5, padding: 7, radius: 7 }
+  return { gap: 3, padding: 6, radius: 6 }
+}
+
 const DIFFICULTIES: Difficulty[] = ['5x5', '6x6', '7x7', '8x8', '9x9']
 const DIFFICULTY_LABELS = ['쉬움', '보통', '어려움', '짱어려움', '짱짱어려움']
 const COMPLETED_STAGE_STORAGE_KEY = 'moledoku.completedStages.v1'
@@ -1006,13 +1015,15 @@ function GameSession({
           </div>
 
           <div
-            className={`mt-11 grid w-full max-w-[21rem] gap-1.5 rounded-[22px] bg-white p-2.5 shadow-[0_12px_28px_rgba(125,85,78,0.16)] ${
+            className={`mt-11 grid w-full max-w-[21rem] rounded-[22px] bg-white shadow-[0_12px_28px_rgba(125,85,78,0.16)] ${
               mode === 'mark' ? 'touch-none' : 'touch-manipulation'
             }`}
             style={{
               gridTemplateColumns: `repeat(${level.size}, minmax(0, 1fr))`,
               gridTemplateRows: `repeat(${level.size}, minmax(0, 1fr))`,
               aspectRatio: '1 / 1',
+              gap: `${boardSpacing(level.size).gap}px`,
+              padding: `${boardSpacing(level.size).padding}px`,
             }}
             aria-label={`Level ${level.id} board`}
             onPointerMove={handleBoardPointerMove}
@@ -1119,6 +1130,7 @@ function BoardCell({
 
   const style: CSSProperties = {
     background: `linear-gradient(145deg, ${color.light} 0%, ${color.base} 72%)`,
+    borderRadius: `${boardSpacing(level.size).radius}px`,
     boxShadow: [
       'inset 0 2px 0 rgba(255,255,255,0.35)',
       'inset 0 -2px 0 rgba(120,75,75,0.12)',
@@ -1137,7 +1149,7 @@ function BoardCell({
       data-col={col}
       onClick={onClick}
       onPointerDown={onPointerDown}
-      className={`relative flex min-h-0 min-w-0 items-center justify-center overflow-hidden rounded-[10px] transition active:scale-95 ${
+      className={`relative flex min-h-0 min-w-0 items-center justify-center overflow-hidden transition active:scale-95 ${
         isHint || isMistake ? 'z-10' : ''
       } ${isMistake ? 'animate-pulse' : ''}`}
       style={style}
