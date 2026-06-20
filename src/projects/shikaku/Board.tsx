@@ -42,6 +42,7 @@ export default function Board({ puzzle, rects, tool, hintRect, patterns, onCommi
   const boardRef = useRef<HTMLDivElement>(null)
   const [anchor, setAnchor] = useState<Cell | null>(null)
   const [cursor, setCursor] = useState<Cell | null>(null)
+  const [pendingErase, setPendingErase] = useState<number | null>(null)
   const [shakeKey, setShakeKey] = useState(0)
 
   // Map "r,c" -> clue for quick lookup, and which clue cells are covered.
@@ -83,19 +84,32 @@ export default function Board({ puzzle, rects, tool, hintRect, patterns, onCommi
   }
 
   const onPointerDown = (e: React.PointerEvent) => {
-    if (tool === 'eraser') return // taps on blocks handle erasing
     const cell = cellFromEvent(e)
     if (!cell) return
     boardRef.current?.setPointerCapture(e.pointerId)
+
+    // Tapping an already-filled cell erases that block — in any tool mode.
+    const idx = rects.findIndex((r) => rectContainsCell(r, cell.r, cell.c))
+    if (idx >= 0) {
+      setPendingErase(idx)
+      return // no draw anchor → no preview/error on a block tap
+    }
+
+    if (tool === 'eraser') return // empty cell + eraser: nothing to do
     setAnchor(cell)
     setCursor(cell)
     playTock()
   }
 
   const onPointerMove = (e: React.PointerEvent) => {
-    if (!anchor) return
     const cell = cellFromEvent(e)
     if (!cell) return
+    // Dragging off the pressed block cancels the pending erase.
+    if (pendingErase !== null) {
+      if (!rectContainsCell(rects[pendingErase], cell.r, cell.c)) setPendingErase(null)
+      return
+    }
+    if (!anchor) return
     setCursor((prev) => {
       if (prev && prev.r === cell.r && prev.c === cell.c) return prev
       playTock()
@@ -125,6 +139,11 @@ export default function Board({ puzzle, rects, tool, hintRect, patterns, onCommi
 
   const onPointerUp = (e: React.PointerEvent) => {
     boardRef.current?.releasePointerCapture?.(e.pointerId)
+    if (pendingErase !== null) {
+      onErase(pendingErase)
+      setPendingErase(null)
+      return
+    }
     finish()
   }
 
@@ -161,14 +180,11 @@ export default function Board({ puzzle, rects, tool, hintRect, patterns, onCommi
       {rects.map((rect, i) => (
         <div
           key={`block-${i}`}
-          className={`sk-overlay sk-block${tool === 'eraser' ? ' erasable' : ''}`}
+          className="sk-overlay sk-block erasable"
           style={{
             gridColumn: `${rect.c0 + 1} / span ${rect.c1 - rect.c0 + 1}`,
             gridRow: `${rect.r0 + 1} / span ${rect.r1 - rect.r0 + 1}`,
             ...blockFill(i, patterns),
-          }}
-          onClick={() => {
-            if (tool === 'eraser') onErase(i)
           }}
         />
       ))}
