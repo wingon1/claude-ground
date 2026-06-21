@@ -72,7 +72,9 @@ export default function GameOver({
         {submitted ? (
           <>
             <div className="sk-ta-submitted">
-              {online ? '랭킹에 등록했어요! 🏆' : '로컬 랭킹에 저장했어요 (오프라인)'}
+              {online
+                ? '랭킹에 등록했어요! 🏆'
+                : '오프라인이라 임시 저장했어요. 연결되면 자동 등록돼요!'}
             </div>
             <div className="sk-win-actions">
               <button className="sk-btn ghost" onClick={onMenu}>

@@ -9,6 +9,7 @@ import {
 import { getLevel, levelCount, TIERS, type TierId } from './levels'
 import { THEMES, type ThemeId } from './themes'
 import { loadState, saveState, type SaveState } from './store'
+import { flushPending } from './leaderboard'
 import { playClear, playCoins, playTap, primeAudio, setSoundEnabled } from './audio'
 import { CSS, STYLE_ID } from './styles'
 import Board, { type Tool } from './Board'
@@ -78,6 +79,11 @@ export default function Shikaku() {
   useEffect(() => {
     setSoundEnabled(state.sound)
   }, [state.sound])
+
+  // Sync any offline-queued scores to the online leaderboard when possible.
+  useEffect(() => {
+    flushPending().catch(() => {})
+  }, [])
 
   const showToast = useCallback((msg: string) => {
     setToast(msg)
