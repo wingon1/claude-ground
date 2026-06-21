@@ -1,6 +1,6 @@
 import { clearedCount, type SaveState } from './store'
 import { levelCount, TIER_ORDER, TIERS, type TierId } from './levels'
-import { CheckIcon, CoinIcon, GearIcon } from './icons'
+import { CoinIcon, GearIcon } from './icons'
 
 type Props = {
   state: SaveState
@@ -90,11 +90,6 @@ export default function LevelSelect({
               onClick={() => onPlay(activeTier, i)}
             >
               {i + 1}
-              {cleared && (
-                <span className="sk-tile-check">
-                  <CheckIcon size={12} />
-                </span>
-              )}
             </button>
           )
         })}

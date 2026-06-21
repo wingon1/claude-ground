@@ -236,7 +236,7 @@ export const CSS = `
 .sk-tier-tabs {
   display: flex;
   gap: 8px;
-  padding: 6px 0 14px;
+  padding: 6px 0 24px;
   flex-shrink: 0;
 }
 .sk-tier-tab {
@@ -274,29 +274,14 @@ export const CSS = `
   color: var(--text);
   font-weight: 800;
   font-size: 17px;
-  box-shadow: inset 0 0 0 1.5px var(--cell-line);
   cursor: pointer;
-  transition: transform 0.12s ease, box-shadow 0.15s ease;
+  transition: transform 0.12s ease, background 0.15s ease;
 }
 .sk-tile:active { transform: scale(0.93); }
-/* Cleared: clean surface kept for readability, marked by an accent ring + badge */
+/* Cleared: softly greyed-out tone so it reads as done without hurting contrast */
 .sk-tile.cleared {
-  color: var(--accent);
-  box-shadow: inset 0 0 0 2px var(--accent);
-}
-.sk-tile-check {
-  position: absolute;
-  top: -5px;
-  right: -5px;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--accent);
-  color: var(--on-accent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 1px 3px var(--shadow-strong);
+  background: color-mix(in srgb, var(--text-soft) 16%, var(--surface));
+  color: var(--text-soft);
 }
 .sk-hero {
   text-align: center;
