@@ -366,7 +366,7 @@ export const CSS = `
 
 .sk-win {
   text-align: center;
-  padding: 14px 6px 6px;
+  padding: 18px 10px 12px;
 }
 .sk-win .sk-burst { font-size: 54px; animation: sk-pop 0.4s cubic-bezier(.2,1.4,.5,1); }
 .sk-win h2 { margin: 8px 0 2px; font-size: 26px; font-weight: 800; }
@@ -382,8 +382,8 @@ export const CSS = `
   background: var(--surface);
   box-shadow: 0 2px 8px var(--shadow);
 }
-.sk-win-actions { display: flex; gap: 10px; }
-.sk-win-actions .sk-btn { flex: 1; padding: 13px 0; font-size: 14px; }
+.sk-win-actions { display: flex; gap: 12px; margin-top: 8px; }
+.sk-win-actions .sk-btn { flex: 1; padding: 15px 8px; font-size: 14px; }
 
 .sk-tut-step {
   display: flex;
@@ -546,11 +546,12 @@ export const CSS = `
 .sk-ta-combo small { font-size: 12px; opacity: 0.8; }
 .sk-ta-combo.dim { color: var(--text-soft); }
 
-.sk-ta-best { font-weight: 800; color: var(--accent); margin: 2px 0 6px; }
-.sk-ta-result { margin: 6px 0 14px; }
+.sk-ta-best { font-weight: 800; color: var(--accent); margin: 4px 0 8px; }
+.sk-ta-result { margin: 10px 0 18px; }
 .sk-ta-bigscore { font-size: 44px; font-weight: 800; letter-spacing: -1px; }
 .sk-ta-sub { font-size: 13px; color: var(--text-soft); font-weight: 700; margin-top: 4px; }
-.sk-ta-submitted { font-weight: 800; margin: 6px 0 14px; }
+.sk-ta-submitted { font-weight: 800; margin: 8px 0 16px; }
+.sk-ta-note { font-weight: 700; color: var(--text-soft); margin: 8px 0 16px; }
 
 .sk-input {
   width: 100%;

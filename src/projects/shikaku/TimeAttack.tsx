@@ -44,6 +44,14 @@ export default function TimeAttack({ tier, patterns, onQuit, onGameOver }: Props
   const overRef = useRef(false)
   const comboTimer = useRef<number | undefined>(undefined)
 
+  // Keep the latest onGameOver without making the countdown effect depend on it
+  // (its identity changes when best-score state updates, which would otherwise
+  // restart the timer behind the game-over popup).
+  const onGameOverRef = useRef(onGameOver)
+  useEffect(() => {
+    onGameOverRef.current = onGameOver
+  })
+
   const newBoard = useCallback(() => {
     rectsRef.current = []
     setRects([])
@@ -67,33 +75,33 @@ export default function TimeAttack({ tier, patterns, onQuit, onGameOver }: Props
     }, TIME_ATTACK.comboWindowSec * 1000)
   }, [])
 
-  // ---- Countdown ----
+  // ---- Countdown (runs once for the round; tier is fixed per mount) ----
   useEffect(() => {
     const end = Date.now() + TIME_ATTACK.durationSec * 1000
     const id = window.setInterval(() => {
       const left = end - Date.now()
-      if (left <= 0) {
-        setMsLeft(0)
-        window.clearInterval(id)
-        clearComboTimer()
-        if (!overRef.current) {
-          overRef.current = true
-          onGameOver({
-            tier,
-            score: scoreRef.current,
-            comboMax: comboMaxRef.current,
-            solvedCount: solvedRef.current,
-          })
-        }
-      } else {
+      if (left > 0) {
         setMsLeft(left)
+        return
+      }
+      setMsLeft(0)
+      window.clearInterval(id)
+      if (comboTimer.current) window.clearTimeout(comboTimer.current)
+      if (!overRef.current) {
+        overRef.current = true
+        onGameOverRef.current({
+          tier,
+          score: scoreRef.current,
+          comboMax: comboMaxRef.current,
+          solvedCount: solvedRef.current,
+        })
       }
     }, 100)
     return () => {
       window.clearInterval(id)
-      clearComboTimer()
+      if (comboTimer.current) window.clearTimeout(comboTimer.current)
     }
-  }, [tier, onGameOver])
+  }, [tier])
 
   // ---- Board callbacks ----
   const onCommit = useCallback(
