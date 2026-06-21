@@ -417,4 +417,140 @@ export const CSS = `
   animation: sk-rise 0.25s ease;
   box-shadow: 0 6px 20px rgba(0,0,0,0.25);
 }
+
+/* ---------- Mode entry (level select) ---------- */
+.sk-mode-row {
+  display: flex;
+  gap: 10px;
+  padding: 2px 0 12px;
+  flex-shrink: 0;
+}
+.sk-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  border: none;
+  border-radius: 18px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 3px 10px var(--shadow);
+  padding: 14px 16px;
+  cursor: pointer;
+  font-weight: 800;
+  font-size: 15px;
+  transition: transform 0.12s ease;
+}
+.sk-mode-btn:active { transform: scale(0.97); }
+.sk-mode-btn.primary { flex: 1; background: var(--accent); color: var(--on-accent); }
+.sk-mode-btn span small {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  opacity: 0.85;
+  margin-top: 2px;
+}
+.sk-mode-emoji { font-size: 22px; }
+
+/* ---------- Time-attack HUD ---------- */
+.sk-ta-hud { padding: 6px 0 2px; flex-shrink: 0; }
+.sk-ta-timerbar {
+  position: relative;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: inset 0 1px 4px var(--shadow);
+  overflow: hidden;
+}
+.sk-ta-timerfill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 0.12s linear;
+}
+.sk-ta-timerbar.low .sk-ta-timerfill { background: #E5484D; animation: sk-pulse 0.6s ease infinite; }
+.sk-ta-timertext {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 13px;
+  color: var(--text);
+  mix-blend-mode: difference;
+  filter: invert(1);
+}
+.sk-ta-stats {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 8px 4px 0;
+}
+.sk-ta-score { font-size: 34px; font-weight: 800; letter-spacing: -0.5px; animation: sk-pop 0.18s ease; }
+.sk-ta-combo { font-weight: 800; font-size: 15px; color: var(--accent); animation: sk-pop 0.2s ease; }
+.sk-ta-combo small { font-size: 12px; opacity: 0.8; }
+.sk-ta-combo.dim { color: var(--text-soft); }
+
+.sk-ta-best { font-weight: 800; color: var(--accent); margin: 2px 0 6px; }
+.sk-ta-result { margin: 6px 0 14px; }
+.sk-ta-bigscore { font-size: 44px; font-weight: 800; letter-spacing: -1px; }
+.sk-ta-sub { font-size: 13px; color: var(--text-soft); font-weight: 700; margin-top: 4px; }
+.sk-ta-submitted { font-weight: 800; margin: 6px 0 14px; }
+
+.sk-input {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 14px;
+  padding: 13px 16px;
+  font-size: 16px;
+  font-weight: 700;
+  font-family: inherit;
+  box-shadow: inset 0 0 0 2px var(--cell-line);
+  margin-bottom: 12px;
+  text-align: center;
+}
+.sk-textlink {
+  display: block;
+  margin: 12px auto 0;
+  background: none;
+  border: none;
+  color: var(--text-soft);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* ---------- Leaderboard ---------- */
+.sk-lb-badge {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-soft);
+  box-shadow: inset 0 0 0 1.5px var(--cell-line);
+  vertical-align: middle;
+}
+.sk-lb-badge.on { background: var(--accent); color: var(--on-accent); box-shadow: none; }
+.sk-lb-empty { text-align: center; color: var(--text-soft); font-weight: 700; padding: 24px 0; }
+.sk-lb-list { display: flex; flex-direction: column; gap: 6px; }
+.sk-lb-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 0 2px 6px var(--shadow);
+  font-weight: 700;
+}
+.sk-lb-row.mine { box-shadow: inset 0 0 0 2.5px var(--accent); }
+.sk-lb-rank { width: 22px; text-align: center; font-weight: 800; color: var(--text-soft); }
+.sk-lb-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sk-lb-meta { font-size: 12px; color: var(--text-soft); }
+.sk-lb-score { font-weight: 800; font-variant-numeric: tabular-nums; }
 `
