@@ -13,7 +13,7 @@ export default function WinOverlay({ reward, hasNext, onNext, onReplay, onMenu }
     <div className="sk-modal-back">
       <div className="sk-modal sk-win">
         <div className="sk-burst">🎉</div>
-        <h2>Solved!</h2>
+        <h2>다 풀었어요!</h2>
         {reward > 0 && (
           <div className="sk-reward">
             <CoinIcon size={22} />+{reward}
@@ -21,14 +21,14 @@ export default function WinOverlay({ reward, hasNext, onNext, onReplay, onMenu }
         )}
         <div className="sk-win-actions">
           <button className="sk-btn ghost" onClick={onMenu}>
-            Menu
+            메뉴
           </button>
           <button className="sk-btn ghost" onClick={onReplay}>
-            Replay
+            다시하기
           </button>
           {hasNext && (
             <button className="sk-btn" onClick={onNext}>
-              Next
+              다음으로
             </button>
           )}
         </div>

@@ -387,6 +387,21 @@ export const CSS = `
 .sk-win-actions { display: flex; gap: 10px; }
 .sk-win-actions .sk-btn { flex: 1; padding: 13px 0; font-size: 14px; }
 
+.sk-tut-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 14px;
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 2px 8px var(--shadow);
+  margin-bottom: 10px;
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1.35;
+}
+.sk-tut-icon { font-size: 24px; flex-shrink: 0; }
+
 .sk-toast {
   position: absolute;
   bottom: 26px;

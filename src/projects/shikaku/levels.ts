@@ -18,9 +18,9 @@ export type Tier = {
 }
 
 export const TIERS: Record<TierId, Tier> = {
-  easy: { id: 'easy', label: 'Easy', rows: 5, cols: 5, reward: 10 },
-  normal: { id: 'normal', label: 'Normal', rows: 7, cols: 7, reward: 20 },
-  hard: { id: 'hard', label: 'Hard', rows: 9, cols: 9, reward: 35 },
+  easy: { id: 'easy', label: '쉬움', rows: 5, cols: 5, reward: 10 },
+  normal: { id: 'normal', label: '보통', rows: 7, cols: 7, reward: 20 },
+  hard: { id: 'hard', label: '어려움', rows: 9, cols: 9, reward: 35 },
 }
 
 export const TIER_ORDER: TierId[] = ['easy', 'normal', 'hard']

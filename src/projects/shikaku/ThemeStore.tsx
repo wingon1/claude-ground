@@ -15,7 +15,7 @@ export default function ThemeStore({ state, onBuy, onEquip, onToggleSound, onClo
     <div className="sk-modal-back" onClick={onClose}>
       <div className="sk-modal" onClick={(e) => e.stopPropagation()}>
         <div className="sk-modal-head">
-          <h2>Theme Store</h2>
+          <h2>테마 상점</h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span className="sk-coin">
               <CoinIcon size={18} />
@@ -42,20 +42,20 @@ export default function ThemeStore({ state, onBuy, onEquip, onToggleSound, onClo
               <div className="sk-theme-info">
                 <strong>{theme.name}</strong>
                 <span>
-                  {owned ? (equipped ? 'Equipped' : 'Owned') : `${theme.cost} coins`}
+                  {owned ? (equipped ? '사용 중' : '보유 중') : `${theme.cost} 코인`}
                 </span>
               </div>
               {equipped ? (
                 <button className="sk-btn equipped" disabled>
-                  Equipped
+                  사용 중
                 </button>
               ) : owned ? (
                 <button className="sk-btn ghost" onClick={() => onEquip(id)}>
-                  Equip
+                  적용하기
                 </button>
               ) : (
                 <button className="sk-btn" disabled={!affordable} onClick={() => onBuy(id)}>
-                  Buy
+                  구매하기
                 </button>
               )}
             </div>
@@ -63,8 +63,8 @@ export default function ThemeStore({ state, onBuy, onEquip, onToggleSound, onClo
         })}
 
         <div className="sk-toggle-row">
-          <span>Sound</span>
-          <button className="sk-iconbtn" onClick={onToggleSound} aria-label="Toggle sound">
+          <span>소리</span>
+          <button className="sk-iconbtn" onClick={onToggleSound} aria-label="소리 켜기/끄기">
             {state.sound ? <SoundOnIcon size={22} /> : <SoundOffIcon size={22} />}
           </button>
         </div>

@@ -24,7 +24,7 @@ export type Theme = {
 export const THEMES: Record<ThemeId, Theme> = {
   cream: {
     id: 'cream',
-    name: 'Cozy Cream',
+    name: '포근한 크림',
     cost: 0,
     swatch: ['#EC6B6B', '#EFE07D', '#A68A72', '#88B09A'],
     vars: {
@@ -48,7 +48,7 @@ export const THEMES: Record<ThemeId, Theme> = {
   },
   matcha: {
     id: 'matcha',
-    name: 'Matcha Garden',
+    name: '말차 정원',
     cost: 200,
     swatch: ['#7FB069', '#C3D7A4', '#A3B18A', '#E9C46A'],
     vars: {
@@ -72,7 +72,7 @@ export const THEMES: Record<ThemeId, Theme> = {
   },
   midnight: {
     id: 'midnight',
-    name: 'Midnight Berry',
+    name: '한밤의 베리',
     cost: 400,
     swatch: ['#FF6FB5', '#5CE1E6', '#B388FF', '#FFD56B'],
     vars: {
@@ -96,7 +96,7 @@ export const THEMES: Record<ThemeId, Theme> = {
   },
   terracotta: {
     id: 'terracotta',
-    name: 'Terracotta Sun',
+    name: '테라코타 노을',
     cost: 600,
     swatch: ['#D7793D', '#C97B84', '#E0A458', '#A86B4C'],
     vars: {
@@ -120,7 +120,7 @@ export const THEMES: Record<ThemeId, Theme> = {
   },
   mono: {
     id: 'mono',
-    name: 'Monochrome 1984',
+    name: '모노크롬 1984',
     cost: 1000,
     patterns: true,
     swatch: ['#FAFAFA', '#000000', '#FAFAFA', '#000000'],

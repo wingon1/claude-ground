@@ -27,6 +27,12 @@ type Props = {
 
 type Cell = { r: number; c: number }
 
+// Stable colour per block, derived from its top-left cell rather than its array
+// index — so removing/undoing another block never recolours the rest.
+function colorIndexFor(rect: Rect): number {
+  return (((rect.r0 * 7 + rect.c0 * 13) % 5) + 5) % 5
+}
+
 function blockFill(index: number, patterns: boolean): React.CSSProperties {
   if (patterns) {
     return {
@@ -177,14 +183,14 @@ export default function Board({ puzzle, rects, tool, hintRect, patterns, onCommi
       })}
 
       {/* Committed blocks */}
-      {rects.map((rect, i) => (
+      {rects.map((rect) => (
         <div
-          key={`block-${i}`}
+          key={`block-${rect.r0}-${rect.c0}`}
           className="sk-overlay sk-block erasable"
           style={{
             gridColumn: `${rect.c0 + 1} / span ${rect.c1 - rect.c0 + 1}`,
             gridRow: `${rect.r0 + 1} / span ${rect.r1 - rect.r0 + 1}`,
-            ...blockFill(i, patterns),
+            ...blockFill(colorIndexFor(rect), patterns),
           }}
         />
       ))}
@@ -197,7 +203,7 @@ export default function Board({ puzzle, rects, tool, hintRect, patterns, onCommi
           style={{
             gridColumn: `${preview.c0 + 1} / span ${preview.c1 - preview.c0 + 1}`,
             gridRow: `${preview.r0 + 1} / span ${preview.r1 - preview.r0 + 1}`,
-            ...(previewInvalid ? {} : blockFill(rects.length, patterns)),
+            ...(previewInvalid ? {} : blockFill(colorIndexFor(preview), patterns)),
           }}
         />
       )}
