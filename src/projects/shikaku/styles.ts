@@ -419,10 +419,38 @@ export const CSS = `
 }
 
 /* ---------- Mode entry (level select) ---------- */
+.sk-mode-wrap { position: relative; flex-shrink: 0; padding-bottom: 4px; }
+
+.sk-ta-tip {
+  position: relative;
+  display: inline-block;
+  margin: 2px 0 14px 6px;
+  background-color: var(--accent);
+  background-image: linear-gradient(135deg, rgba(255,255,255,0.24), rgba(255,255,255,0));
+  color: var(--on-accent);
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: -0.2px;
+  padding: 9px 15px;
+  border-radius: 14px;
+  box-shadow: 0 8px 18px var(--shadow-strong);
+  animation: sk-bob 1.5s ease-in-out infinite;
+}
+.sk-ta-tip-tail {
+  position: absolute;
+  left: 30px;
+  bottom: -6px;
+  width: 14px;
+  height: 14px;
+  background: var(--accent);
+  border-radius: 3px;
+  transform: rotate(45deg);
+}
+@keyframes sk-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+
 .sk-mode-row {
   display: flex;
   gap: 10px;
-  padding: 2px 0 12px;
   flex-shrink: 0;
 }
 .sk-mode-btn {
@@ -434,22 +462,51 @@ export const CSS = `
   background: var(--surface);
   color: var(--text);
   box-shadow: 0 3px 10px var(--shadow);
-  padding: 14px 16px;
+  padding: 15px 18px;
   cursor: pointer;
   font-weight: 800;
-  font-size: 15px;
+  font-size: 16px;
   transition: transform 0.12s ease;
 }
-.sk-mode-btn:active { transform: scale(0.97); }
-.sk-mode-btn.primary { flex: 1; background: var(--accent); color: var(--on-accent); }
-.sk-mode-btn span small {
+.sk-mode-btn:active { transform: scale(0.96); }
+.sk-mode-btn.primary {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background-color: var(--accent);
+  background-image: linear-gradient(135deg, rgba(255,255,255,0.24), rgba(255,255,255,0));
+  color: var(--on-accent);
+  box-shadow: 0 10px 24px var(--shadow-strong);
+}
+.sk-mode-text small {
   display: block;
   font-size: 11px;
   font-weight: 700;
-  opacity: 0.85;
+  opacity: 0.9;
   margin-top: 2px;
 }
-.sk-mode-emoji { font-size: 22px; }
+.sk-mode-emoji { font-size: 24px; }
+.sk-mode-btn.primary .sk-mode-emoji { animation: sk-zap 1.3s ease-in-out infinite; }
+@keyframes sk-zap { 0%,100% { transform: scale(1) rotate(0); } 50% { transform: scale(1.18) rotate(-6deg); } }
+
+.sk-mode-shine {
+  position: absolute;
+  top: -20%;
+  left: -70%;
+  width: 40%;
+  height: 140%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,0.5), transparent);
+  transform: skewX(-20deg);
+  animation: sk-shine 2.8s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes sk-shine { 0% { left: -70%; } 55%,100% { left: 140%; } }
+
+.sk-mode-btn.trophy {
+  background: linear-gradient(135deg, #F2C14E, #E0A43C);
+  color: #5a3d10;
+  box-shadow: 0 8px 18px var(--shadow-strong);
+}
 
 /* ---------- Time-attack HUD ---------- */
 .sk-ta-hud { padding: 6px 0 2px; flex-shrink: 0; }
