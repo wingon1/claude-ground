@@ -28,8 +28,8 @@ export default function LevelSelect({ state, activeTier, onSelectTier, onPlay, o
       </div>
 
       <div className="sk-hero">
-        <h1>Cozy Rectangles</h1>
-        <p>Divide the grid into numbered rectangles.</p>
+        <h1>포근한 네모 퍼즐</h1>
+        <p>숫자 크기에 맞춰 사각형으로 나눠봐요!</p>
       </div>
 
       <div className="sk-tier-tabs">

@@ -17,6 +17,7 @@ import Header from './Header'
 import LevelSelect from './LevelSelect'
 import ThemeStore from './ThemeStore'
 import WinOverlay from './WinOverlay'
+import Tutorial from './Tutorial'
 import { SkipIcon } from './icons'
 
 type Screen = 'levels' | 'game'
@@ -158,7 +159,7 @@ export default function Shikaku() {
     }
     const solution = solvePuzzle(puzzle, fixed)
     if (!solution) {
-      showToast('No solution from here — try Undo')
+      showToast('여기선 풀 수 없어요. 되돌리기 해봐요!')
       return
     }
     // First unsolved clue index.
@@ -177,7 +178,7 @@ export default function Shikaku() {
   // ---- Magic Wand: solve & place the hardest remaining clue ----
   const onWand = useCallback(() => {
     if (state.coins < WAND_COST) {
-      showToast('Not enough coins')
+      showToast('코인이 부족해요')
       return
     }
     const fixed = new Map<number, Rect>()
@@ -187,7 +188,7 @@ export default function Shikaku() {
     }
     const solution = solvePuzzle(puzzle, fixed)
     if (!solution) {
-      showToast('No solution from here — try Undo')
+      showToast('여기선 풀 수 없어요. 되돌리기 해봐요!')
       return
     }
     const unsolved = puzzle.clues
@@ -265,7 +266,7 @@ export default function Shikaku() {
   const onFirstPointer = useCallback(() => primeAudio(), [])
 
   const rootStyle = theme.vars as React.CSSProperties
-  const stageLabel = `${TIERS[activeTier].label} ${levelIndex + 1}`
+  const stageLabel = `${TIERS[activeTier].label} ${levelIndex + 1}단계`
 
   return (
     <div
@@ -293,14 +294,14 @@ export default function Shikaku() {
           />
           <div className="sk-subheader">
             <button className="sk-skip" onClick={onSkip}>
-              {hasNext ? 'Skip' : 'Finish'}
+              {hasNext ? '건너뛰기' : '끝내기'}
               <SkipIcon size={15} />
             </button>
           </div>
 
           <div className="sk-board-area">
             <div className="sk-progresshint">
-              {coveredClueCount} / {puzzle.clues.length} regions placed
+              {coveredClueCount} / {puzzle.clues.length} 사각형 완성했어요
             </div>
             <Board
               puzzle={puzzle}
@@ -349,6 +350,10 @@ export default function Shikaku() {
       )}
 
       {toast && <div className="sk-toast">{toast}</div>}
+
+      {!state.tutorialSeen && (
+        <Tutorial onClose={() => update((s) => ({ ...s, tutorialSeen: true }))} />
+      )}
     </div>
   )
 }

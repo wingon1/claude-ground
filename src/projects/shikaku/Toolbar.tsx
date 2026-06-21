@@ -19,23 +19,23 @@ export default function Toolbar({ tool, onToggleEraser, onUndo, onHint, onWand, 
       <button
         className={`sk-tool${tool === 'eraser' ? ' active' : ''}`}
         onClick={onToggleEraser}
-        aria-label="Eraser"
+        aria-label="지우개"
       >
         <EraserIcon size={22} />
-        <span className="sk-tool-label">Eraser</span>
+        <span className="sk-tool-label">지우개</span>
       </button>
-      <button className="sk-tool" onClick={onUndo} disabled={!canUndo} aria-label="Undo">
+      <button className="sk-tool" onClick={onUndo} disabled={!canUndo} aria-label="되돌리기">
         <UndoIcon size={22} />
-        <span className="sk-tool-label">Undo</span>
+        <span className="sk-tool-label">되돌리기</span>
       </button>
-      <button className="sk-tool" onClick={onHint} aria-label="Hint">
+      <button className="sk-tool" onClick={onHint} aria-label="힌트">
         <HintIcon size={22} />
-        <span className="sk-tool-label">Hint</span>
+        <span className="sk-tool-label">힌트</span>
       </button>
-      <button className="sk-tool" onClick={onWand} disabled={!canWand} aria-label="Magic Wand">
+      <button className="sk-tool" onClick={onWand} disabled={!canWand} aria-label="요술봉">
         <span className="sk-tool-cost">{WAND_COST}</span>
         <WandIcon size={22} />
-        <span className="sk-tool-label">Wand</span>
+        <span className="sk-tool-label">요술봉</span>
       </button>
     </div>
   )

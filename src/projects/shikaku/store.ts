@@ -12,6 +12,8 @@ export type SaveState = {
   /** progress[tier][index] === true once that level has been cleared. */
   progress: Record<TierId, boolean[]>
   sound: boolean
+  /** True once the first-run tutorial has been shown/dismissed. */
+  tutorialSeen: boolean
 }
 
 function emptyProgress(): Record<TierId, boolean[]> {
@@ -27,6 +29,7 @@ export function defaultState(): SaveState {
     activeTheme: DEFAULT_THEME,
     progress: emptyProgress(),
     sound: true,
+    tutorialSeen: false,
   }
 }
 
