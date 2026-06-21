@@ -42,17 +42,24 @@ export default function LevelSelect({
         <p>숫자 크기에 맞춰 사각형으로 나눠봐요!</p>
       </div>
 
-      <div className="sk-mode-row">
-        <button className="sk-mode-btn primary" onClick={() => onPlayTimeAttack(activeTier)}>
-          <span className="sk-mode-emoji">⚡</span>
-          <span>
-            타임어택 시작
-            <small>{TIERS[activeTier].label} · 60초 점수내기</small>
-          </span>
-        </button>
-        <button className="sk-mode-btn" onClick={onOpenRanking} aria-label="랭킹">
-          <span className="sk-mode-emoji">🏆</span>
-        </button>
+      <div className="sk-mode-wrap">
+        <div className="sk-ta-tip">
+          타임어택으로 랭킹에 도전하세요! 🏆
+          <span className="sk-ta-tip-tail" />
+        </div>
+        <div className="sk-mode-row">
+          <button className="sk-mode-btn primary" onClick={() => onPlayTimeAttack(activeTier)}>
+            <span className="sk-mode-emoji">⚡</span>
+            <span className="sk-mode-text">
+              타임어택 시작
+              <small>{TIERS[activeTier].label} · 60초 점수내기</small>
+            </span>
+            <span className="sk-mode-shine" />
+          </button>
+          <button className="sk-mode-btn trophy" onClick={onOpenRanking} aria-label="랭킹">
+            <span className="sk-mode-emoji">🏆</span>
+          </button>
+        </div>
       </div>
 
       <div className="sk-tier-tabs">
