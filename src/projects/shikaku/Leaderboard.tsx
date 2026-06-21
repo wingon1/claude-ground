@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { TIER_ORDER, TIERS, type TierId } from './levels'
-import { topScores, type RankRow } from './leaderboard'
+import { flushPending, topScores, type RankRow } from './leaderboard'
 import { TIME_ATTACK } from './timeattack/config'
 import { CloseIcon } from './icons'
 
@@ -18,9 +18,13 @@ export default function Leaderboard({ initialTier, deviceId, onClose, highlightS
 
   useEffect(() => {
     let alive = true
-    topScores({ mode: TIME_ATTACK.mode, tier, limit: TIME_ATTACK.topN }).then((res) => {
-      if (alive) setData({ tier, rows: res.rows, online: res.online })
-    })
+    // Push any offline-queued scores first, then load the (now current) board.
+    flushPending()
+      .catch(() => {})
+      .then(() => topScores({ mode: TIME_ATTACK.mode, tier, limit: TIME_ATTACK.topN }))
+      .then((res) => {
+        if (alive) setData({ tier, rows: res.rows, online: res.online })
+      })
     return () => {
       alive = false
     }

@@ -103,17 +103,67 @@ const localAdapter: LeaderboardAdapter = {
 /** Active adapter, chosen by whether Supabase keys were provided at build. */
 export const leaderboard: LeaderboardAdapter = hasSupabase ? supabaseAdapter : localAdapter
 
+// ---------------------------------------------------------------------------
+// Pending-sync queue: when an online submit fails (bad network), the entry is
+// queued here and flushed to Supabase later — on app load and when the ranking
+// opens — so an offline-cached best is never permanently stuck offline.
+// ---------------------------------------------------------------------------
+
+const PENDING_KEY = 'shikaku.pending.v1'
+
+function readPending(): ScoreEntry[] {
+  if (typeof localStorage === 'undefined') return []
+  try {
+    return JSON.parse(localStorage.getItem(PENDING_KEY) || '[]') as ScoreEntry[]
+  } catch {
+    return []
+  }
+}
+function writePending(rows: ScoreEntry[]): void {
+  if (typeof localStorage === 'undefined') return
+  try {
+    localStorage.setItem(PENDING_KEY, JSON.stringify(rows.slice(-50)))
+  } catch {
+    /* ignore */
+  }
+}
+function enqueuePending(entry: ScoreEntry): void {
+  writePending([...readPending(), entry])
+}
+
+/** Push any queued offline scores to the online board. Returns count synced. */
+export async function flushPending(): Promise<number> {
+  if (!hasSupabase) return 0
+  const pending = readPending()
+  if (pending.length === 0) return 0
+  const remain: ScoreEntry[] = []
+  let synced = 0
+  for (const e of pending) {
+    try {
+      await supabaseAdapter.submit(e)
+      synced++
+    } catch {
+      remain.push(e)
+    }
+  }
+  writePending(remain)
+  return synced
+}
+
 /**
- * Submit online; if the online write fails (network/RLS), fall back to local so
- * the player's run is never lost. Returns whether it landed online.
+ * Submit online; if the online write fails (network/RLS), keep the run locally
+ * and queue it for automatic online sync later. Returns whether it landed online.
  */
 export async function submitScore(entry: ScoreEntry): Promise<{ online: boolean }> {
   if (leaderboard.online) {
+    // Opportunistically drain the backlog first.
+    await flushPending().catch(() => {})
     try {
       await leaderboard.submit(entry)
       return { online: true }
     } catch {
       await localAdapter.submit(entry)
+      enqueuePending(entry)
       return { online: false }
     }
   }
