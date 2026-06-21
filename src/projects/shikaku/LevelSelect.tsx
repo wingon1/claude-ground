@@ -8,9 +8,19 @@ type Props = {
   onSelectTier: (t: TierId) => void
   onPlay: (tier: TierId, index: number) => void
   onOpenStore: () => void
+  onPlayTimeAttack: (tier: TierId) => void
+  onOpenRanking: () => void
 }
 
-export default function LevelSelect({ state, activeTier, onSelectTier, onPlay, onOpenStore }: Props) {
+export default function LevelSelect({
+  state,
+  activeTier,
+  onSelectTier,
+  onPlay,
+  onOpenStore,
+  onPlayTimeAttack,
+  onOpenRanking,
+}: Props) {
   const count = levelCount(activeTier)
   return (
     <div className="sk-app">
@@ -30,6 +40,19 @@ export default function LevelSelect({ state, activeTier, onSelectTier, onPlay, o
       <div className="sk-hero">
         <h1>포근한 네모 퍼즐</h1>
         <p>숫자 크기에 맞춰 사각형으로 나눠봐요!</p>
+      </div>
+
+      <div className="sk-mode-row">
+        <button className="sk-mode-btn primary" onClick={() => onPlayTimeAttack(activeTier)}>
+          <span className="sk-mode-emoji">⚡</span>
+          <span>
+            타임어택 시작
+            <small>{TIERS[activeTier].label} · 60초 점수내기</small>
+          </span>
+        </button>
+        <button className="sk-mode-btn" onClick={onOpenRanking} aria-label="랭킹">
+          <span className="sk-mode-emoji">🏆</span>
+        </button>
       </div>
 
       <div className="sk-tier-tabs">

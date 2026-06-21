@@ -14,12 +14,28 @@ export type SaveState = {
   sound: boolean
   /** True once the first-run tutorial has been shown/dismissed. */
   tutorialSeen: boolean
+  /** Last nickname used on the leaderboard. */
+  nickname: string
+  /** Anonymous, stable per-device id (for "your best" highlighting). */
+  deviceId: string
+  /** Personal best time-attack score per tier. */
+  bestScores: Record<TierId, number>
 }
 
 function emptyProgress(): Record<TierId, boolean[]> {
   const p = {} as Record<TierId, boolean[]>
   for (const t of TIER_ORDER) p[t] = new Array(levelCount(t)).fill(false)
   return p
+}
+
+function emptyBest(): Record<TierId, number> {
+  const b = {} as Record<TierId, number>
+  for (const t of TIER_ORDER) b[t] = 0
+  return b
+}
+
+function makeDeviceId(): string {
+  return 'd_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36)
 }
 
 export function defaultState(): SaveState {
@@ -30,6 +46,9 @@ export function defaultState(): SaveState {
     progress: emptyProgress(),
     sound: true,
     tutorialSeen: false,
+    nickname: '',
+    deviceId: makeDeviceId(),
+    bestScores: emptyBest(),
   }
 }
 
@@ -45,6 +64,8 @@ function reconcile(state: SaveState): SaveState {
     }
   }
   if (!state.ownedThemes.includes(DEFAULT_THEME)) state.ownedThemes.push(DEFAULT_THEME)
+  state.bestScores = { ...emptyBest(), ...(state.bestScores ?? {}) }
+  if (!state.deviceId) state.deviceId = makeDeviceId()
   return state
 }
 

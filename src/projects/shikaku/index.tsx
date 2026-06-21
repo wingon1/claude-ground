@@ -18,9 +18,12 @@ import LevelSelect from './LevelSelect'
 import ThemeStore from './ThemeStore'
 import WinOverlay from './WinOverlay'
 import Tutorial from './Tutorial'
+import TimeAttack, { type TimeAttackResult } from './TimeAttack'
+import GameOver from './GameOver'
+import Leaderboard from './Leaderboard'
 import { SkipIcon } from './icons'
 
-type Screen = 'levels' | 'game'
+type Screen = 'levels' | 'game' | 'timeattack'
 
 function useInjectedStyles() {
   useEffect(() => {
@@ -47,6 +50,13 @@ export default function Shikaku() {
   const [storeOpen, setStoreOpen] = useState(false)
   const [win, setWin] = useState<{ reward: number } | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+
+  // Time-attack mode
+  const [taTier, setTaTier] = useState<TierId>('easy')
+  const [taKey, setTaKey] = useState(0) // bump to remount/restart a round
+  const [gameOver, setGameOver] = useState<TimeAttackResult | null>(null)
+  const [gameOverIsBest, setGameOverIsBest] = useState(false)
+  const [ranking, setRanking] = useState<{ tier: TierId; highlight?: number } | null>(null)
 
   const theme = THEMES[state.activeTheme]
   const patterns = !!theme.patterns
@@ -262,6 +272,31 @@ export default function Shikaku() {
     setWin(null)
   }, [])
 
+  // ---- Time-attack ----
+  const startTimeAttack = useCallback((tier: TierId) => {
+    playTap()
+    setTaTier(tier)
+    setGameOver(null)
+    setTaKey((k) => k + 1)
+    setScreen('timeattack')
+  }, [])
+
+  const onTimeAttackOver = useCallback(
+    (result: TimeAttackResult) => {
+      const prevBest = state.bestScores[result.tier] ?? 0
+      const isBest = result.score > prevBest
+      if (isBest) {
+        update((s) => ({
+          ...s,
+          bestScores: { ...s.bestScores, [result.tier]: result.score },
+        }))
+      }
+      setGameOverIsBest(isBest)
+      setGameOver(result)
+    },
+    [state.bestScores, update],
+  )
+
   // Prime audio on first interaction (mobile autoplay policy).
   const onFirstPointer = useCallback(() => primeAudio(), [])
 
@@ -281,6 +316,18 @@ export default function Shikaku() {
           onSelectTier={setActiveTier}
           onPlay={loadLevel}
           onOpenStore={() => setStoreOpen(true)}
+          onPlayTimeAttack={startTimeAttack}
+          onOpenRanking={() => setRanking({ tier: activeTier })}
+        />
+      )}
+
+      {screen === 'timeattack' && (
+        <TimeAttack
+          key={taKey}
+          tier={taTier}
+          patterns={patterns}
+          onQuit={() => setScreen('levels')}
+          onGameOver={onTimeAttackOver}
         />
       )}
 
@@ -346,6 +393,31 @@ export default function Shikaku() {
             setWin(null)
             setScreen('levels')
           }}
+        />
+      )}
+
+      {gameOver && (
+        <GameOver
+          result={gameOver}
+          defaultNickname={state.nickname}
+          deviceId={state.deviceId}
+          isBest={gameOverIsBest}
+          onSaveMeta={(nickname) => update((s) => ({ ...s, nickname }))}
+          onReplay={() => startTimeAttack(gameOver.tier)}
+          onMenu={() => {
+            setGameOver(null)
+            setScreen('levels')
+          }}
+          onViewRanking={() => setRanking({ tier: gameOver.tier, highlight: gameOver.score })}
+        />
+      )}
+
+      {ranking && (
+        <Leaderboard
+          initialTier={ranking.tier}
+          deviceId={state.deviceId}
+          highlightScore={ranking.highlight}
+          onClose={() => setRanking(null)}
         />
       )}
 
