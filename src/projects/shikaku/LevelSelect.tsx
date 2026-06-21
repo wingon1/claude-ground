@@ -92,7 +92,7 @@ export default function LevelSelect({
               {i + 1}
               {cleared && (
                 <span className="sk-tile-check">
-                  <CheckIcon size={14} />
+                  <CheckIcon size={12} />
                 </span>
               )}
             </button>
