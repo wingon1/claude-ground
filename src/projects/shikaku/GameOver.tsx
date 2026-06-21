@@ -69,7 +69,24 @@ export default function GameOver({
           </div>
         </div>
 
-        {!submitted ? (
+        {submitted ? (
+          <>
+            <div className="sk-ta-submitted">
+              {online ? '랭킹에 등록했어요! 🏆' : '로컬 랭킹에 저장했어요 (오프라인)'}
+            </div>
+            <div className="sk-win-actions">
+              <button className="sk-btn ghost" onClick={onMenu}>
+                메뉴
+              </button>
+              <button className="sk-btn ghost" onClick={onReplay}>
+                다시하기
+              </button>
+              <button className="sk-btn" onClick={() => onViewRanking(trimmed)}>
+                랭킹 보기
+              </button>
+            </div>
+          </>
+        ) : isBest ? (
           <>
             <input
               className="sk-input"
@@ -95,18 +112,16 @@ export default function GameOver({
           </>
         ) : (
           <>
-            <div className="sk-ta-submitted">
-              {online ? '랭킹에 등록했어요! 🏆' : '로컬 랭킹에 저장했어요 (오프라인)'}
-            </div>
+            <div className="sk-ta-note">최고 기록은 아니에요. 다시 도전해봐요! 💪</div>
             <div className="sk-win-actions">
               <button className="sk-btn ghost" onClick={onMenu}>
                 메뉴
               </button>
-              <button className="sk-btn ghost" onClick={onReplay}>
-                다시하기
-              </button>
-              <button className="sk-btn" onClick={() => onViewRanking(trimmed)}>
+              <button className="sk-btn ghost" onClick={() => onViewRanking(trimmed)}>
                 랭킹 보기
+              </button>
+              <button className="sk-btn" onClick={onReplay}>
+                다시하기
               </button>
             </div>
           </>
