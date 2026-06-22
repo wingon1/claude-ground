@@ -2,7 +2,7 @@
 import { drawGrid, ICONS } from './art'
 
 const PXR = 3 // pixel unit for resources/characters
-const PXB = 4 // pixel unit for buildings
+const PXB = 3 // pixel unit for buildings
 
 function shadow(ctx: CanvasRenderingContext2D, x: number, y: number, w: number) {
   ctx.fillStyle = 'rgba(40,30,20,0.10)'
@@ -292,8 +292,8 @@ export function drawTent(ctx: CanvasRenderingContext2D, x: number, y: number, le
   drawGrid(ctx, TENT, x, y, PXB, 'foot', pal)
 }
 export function drawShop(ctx: CanvasRenderingContext2D, x: number, y: number) {
-  shadow(ctx, x, y, 56)
-  drawGrid(ctx, ICONS.shop, x, y, 7, 'foot')
+  shadow(ctx, x, y, 48)
+  drawGrid(ctx, ICONS.shop, x, y, 5, 'foot')
 }
 export function drawCookingFire(ctx: CanvasRenderingContext2D, x: number, y: number, _level: number) {
   void _level

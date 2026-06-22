@@ -88,6 +88,7 @@ export type Bridge = { x: number; y: number; w: number; h: number }
 
 export const World = worldJson as {
   world: { width: number; height: number; tile: number }
+  zoneSize: { w: number; h: number }
   landZones: LandZone[]
   bridges: Bridge[]
   playerStart: Vec

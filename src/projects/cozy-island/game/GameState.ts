@@ -3,7 +3,7 @@ import {
   Buildings, BuildingMap, Economy, FarmPlots, ItemMap, Player, Sound, Stamina, World, Zones,
 } from '../content'
 
-export const SAVE_VERSION = 2
+export const SAVE_VERSION = 3
 
 export function newGameState(): GameState {
   const buildings: GameState['buildings'] = {}
