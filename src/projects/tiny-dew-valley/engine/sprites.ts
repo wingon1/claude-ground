@@ -433,6 +433,51 @@ export function bakeItemIcon(sprite: string, color?: string): HTMLCanvasElement 
       px(g, 11, 8, 2, 3, '#e8e2d0')
       px(g, 6, 4, 1, 2, 'rgba(200,220,200,0.7)')
       break
+    case 'fiber':
+      px(g, 5, 4, 1, 9, '#6fae54')
+      px(g, 8, 3, 1, 10, '#5aa038')
+      px(g, 10, 5, 1, 8, '#6fae54')
+      px(g, 4, 6, 2, 1, '#7bbf6a')
+      px(g, 8, 5, 2, 1, '#7bbf6a')
+      px(g, 6, 12, 5, 1, 'rgba(0,0,0,0.15)')
+      break
+    case 'fertilizer':
+    case 'fertilizer_deluxe': {
+      const deluxe = sprite === 'fertilizer_deluxe'
+      px(g, 3, 8, 10, 5, deluxe ? '#8a6a2a' : '#6e4a2a')
+      px(g, 3, 8, 10, 2, deluxe ? '#b89244' : '#8a5e34')
+      // speckles
+      const fc = deluxe ? '#ffe14d' : '#7bbf6a'
+      dot(g, 5, 9, fc)
+      dot(g, 8, 10, fc)
+      dot(g, 11, 9, fc)
+      dot(g, 6, 11, fc)
+      if (deluxe) dot(g, 9, 8, '#fff0a0')
+      break
+    }
+    case 'sprinkler':
+    case 'sprinkler_quality': {
+      const gold = sprite === 'sprinkler_quality'
+      const metal = gold ? '#e8c04a' : '#9aa0ac'
+      const metalL = gold ? '#ffe87a' : '#c2c6cf'
+      px(g, 7, 8, 2, 5, metal) // post
+      px(g, 5, 6, 6, 3, metal) // head
+      px(g, 5, 6, 6, 1, metalL)
+      px(g, 4, 12, 8, 1, gold ? '#a6791f' : '#6e727c') // base
+      dot(g, 4, 9, '#9fd0ff')
+      dot(g, 11, 9, '#9fd0ff')
+      dot(g, 8, 5, '#9fd0ff')
+      break
+    }
+    case 'workbench':
+      px(g, 2, 9, 12, 4, color ?? '#9a6a3a') // top
+      px(g, 2, 9, 12, 1, '#b3824a')
+      px(g, 3, 12, 2, 3, '#6e4426') // legs
+      px(g, 11, 12, 2, 3, '#6e4426')
+      px(g, 5, 6, 2, 3, '#b8bcc6') // saw blade
+      px(g, 9, 5, 1, 4, '#9a6a3a') // hammer handle
+      px(g, 8, 4, 3, 2, '#8b8f99') // hammer head
+      break
     case 'seed_parsnip':
     case 'seed_strawberry':
     case 'seed_golden_pumpkin':
@@ -441,7 +486,11 @@ export function bakeItemIcon(sprite: string, color?: string): HTMLCanvasElement 
       px(g, 6, 8, 4, 3, color ?? '#7a5a3a')
       break
     default:
-      if (sprite.startsWith('crop_')) {
+      if (sprite.startsWith('seed_')) {
+        px(g, 4, 5, 8, 7, '#d8b888')
+        px(g, 4, 5, 8, 2, '#e8cda0')
+        px(g, 6, 8, 4, 3, color ?? '#7a5a3a')
+      } else if (sprite.startsWith('crop_')) {
         px(g, 5, 6, 6, 7, color ?? '#e8506e')
         px(g, 5, 6, 6, 2, lighten(color ?? '#e8506e'))
         px(g, 6, 4, 2, 3, '#2f7d3a')
@@ -467,6 +516,8 @@ export interface Sprites {
   rock: HTMLCanvasElement
   weed: HTMLCanvasElement
   flower: HTMLCanvasElement
+  sprinkler: HTMLCanvasElement
+  sprinklerQ: HTMLCanvasElement
   farmer: Record<string, HTMLCanvasElement>
   barnaby: Record<string, HTMLCanvasElement>
   faye: Record<string, HTMLCanvasElement>
@@ -530,6 +581,8 @@ export function buildSprites(
     rock: bakeRock(),
     weed: bakeWeed(),
     flower: bakeFlower(),
+    sprinkler: bakeItemIcon('sprinkler'),
+    sprinklerQ: bakeItemIcon('sprinkler_quality'),
     farmer: bakeHumanoidSheet(farmerPal),
     barnaby: bakeHumanoidSheet(barnabyPal),
     faye: bakeHumanoidSheet(fayePal),

@@ -571,6 +571,58 @@
 }
 .tdv-req.done .nm { color: var(--good); }
 
+/* ---------------- Crafting ---------------- */
+.tdv-craftlist {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 56vh;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.tdv-craft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--panel-dark);
+  border: 2px solid var(--panel-edge);
+  border-radius: 9px;
+  padding: 8px 10px;
+}
+.tdv-craft.locked { opacity: 0.6; }
+.tdv-craft img {
+  width: 34px;
+  height: 34px;
+  image-rendering: pixelated;
+  flex: 0 0 auto;
+}
+.tdv-craft .info { flex: 1; min-width: 0; }
+.tdv-craft .nm { font-weight: 800; font-size: 13px; }
+.tdv-craft .nm .x { color: var(--good); font-size: 11px; }
+.tdv-craft .ds { font-size: 10.5px; opacity: 0.8; margin: 2px 0 4px; }
+.tdv-craft .mats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.tdv-craft .mat {
+  font-size: 10px;
+  font-weight: 700;
+  background: #00000018;
+  border-radius: 6px;
+  padding: 1px 6px;
+}
+.tdv-craft .mat.miss { color: var(--bad); }
+.tdv-craft .act {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 64px;
+}
+.tdv-craft .owned { font-weight: 800; font-size: 11px; color: var(--good); }
+.tdv-craft .lock { font-size: 10px; font-weight: 700; opacity: 0.85; text-align: right; }
+
 /* ---------------- Tally ---------------- */
 .tdv-tally {
   width: min(420px, 94vw);

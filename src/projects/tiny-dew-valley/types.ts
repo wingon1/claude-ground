@@ -10,6 +10,8 @@ export type ItemType =
   | 'forage'
   | 'food'
   | 'offering'
+  | 'material'
+  | 'placeable'
   | 'misc'
 
 export type CropQuality = 'normal' | 'silver' | 'gold' | 'perfect'
@@ -159,6 +161,10 @@ export interface GameState {
     backpack: boolean
     shippingBonus: boolean
     fayeStaminaBoost: boolean
+    /** Built a workbench (tier 1 crafting). */
+    workbench: boolean
+    /** Expanded to a workshop (tier 2 crafting). */
+    workshop: boolean
   }
   flags: Record<string, boolean | number>
   ending: EndingState

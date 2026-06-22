@@ -2,7 +2,7 @@ import type { GameState } from '../types'
 import { stampStore } from './world'
 
 const KEY = 'tiny-dew-valley-save-v1'
-export const SAVE_VERSION = 2
+export const SAVE_VERSION = 3
 
 export function hasSave(): boolean {
   try {
@@ -39,16 +39,22 @@ export function loadGame(): GameState | null {
       return null
     }
     if (data.saveVersion !== SAVE_VERSION) {
+      // Refuse unknown/newer saves rather than risk corruption.
+      if (data.saveVersion < 1 || data.saveVersion > SAVE_VERSION) return null
       // v1 -> v2: re-stamp the rebuilt, open-front store onto the saved
-      // world. The store tiles are never player-modified, so this safely
-      // upgrades old saves without losing farm progress.
-      if (data.saveVersion === 1) {
-        stampStore(data.tiles)
-        data.saveVersion = SAVE_VERSION
-      } else {
-        // Unknown/newer version: refuse rather than risk corruption.
-        return null
+      // world. Store tiles are never player-modified, so this is safe.
+      if (data.saveVersion < 2) stampStore(data.tiles)
+      // v2 -> v3: backfill crafting unlock flags added with the workbench.
+      const unlockDefaults = {
+        seedDiscount: false,
+        backpack: false,
+        shippingBonus: false,
+        fayeStaminaBoost: false,
+        workbench: false,
+        workshop: false,
       }
+      data.unlocks = { ...unlockDefaults, ...(data.unlocks ?? {}) }
+      data.saveVersion = SAVE_VERSION
     }
     return data
   } catch {

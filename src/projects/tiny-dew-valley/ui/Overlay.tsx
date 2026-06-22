@@ -27,7 +27,7 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
   }
 
   const modalOpen =
-    ui.phase === 'shop' || ui.phase === 'shrine' || ui.phase === 'tally' || ui.phase === 'ending' || ui.phase === 'sleepConfirm' || invOpen
+    ui.phase === 'shop' || ui.phase === 'shrine' || ui.phase === 'craft' || ui.phase === 'tally' || ui.phase === 'ending' || ui.phase === 'sleepConfirm' || invOpen
 
   return (
     <>
@@ -48,6 +48,7 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
         <div className="tdv-rightcol">
           <div className="tdv-iconbtns">
             <button className="tdv-iconbtn" title="메뉴" onClick={() => setMenuOpen((v) => !v)}>☰</button>
+            <button className="tdv-iconbtn" title="제작" onClick={() => game.openCraft()}>🔨</button>
             <button className="tdv-iconbtn" title="가방" onClick={() => { setInvOpen(true); setInvSel(null) }}>🎒</button>
           </div>
           <div className="tdv-panel tdv-bars">
@@ -160,6 +161,7 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
         <ShopModal game={game} ui={ui} tab={shopTab} setTab={setShopTab} />
       )}
       {ui.phase === 'shrine' && <ShrineModal game={game} ui={ui} />}
+      {ui.phase === 'craft' && <CraftModal game={game} ui={ui} />}
       {ui.phase === 'sleepConfirm' && <SleepConfirm game={game} />}
       {ui.phase === 'tally' && ui.tally && <TallyModal game={game} ui={ui} />}
       {ui.phase === 'ending' && <EndingModal game={game} ui={ui} />}
@@ -281,7 +283,8 @@ function TitleScreen({ game }: { game: Game }) {
         <div className="help">
           이동: WASD / 방향키 또는 조이스틱 · 농기구: 1–5 키 · 아이템: 6–0 키<br />
           행동 / 상호작용: Space, E, 또는 둥근 버튼<br />
-          밭 갈기 → 씨앗 심기 → 매일 물 주기 → 수확 → 출하 · 잠을 자면 하루가 지나요
+          밭 갈기 → 씨앗 심기 → 매일 물 주기 → 수확 → 출하 · 잠을 자면 하루가 지나요<br />
+          🔨 제작: 나무로 작업대를 만들어 스프링클러·비료로 농장을 확장하세요
         </div>
       </div>
     </div>
@@ -344,6 +347,61 @@ function ShopModal({
             ))}
           </div>
         )}
+        <div className="tdv-row">
+          <button className="tdv-btn ghost" onClick={() => game.closeModal()}>닫기</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function CraftModal({ game, ui }: { game: Game; ui: UISnapshot }) {
+  const station = ui.crafting.workshop ? '작업장' : ui.crafting.workbench ? '작업대' : '맨손'
+  return (
+    <div className="tdv-modal-bg" onClick={() => game.closeModal()}>
+      <div className="tdv-modal" onClick={(e) => e.stopPropagation()}>
+        <h2>🔨 제작</h2>
+        <div className="sub">
+          {ui.crafting.workbench
+            ? `현재 작업 공간: ${station}. 재료를 모아 도구와 설비를 만들어 농장을 확장하세요.`
+            : '나무 15개로 작업대를 만들면 더 많은 제작법이 열려요.'}
+        </div>
+        <div className="tdv-craftlist">
+          {ui.craft.map((r) => (
+            <div className={`tdv-craft${r.locked ? ' locked' : ''}`} key={r.id}>
+              <img src={iconURL(r.sprite, r.color)} alt={r.name} />
+              <div className="info">
+                <div className="nm">
+                  {r.name}
+                  {r.outputQty > 1 && <span className="x"> ×{r.outputQty}</span>}
+                </div>
+                <div className="ds">{r.desc}</div>
+                <div className="mats">
+                  {r.inputs.map((inp, i) => (
+                    <span className={`mat${inp.ok ? '' : ' miss'}`} key={i}>
+                      {inp.name} {inp.have}/{inp.need}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="act">
+                {r.owned ? (
+                  <span className="owned">완료 ✓</span>
+                ) : r.locked ? (
+                  <span className="lock">🔒 {r.lockHint}</span>
+                ) : (
+                  <button
+                    className="tdv-btn gold sm"
+                    disabled={!r.craftable}
+                    onClick={() => game.craft(r.id)}
+                  >
+                    {r.isUnlock ? '만들기' : '제작'}
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
         <div className="tdv-row">
           <button className="tdv-btn ghost" onClick={() => game.closeModal()}>닫기</button>
         </div>

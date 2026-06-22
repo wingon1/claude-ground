@@ -12,6 +12,7 @@ import { TOOLS, TOOL_ORDER, WATER_CAPACITY } from '../data/tools'
 import { NPCS } from '../data/npcs'
 import { SEED_DISCOUNT, SHIPPING_BONUS, SHOP_CATALOG } from '../data/shopCatalog'
 import { SHRINE_REQUIREMENTS, SHRINE_DEADLINE_DAY } from '../data/shrineBundles'
+import { RECIPES, RECIPE_MAP } from '../data/crafting'
 import {
   OBSTACLE_DROP,
   OBSTACLE_HP,
@@ -44,6 +45,7 @@ export type UIPhase =
   | 'title'
   | 'playing'
   | 'shop'
+  | 'craft'
   | 'tally'
   | 'shrine'
   | 'ending'
@@ -129,6 +131,26 @@ export interface NpcHeartView {
   max: number
   color: string
 }
+export interface CraftInputView {
+  name: string
+  have: number
+  need: number
+  ok: boolean
+}
+export interface CraftRecipeView {
+  id: string
+  name: string
+  sprite: string
+  color?: string
+  desc: string
+  inputs: CraftInputView[]
+  outputQty: number
+  isUnlock: boolean
+  craftable: boolean
+  locked: boolean
+  owned: boolean
+  lockHint?: string
+}
 export interface UISnapshot {
   phase: UIPhase
   day: number
@@ -154,6 +176,8 @@ export interface UISnapshot {
   npcHearts: NpcHeartView[]
   exhausted: boolean
   recipes: { herbalTea: boolean }
+  craft: CraftRecipeView[]
+  crafting: { workbench: boolean; workshop: boolean }
   nearbyNpc: string | null
   muted: boolean
   musicOn: boolean
@@ -322,6 +346,8 @@ export class Game {
         backpack: false,
         shippingBonus: false,
         fayeStaminaBoost: false,
+        workbench: false,
+        workshop: false,
       },
       flags: {},
       ending: 'none',
@@ -620,6 +646,7 @@ export class Game {
       if (itemId) {
         const def = getItem(itemId)
         if (def?.type === 'seed') this.plantFromSelected(itemId)
+        else if (def?.type === 'placeable') this.placeFromSelected(itemId)
         else this.useItem(itemId)
       }
       return
@@ -764,6 +791,7 @@ export class Game {
     } else if (toolId === 'scythe') {
       if (t.obstacle === 'weed') {
         this.clearObs(t)
+        this.giveItem('fiber', 1)
         this.audio.sfx('harvest')
         this.leafBurst(px, py, '#56a84a')
       } else if (t.obstacle === 'flower') {
@@ -803,6 +831,16 @@ export class Game {
       this.emit()
       return
     }
+    // pick up a placed sprinkler
+    if (t.metadata.sprinkler) {
+      const tier = t.metadata.sprinkler as number
+      this.giveItem(tier >= 2 ? 'sprinkler_quality' : 'sprinkler', 1)
+      delete t.metadata.sprinkler
+      this.audio.sfx('select')
+      this.toast('스프링클러를 회수했어요.', 'info')
+      this.emit()
+      return
+    }
     // empty tilled soil: hint to plant
     if (t.terrain === 'tilled' && !t.cropId) {
       this.toast('심으려면 아이템 칸에서 씨앗을 고르세요.', 'info')
@@ -823,7 +861,10 @@ export class Game {
     const { tx, ty } = this.frontTile()
     if (!inBounds(tx, ty)) return
     const t = this.state.tiles[idx(tx, ty)]
-    if (t.terrain === 'tilled' && !t.cropId) {
+    if (t.metadata.sprinkler) {
+      this.toast('스프링클러가 설치된 칸에는 심을 수 없어요.', 'info')
+      this.audio.sfx('reject')
+    } else if (t.terrain === 'tilled' && !t.cropId) {
       this.plantSeed(t, seedId)
       this.emit()
     } else if (t.cropId) {
@@ -844,6 +885,160 @@ export class Game {
     this.audio.sfx('plant')
     this.dirtPuff(t.x * T + T / 2, t.y * T + T / 2, '#3a8a3a')
     this.toast(`${crop.name} 씨앗을 심었어요.`, 'good')
+  }
+
+  // ---------------- placeables (sprinklers / fertilizer) ----------------
+  private placeFromSelected(itemId: string) {
+    const { tx, ty } = this.frontTile()
+    if (!inBounds(tx, ty)) return
+    const t = this.state.tiles[idx(tx, ty)]
+    if (itemId === 'fertilizer' || itemId === 'fertilizer_deluxe') {
+      this.applyFertilizer(t, itemId)
+    } else if (itemId === 'sprinkler' || itemId === 'sprinkler_quality') {
+      this.placeSprinkler(t, itemId)
+    }
+    this.emit()
+  }
+
+  private applyFertilizer(t: Tile, itemId: string) {
+    if (t.terrain !== 'tilled') {
+      this.toast('비료는 갈아놓은 밭에만 뿌릴 수 있어요.', 'bad')
+      this.audio.sfx('reject')
+      return
+    }
+    const level = itemId === 'fertilizer_deluxe' ? 2 : 1
+    const cur = (t.metadata.fertLevel as number) || 0
+    if (cur >= level) {
+      this.toast('이미 비료를 줬어요.', 'info')
+      return
+    }
+    if (!this.removeItem(itemId, 1)) return
+    t.hasFertilizer = true
+    t.metadata.fertLevel = level
+    this.audio.sfx('plant')
+    this.dirtPuff(t.x * T + T / 2, t.y * T + T / 2, level >= 2 ? '#ffd65c' : '#6e8f5e')
+    this.toast('비료를 뿌렸어요. 물 준 작물이 더 빨리 자라요.', 'good')
+  }
+
+  private placeSprinkler(t: Tile, itemId: string) {
+    if (t.terrain !== 'tilled') {
+      this.toast('스프링클러는 갈아놓은 밭에 설치해요.', 'bad')
+      this.audio.sfx('reject')
+      return
+    }
+    if (t.cropId) {
+      this.toast('작물 위에는 설치할 수 없어요.', 'bad')
+      this.audio.sfx('reject')
+      return
+    }
+    if (t.metadata.sprinkler) {
+      this.toast('이미 스프링클러가 있어요.', 'info')
+      return
+    }
+    const tier = itemId === 'sprinkler_quality' ? 2 : 1
+    if (!this.removeItem(itemId, 1)) return
+    t.metadata.sprinkler = tier
+    this.audio.sfx('sparkle')
+    this.waterSplash(t.x * T + T / 2, t.y * T + T / 2)
+    this.waterAround(t, tier) // water once right away
+    this.toast('스프링클러를 설치했어요. 매일 아침 자동으로 물을 줘요.', 'good')
+  }
+
+  // Waters the sprinkler tile + its neighbours (4-dir tier 1, 8-dir tier 2).
+  private waterAround(t: Tile, tier: number) {
+    const ortho = [
+      [0, 0],
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ]
+    const diag = [
+      [1, 1],
+      [1, -1],
+      [-1, 1],
+      [-1, -1],
+    ]
+    const cells = tier >= 2 ? [...ortho, ...diag] : ortho
+    for (const [dx, dy] of cells) {
+      const nx = t.x + dx
+      const ny = t.y + dy
+      if (!inBounds(nx, ny)) continue
+      const n = this.state.tiles[idx(nx, ny)]
+      if (n.terrain !== 'tilled') continue
+      n.wateredToday = true
+      if (n.cropId) n.metadata.waterStreak = ((n.metadata.waterStreak as number) || 0) + 1
+      if (tier >= 2) {
+        n.hasFertilizer = true
+        if (!n.metadata.fertLevel) n.metadata.fertLevel = 1
+      }
+    }
+  }
+
+  private runSprinklers() {
+    for (const t of this.state.tiles) {
+      const tier = t.metadata.sprinkler as number | undefined
+      if (!tier) continue
+      this.waterAround(t, tier)
+    }
+  }
+
+  // ---------------- crafting ----------------
+  openCraft() {
+    if (this.phase !== 'playing') return
+    this.phase = 'craft'
+    this.audio.resume()
+    this.audio.sfx('select')
+    this.emit()
+  }
+
+  craft(recipeId: string) {
+    const r = RECIPE_MAP[recipeId]
+    if (!r) return
+    const s = this.state
+    if (r.station >= 1 && !s.unlocks.workbench) {
+      this.toast('먼저 작업대를 만들어야 해요.', 'bad')
+      this.audio.sfx('reject')
+      return
+    }
+    if (r.station >= 2 && !s.unlocks.workshop) {
+      this.toast('먼저 작업장으로 확장해야 해요.', 'bad')
+      this.audio.sfx('reject')
+      return
+    }
+    if (r.unlock === 'workbench' && s.unlocks.workbench) {
+      this.toast('이미 작업대가 있어요.', 'info')
+      return
+    }
+    if (r.unlock === 'workshop' && s.unlocks.workshop) {
+      this.toast('이미 작업장을 확장했어요.', 'info')
+      return
+    }
+    for (const inp of r.inputs) {
+      if (this.countItem(inp.itemId) < inp.qty) {
+        this.toast('재료가 부족해요.', 'bad')
+        this.audio.sfx('reject')
+        return
+      }
+    }
+    if (r.output && !this.canAccept(r.output.itemId, r.output.qty)) {
+      this.toast('가방이 가득 찼어요!', 'bad')
+      return
+    }
+    for (const inp of r.inputs) this.removeItem(inp.itemId, inp.qty)
+    if (r.unlock === 'workbench') {
+      s.unlocks.workbench = true
+      this.toast('작업대를 만들었어요! 새로운 제작법이 열렸어요.', 'good')
+    } else if (r.unlock === 'workshop') {
+      s.unlocks.workshop = true
+      this.toast('작업장으로 확장했어요! 고급 제작법이 열렸어요.', 'good')
+    } else if (r.output) {
+      this.giveItem(r.output.itemId, r.output.qty)
+      this.toast(`${r.name} ${r.output.qty}개를 만들었어요.`, 'good')
+    }
+    this.audio.sfx('sparkle')
+    this.autosave()
+    this.emit()
   }
 
   private harvestCrop(t: Tile, px: number, py: number) {
@@ -881,8 +1076,11 @@ export class Game {
     }
     const streak = (t.metadata.waterStreak as number) || 0
     const ratio = Math.max(0, Math.min(1, streak / growDays))
-    const perfect = 0.05 + ratio * 0.22
-    const gold = 0.15 + ratio * 0.2
+    const fert = (t.metadata.fertLevel as number) || 0
+    const fertPerfect = fert >= 2 ? 0.18 : fert >= 1 ? 0.08 : 0
+    const fertGold = fert >= 1 ? 0.1 : 0
+    const perfect = 0.05 + ratio * 0.22 + fertPerfect
+    const gold = 0.15 + ratio * 0.2 + fertGold
     const silver = 0.3
     const r = Math.random()
     let q: CropQuality
@@ -1104,7 +1302,7 @@ export class Game {
   }
 
   closeModal() {
-    if (this.phase === 'shop' || this.phase === 'shrine') {
+    if (this.phase === 'shop' || this.phase === 'shrine' || this.phase === 'craft') {
       this.phase = 'playing'
       this.emit()
     }
@@ -1404,7 +1602,14 @@ export class Game {
       if (t.cropId) {
         const crop = CROPS[t.cropId]
         if (t.wateredToday) {
-          if (t.growthStage < crop.stages - 1) t.growthStage++
+          if (t.growthStage < crop.stages - 1) {
+            t.growthStage++
+            // Fertilizer: a chance (deluxe: guaranteed) at an extra stage.
+            const fert = (t.metadata.fertLevel as number) || 0
+            if (fert > 0 && t.growthStage < crop.stages - 1 && (fert >= 2 || Math.random() < 0.5)) {
+              t.growthStage++
+            }
+          }
           t.daysUnwatered = 0
         } else {
           t.daysUnwatered++
@@ -1412,7 +1617,9 @@ export class Game {
       } else if (t.terrain === 'tilled') {
         if (t.wateredToday) t.daysUnwatered = 0
         else t.daysUnwatered++
-        if (t.daysUnwatered >= TILLED_REVERT_DAYS) {
+        // Tiles with a sprinkler or fertilizer are kept (don't revert to grass).
+        const kept = !!t.metadata.sprinkler || t.hasFertilizer
+        if (!kept && t.daysUnwatered >= TILLED_REVERT_DAYS) {
           t.terrain = 'grass'
           t.daysUnwatered = 0
           t.metadata = {}
@@ -1428,6 +1635,8 @@ export class Game {
       }
     }
     this.scatterForage()
+    // sprinklers water their neighbours for the new morning
+    this.runSprinklers()
     // stamina reset
     s.stamina = s.nextDayStaminaCap ?? s.maxStamina
     s.nextDayStaminaCap = null
@@ -1663,6 +1872,7 @@ export class Game {
         const t = this.state.tiles[idx(tx, ty)]
         if (t.obstacle) draws.push({ y: ty * T + T, fn: () => this.drawObstacle(t, S) })
         if (t.cropId) draws.push({ y: ty * T + T, fn: () => this.drawCrop(t, S) })
+        if (t.metadata.sprinkler) draws.push({ y: ty * T + T - 1, fn: () => this.drawSprinkler(t, S) })
       }
     }
     for (const id of Object.keys(this.state.npcs)) {
@@ -1708,6 +1918,27 @@ export class Game {
     else if (t.terrain === 'tilled') img = t.wateredToday ? this.sprites.soilWet : this.sprites.soil
     else img = this.sprites.grass[(t.x * 7 + t.y * 13) % 3]
     this.ctx.drawImage(img, dx, dy, sz, sz)
+    // Fertilizer speckles on tilled soil.
+    if (t.terrain === 'tilled' && t.hasFertilizer) {
+      const lvl = (t.metadata.fertLevel as number) || 1
+      this.ctx.fillStyle = lvl >= 2 ? 'rgba(255,214,92,0.85)' : 'rgba(110,143,94,0.8)'
+      const spots = [
+        [3, 4],
+        [10, 5],
+        [6, 11],
+        [12, 12],
+      ]
+      const d = Math.max(1, Math.round(S))
+      for (const [ox, oy] of spots) this.ctx.fillRect(dx + ox * S, dy + oy * S, d, d)
+    }
+  }
+
+  private drawSprinkler(t: Tile, S: number) {
+    const tier = t.metadata.sprinkler as number
+    const img = tier >= 2 ? this.sprites.sprinklerQ : this.sprites.sprinkler
+    const dx = this.wx(t.x * T)
+    const dy = this.wy(t.y * T - 2)
+    this.ctx.drawImage(img, dx, dy, img.width * S, img.height * S)
   }
 
   private drawBuilding(img: HTMLCanvasElement, tx: number, ty: number, S: number, yOff: number) {
@@ -1906,6 +2137,7 @@ export class Game {
         tools: [], items: [], inventory: [], toasts: this.toasts, dialogue: null,
         shopBuy: [], tally: null, shrine: null, ending: 'none', endingText: '',
         contextAction: null, npcHearts: [], exhausted: false, recipes: { herbalTea: false },
+        craft: [], crafting: { workbench: false, workshop: false },
         nearbyNpc: null, muted: this.audio.muted, musicOn: this.audio.musicOn,
       }
     }
@@ -1928,6 +2160,7 @@ export class Game {
       }
     }
     pushIf((id) => getItem(id)!.type === 'seed')
+    pushIf((id) => getItem(id)!.type === 'placeable')
     pushIf((id) => !!getItem(id)!.usable)
     s.hotbarItems = [0, 1, 2, 3, 4].map((i) => usable[i] ?? null)
     const items: HotbarSlotView[] = s.hotbarItems.map((id, i) => {
@@ -2000,6 +2233,40 @@ export class Game {
     const npcHearts: NpcHeartView[] = Object.keys(s.npcs).map((id) => ({
       id, name: NPCS[id].name, hearts: this.hearts(id), max: NPCS[id].heartsMax, color: NPCS[id].color,
     }))
+    // crafting recipes
+    const craft: CraftRecipeView[] = RECIPES.map((r) => {
+      const locked =
+        (r.station >= 1 && !s.unlocks.workbench) || (r.station >= 2 && !s.unlocks.workshop)
+      const owned =
+        (r.unlock === 'workbench' && s.unlocks.workbench) ||
+        (r.unlock === 'workshop' && s.unlocks.workshop)
+      const inputs: CraftInputView[] = r.inputs.map((inp) => {
+        const have = this.countItem(inp.itemId)
+        return { name: getItem(inp.itemId)?.name ?? inp.itemId, have, need: inp.qty, ok: have >= inp.qty }
+      })
+      const craftable =
+        !locked &&
+        !owned &&
+        inputs.every((i) => i.ok) &&
+        (!r.output || this.canAccept(r.output.itemId, r.output.qty))
+      let lockHint: string | undefined
+      if (r.station >= 2 && !s.unlocks.workshop) lockHint = '작업장 확장 필요'
+      else if (r.station >= 1 && !s.unlocks.workbench) lockHint = '작업대 필요'
+      return {
+        id: r.id,
+        name: r.name,
+        sprite: r.sprite,
+        color: r.color,
+        desc: r.desc,
+        inputs,
+        outputQty: r.output?.qty ?? 0,
+        isUnlock: !!r.unlock,
+        craftable,
+        locked,
+        owned,
+        lockHint,
+      }
+    })
     // context action label
     let contextAction: string | null = null
     if (this.phase === 'playing') {
@@ -2011,7 +2278,10 @@ export class Game {
       else if (s.selectedSlot < 5) contextAction = TOOLS[TOOL_ORDER[s.selectedSlot]].name
       else if (s.hotbarItems[s.selectedSlot - 5]) {
         const hid = s.hotbarItems[s.selectedSlot - 5]!
-        contextAction = getItem(hid)?.type === 'seed' ? '심기' : '사용'
+        const ht = getItem(hid)?.type
+        if (ht === 'seed') contextAction = '심기'
+        else if (ht === 'placeable') contextAction = hid.startsWith('fertilizer') ? '비료 주기' : '설치'
+        else contextAction = '사용'
       }
     }
 
@@ -2040,6 +2310,8 @@ export class Game {
       npcHearts,
       exhausted: s.player.exhausted,
       recipes: s.recipes,
+      craft,
+      crafting: { workbench: s.unlocks.workbench, workshop: s.unlocks.workshop },
       nearbyNpc: nearby,
       muted: this.audio.muted,
       musicOn: this.audio.musicOn,
