@@ -83,9 +83,13 @@ export const Sound = soundJson as {
   sfx: Record<string, SfxDef>
 }
 
+export type LandZone = { id: string; name: string; x: number; y: number; w: number; h: number }
+export type Bridge = { x: number; y: number; w: number; h: number }
+
 export const World = worldJson as {
   world: { width: number; height: number; tile: number }
-  beachBand: { topY: number }
+  landZones: LandZone[]
+  bridges: Bridge[]
   playerStart: Vec
   plotAnchors: Vec[]
   resourceNodes: { type: string; x: number; y: number }[]

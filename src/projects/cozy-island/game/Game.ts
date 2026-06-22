@@ -1,4 +1,5 @@
 import type { AnimalInst, GameState, Plot, WorldNode } from '../types'
+import type { Bridge, LandZone } from '../content'
 import {
   AnimalMap, Buildings, BuildingMap, CropMap, FarmPlots, Interactions, ItemMap, MineLevels,
   Player, RecipeMap, ResourceNodes, Stamina, World,
@@ -167,15 +168,29 @@ export class Game {
     if (this.canWork() && this.nearestActionable()) { p.moving = false; p.walk = 0; return }
     const sp = Player.moveSpeed
     const step = Math.min(d, sp * dt)
-    p.x += (dx / d) * step
-    p.y += (dy / d) * step
+    const nx = p.x + (dx / d) * step
+    const ny = p.y + (dy / d) * step
+    // Water is non-walkable: try full step, then slide along one axis (bridges only crossing).
+    if (this.mode === 'mine' || this.walkable(nx, ny)) { p.x = nx; p.y = ny }
+    else if (this.walkable(nx, p.y)) { p.x = nx }
+    else if (this.walkable(p.x, ny)) { p.y = ny }
+    else { p.moving = false; p.walk = 0; this.moveTarget = null; return }
     p.facing = dx >= 0 ? 1 : -1
     p.moving = true
     p.walk = (p.walk + dt * 2.2) % 1
-    // clamp inside world
-    p.x = Math.max(20, Math.min(World.world.width - 20, p.x))
-    p.y = Math.max(40, Math.min(World.world.height - 16, p.y))
     if (Math.random() < dt * 8) this.fx.dust(p.x, p.y + 2)
+  }
+
+  /** Island walkability: inside any land zone or bridge (with a small inset so feet stay on land). */
+  walkable(x: number, y: number): boolean {
+    const inset = 12
+    for (const z of World.landZones) {
+      if (x >= z.x + inset && x <= z.x + z.w - inset && y >= z.y + inset && y <= z.y + z.h - inset) return true
+    }
+    for (const b of World.bridges) {
+      if (x >= b.x + 6 && x <= b.x + b.w - 6 && y >= b.y && y <= b.y + b.h) return true
+    }
+    return false
   }
 
   private currentNodes(): WorldNode[] {
@@ -738,23 +753,91 @@ export class Game {
     this.renderOverlays(ctx, W, H)
   }
 
-  private renderIsland(ctx: CanvasRenderingContext2D, W: number, H: number) {
-    // ground
+  private rrect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+    const rr = Math.min(r, w / 2, h / 2)
+    ctx.beginPath()
+    ctx.moveTo(x + rr, y)
+    ctx.arcTo(x + w, y, x + w, y + h, rr)
+    ctx.arcTo(x + w, y + h, x, y + h, rr)
+    ctx.arcTo(x, y + h, x, y, rr)
+    ctx.arcTo(x, y, x + w, y, rr)
+    ctx.closePath()
+  }
+
+  private drawWater(ctx: CanvasRenderingContext2D, W: number, H: number) {
     const tile = World.world.tile
+    ctx.fillStyle = PAL.water1
+    ctx.fillRect(0, 0, W, H)
     const x0 = Math.floor(this.cam.x / tile) * tile
     const y0 = Math.floor(this.cam.y / tile) * tile
+    const shift = Math.floor(this.state.gameTime * 0.6) % 2
+    ctx.fillStyle = PAL.water2
     for (let wy = y0; wy < this.cam.y + H + tile; wy += tile) {
       for (let wx = x0; wx < this.cam.x + W + tile; wx += tile) {
+        if (((wx / tile) + (wy / tile) + shift) % 2 !== 0) continue
         const s = this.cam.worldToScreen(wx, wy)
-        const beach = wy >= World.beachBand.topY
-        const checker = ((wx / tile) + (wy / tile)) % 2 === 0
-        ctx.fillStyle = beach ? (checker ? PAL.sand : PAL.sandDark) : (checker ? PAL.grass1 : PAL.grass2)
         ctx.fillRect(s.x, s.y, tile + 1, tile + 1)
       }
     }
-    // water strip below beach
-    const waterTop = this.cam.worldToScreen(0, World.world.height).y
-    if (waterTop < H) { ctx.fillStyle = PAL.water1; ctx.fillRect(0, waterTop, W, H - waterTop) }
+  }
+
+  private drawZone(ctx: CanvasRenderingContext2D, z: LandZone, W: number, H: number) {
+    const s = this.cam.worldToScreen(z.x, z.y)
+    if (s.x > W + 40 || s.x + z.w < -40 || s.y > H + 40 || s.y + z.h < -40) return
+    // foam ring + sandy shore
+    ctx.fillStyle = PAL.waterFoam
+    this.rrect(ctx, s.x - 12, s.y - 12, z.w + 24, z.h + 24, 30); ctx.fill()
+    ctx.fillStyle = PAL.sand
+    this.rrect(ctx, s.x - 7, s.y - 7, z.w + 14, z.h + 14, 26); ctx.fill()
+    // grass clipped to rounded island
+    ctx.save()
+    this.rrect(ctx, s.x, s.y, z.w, z.h, 18); ctx.clip()
+    const tile = World.world.tile
+    const x0 = Math.floor(z.x / tile) * tile
+    const y0 = Math.floor(z.y / tile) * tile
+    for (let wy = y0; wy < z.y + z.h + tile; wy += tile) {
+      for (let wx = x0; wx < z.x + z.w + tile; wx += tile) {
+        const ss = this.cam.worldToScreen(wx, wy)
+        const checker = ((wx / tile) + (wy / tile)) % 2 === 0
+        ctx.fillStyle = checker ? PAL.grass1 : PAL.grass2
+        ctx.fillRect(ss.x, ss.y, tile + 1, tile + 1)
+      }
+    }
+    // soft inner shade at edges
+    ctx.strokeStyle = 'rgba(70,150,70,0.25)'
+    ctx.lineWidth = 6
+    this.rrect(ctx, s.x + 3, s.y + 3, z.w - 6, z.h - 6, 16); ctx.stroke()
+    ctx.restore()
+  }
+
+  private drawBridge(ctx: CanvasRenderingContext2D, b: Bridge) {
+    const s = this.cam.worldToScreen(b.x, b.y)
+    const horizontal = b.w > b.h
+    ctx.fillStyle = PAL.trunkDark
+    ctx.fillRect(s.x - 2, s.y - 2, b.w + 4, b.h + 4)
+    ctx.fillStyle = '#b9854c'
+    ctx.fillRect(s.x, s.y, b.w, b.h)
+    ctx.fillStyle = '#a8743c'
+    if (horizontal) {
+      for (let i = 0; i < b.w; i += 12) ctx.fillRect(s.x + i, s.y, 2, b.h)
+    } else {
+      for (let i = 0; i < b.h; i += 12) ctx.fillRect(s.x, s.y + i, b.w, 2)
+    }
+    // side rails
+    ctx.fillStyle = PAL.trunk
+    if (horizontal) {
+      ctx.fillRect(s.x, s.y - 4, b.w, 4)
+      ctx.fillRect(s.x, s.y + b.h, b.w, 4)
+    } else {
+      ctx.fillRect(s.x - 4, s.y, 4, b.h)
+      ctx.fillRect(s.x + b.w, s.y, 4, b.h)
+    }
+  }
+
+  private renderIsland(ctx: CanvasRenderingContext2D, W: number, H: number) {
+    this.drawWater(ctx, W, H)
+    for (const z of World.landZones) this.drawZone(ctx, z, W, H)
+    for (const b of World.bridges) this.drawBridge(ctx, b)
 
     // build a draw list (y-sorted)
     type Drawable = { y: number; fn: () => void }
