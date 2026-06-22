@@ -23,7 +23,12 @@ import { PAL } from '../render/palette'
 
 type Mode = 'island' | 'mine'
 
-export type ContextAction = { id: string; label: string; enabled: boolean; reason?: string; emoji: string }
+const BUILD_ICON: Record<string, string> = {
+  tent: 'tent', shop_stall: 'shop', cooking_fire: 'fire', chicken_coop: 'chicken',
+  storage: 'box', farm_sign: 'sign', mine_entrance: 'pickaxe',
+}
+
+export type ContextAction = { id: string; label: string; enabled: boolean; reason?: string; icon: string }
 
 export class Game {
   state: GameState
@@ -490,18 +495,18 @@ export class Game {
       if (!bs.built) {
         // build site
         const can = meetsCondition(this.state, b.unlockCondition)
-        out.push({ id: `build:${b.id}`, emoji: b.emoji, label: `${b.name} 짓기`, enabled: can, reason: can ? undefined : '조건 미달' })
+        out.push({ id: `build:${b.id}`, icon: BUILD_ICON[b.id] || 'hammer', label: `${b.name} 짓기`, enabled: can, reason: can ? undefined : '조건 미달' })
         continue
       }
       if (b.id === 'tent') {
         const ok = this.canSleep()
-        out.push({ id: 'sleep', emoji: '😴', label: '잠자기', enabled: ok, reason: ok ? undefined : (this.state.stamina > 0 ? '스태미나를 모두 쓰세요' : undefined) })
+        out.push({ id: 'sleep', icon: 'sleep', label: '잠자기', enabled: ok, reason: ok ? undefined : (this.state.stamina > 0 ? '스태미나를 모두 쓰세요' : undefined) })
       } else if (b.id === 'shop_stall') {
-        out.push({ id: 'panel:shop', emoji: '🛒', label: '상점', enabled: true })
+        out.push({ id: 'panel:shop', icon: 'shop', label: '상점', enabled: true })
       } else if (b.id === 'cooking_fire') {
-        out.push({ id: 'panel:cooking', emoji: '🍳', label: '요리', enabled: true })
+        out.push({ id: 'panel:cooking', icon: 'pot', label: '요리', enabled: true })
       } else if (b.id === 'mine_entrance') {
-        out.push({ id: 'mine:enter', emoji: '⛏️', label: '광산 들어가기', enabled: true })
+        out.push({ id: 'mine:enter', icon: 'pickaxe', label: '광산 들어가기', enabled: true })
       }
     }
     return out
@@ -864,8 +869,8 @@ export class Game {
       const s = this.cam.worldToScreen(n.pos.x, n.pos.y)
       if (s.x < -60 || s.x > W + 60 || s.y < -80 || s.y > H + 60) continue
       const def = ResourceNodes[n.type]
-      const shake = n.shakeUntil > performance.now() ? 1 : 0
-      list.push({ y: n.pos.y, fn: () => this.drawResource(ctx, def.kind, n.type, s.x, s.y, n.hp / def.durability, shake) })
+      const shake = n.shakeUntil > performance.now() ? Math.round(Math.sin(performance.now() / 28) * 2) : 0
+      list.push({ y: n.pos.y, fn: () => this.drawResource(ctx, def.kind, n.type, s.x + shake, s.y) })
     }
     // player
     const ps = this.cam.worldToScreen(this.player.x, this.player.y)
@@ -901,7 +906,7 @@ export class Game {
     for (const n of this.mineNodes) {
       if (!n.alive) continue
       const s = this.cam.worldToScreen(n.pos.x, n.pos.y)
-      list.push({ y: n.pos.y, fn: () => drawOreNode(ctx, s.x, s.y, '#6fd3e0') })
+      list.push({ y: n.pos.y, fn: () => drawOreNode(ctx, s.x, s.y) })
     }
     const ps = this.cam.worldToScreen(this.player.x, this.player.y)
     list.push({ y: this.player.y, fn: () => drawPlayer(ctx, ps.x, ps.y, this.player.facing, this.player.walk, this.player.action, this.state.stamina <= 0) })
@@ -923,8 +928,8 @@ export class Game {
     ctx.fillRect(0, 0, W, H)
   }
 
-  private drawResource(ctx: CanvasRenderingContext2D, kind: string, type: string, x: number, y: number, hpRatio: number, shake: number) {
-    if (kind === 'tree') drawTree(ctx, x, y, type === 'tree_big', hpRatio, shake)
+  private drawResource(ctx: CanvasRenderingContext2D, kind: string, type: string, x: number, y: number) {
+    if (kind === 'tree') drawTree(ctx, x, y, type === 'tree_big')
     else if (kind === 'rock') drawRock(ctx, x, y, type === 'rock_big')
     else if (kind === 'bush') drawBush(ctx, x, y, false)
     else drawShell(ctx, x, y)
@@ -932,8 +937,7 @@ export class Game {
 
   private drawBuilding(ctx: CanvasRenderingContext2D, id: string, built: boolean, level: number, x: number, y: number) {
     if (!built) {
-      const def = BuildingMap[id]
-      drawBuildSite(ctx, x, y, def.emoji)
+      drawBuildSite(ctx, x, y, BUILD_ICON[id] || 'hammer')
       return
     }
     switch (id) {
