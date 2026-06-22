@@ -50,7 +50,8 @@ export function drawGrid(
       const col = (pal && pal[ch]) || CH[ch]
       if (!col) continue
       ctx.fillStyle = col
-      ctx.fillRect(ox + gx * px, oy + gy * px, px, px)
+      // tiny overlap so fractional camera zoom leaves no seams between pixels
+      ctx.fillRect(ox + gx * px, oy + gy * px, px + 0.5, px + 0.5)
     }
   }
 }

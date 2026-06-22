@@ -55,6 +55,7 @@ export class Game {
   private nodeIdSeq = 1
   private ctxScene = ''
   private invFullToastAt = -10
+  private zoneTex = new Map<string, HTMLCanvasElement>()
 
   constructor() {
     this.state = newGameState()
@@ -72,7 +73,7 @@ export class Game {
     }
     this.player.x = World.playerStart.x
     this.player.y = World.playerStart.y
-    this.cam.centerOn(this.player.x, this.player.y, true)
+    this.followCam(true)
     this.audio.setSettings(this.state.audio)
   }
 
@@ -102,7 +103,7 @@ export class Game {
 
   resize(w: number, h: number) {
     this.cam.setView(w, h)
-    this.cam.centerOn(this.player.x, this.player.y, true)
+    this.followCam(true)
   }
 
   // ---------- input ----------
@@ -148,8 +149,16 @@ export class Game {
     if (this.autosaveTimer >= 10) { this.autosaveTimer = 0; this.persist(false) }
   }
 
-  private followCam() {
-    this.cam.centerOn(this.player.x, this.player.y)
+  private activeZoneId = World.landZones[0].id
+
+  /** Zone-snap camera: frame the whole region the player is in; pan only when entering a new one. */
+  private followCam(instant = false) {
+    if (this.mode === 'mine') { this.cam.centerOn(this.player.x, this.player.y, instant); return }
+    const z = World.landZones.find((z) =>
+      this.player.x >= z.x && this.player.x <= z.x + z.w && this.player.y >= z.y && this.player.y <= z.y + z.h)
+    if (z) this.activeZoneId = z.id
+    const az = World.landZones.find((z) => z.id === this.activeZoneId) || World.landZones[0]
+    this.cam.centerOn(az.x + az.w / 2, az.y + az.h / 2, instant)
   }
 
   private updateScene() {
@@ -691,7 +700,7 @@ export class Game {
     this.player.x = World.world.width / 2
     this.player.y = World.world.height - 120
     this.moveTarget = null
-    this.cam.centerOn(this.player.x, this.player.y, true)
+    this.followCam(true)
     this.audio.setScene('mine')
     this.audio.sfx('uiOpen')
     this.bus.emit({ t: 'state' })
@@ -702,7 +711,7 @@ export class Game {
     this.player.x = BuildingMap['mine_entrance'].position.x
     this.player.y = BuildingMap['mine_entrance'].position.y + 50
     this.moveTarget = null
-    this.cam.centerOn(this.player.x, this.player.y, true)
+    this.followCam(true)
     this.audio.setScene('islandDay')
     this.persist(false)
     this.bus.emit({ t: 'state' })
@@ -720,7 +729,7 @@ export class Game {
     this.buildMineFloor(next)
     this.player.x = World.world.width / 2
     this.player.y = World.world.height - 120
-    this.cam.centerOn(this.player.x, this.player.y, true)
+    this.followCam(true)
     this.audio.sfx('uiOpen')
     this.bus.emit({ t: 'state' })
     return true
@@ -742,7 +751,7 @@ export class Game {
     this.player.x = World.playerStart.x
     this.player.y = World.playerStart.y
     this.staminaEmptyShown = false
-    this.cam.centerOn(this.player.x, this.player.y, true)
+    this.followCam(true)
     this.audio.setSettings(this.state.audio)
     this.audio.setScene('islandDay')
     this.bus.emit({ t: 'state' })
@@ -752,10 +761,37 @@ export class Game {
   render(ctx: CanvasRenderingContext2D) {
     const W = this.cam.viewW
     const H = this.cam.viewH
-    if (this.mode === 'mine') this.renderMine(ctx, W, H)
-    else this.renderIsland(ctx, W, H)
+    const z = this.cam.zoom
+    ctx.save()
+    ctx.imageSmoothingEnabled = false
+    // single world transform — integer translate keeps everything pixel-stable (no jitter)
+    ctx.translate(Math.round(-this.cam.x * z), Math.round(-this.cam.y * z))
+    ctx.scale(z, z)
+    if (this.mode === 'mine') this.renderMine(ctx)
+    else this.renderIsland(ctx)
+    ctx.restore()
+    // screen-space overlays
     this.fx.draw(ctx, this.cam)
+    this.drawTapMarker(ctx)
+    if (this.mode === 'mine') this.drawMineDarkness(ctx, W, H)
     this.renderOverlays(ctx, W, H)
+  }
+
+  private drawTapMarker(ctx: CanvasRenderingContext2D) {
+    if (!this.tapMarker) return
+    const s = this.cam.worldToScreen(this.tapMarker.x, this.tapMarker.y)
+    const r = (6 + this.tapMarker.t * 18) * this.cam.zoom
+    ctx.strokeStyle = `rgba(255,255,255,${0.7 * (1 - this.tapMarker.t / 0.6)})`
+    ctx.lineWidth = 2
+    ctx.beginPath(); ctx.arc(s.x, s.y, r, 0, Math.PI * 2); ctx.stroke()
+  }
+
+  private drawMineDarkness(ctx: CanvasRenderingContext2D, W: number, H: number) {
+    const g = ctx.createRadialGradient(W / 2, H / 2, H * 0.18, W / 2, H / 2, H * 0.7)
+    g.addColorStop(0, 'rgba(0,0,0,0)')
+    g.addColorStop(1, 'rgba(0,0,0,0.55)')
+    ctx.fillStyle = g
+    ctx.fillRect(0, 0, W, H)
   }
 
   private rrect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
@@ -769,163 +805,149 @@ export class Game {
     ctx.closePath()
   }
 
-  private drawWater(ctx: CanvasRenderingContext2D, W: number, H: number) {
-    const tile = World.world.tile
-    ctx.fillStyle = PAL.water1
-    ctx.fillRect(0, 0, W, H)
-    const x0 = Math.floor(this.cam.x / tile) * tile
-    const y0 = Math.floor(this.cam.y / tile) * tile
-    const shift = Math.floor(this.state.gameTime * 0.6) % 2
-    ctx.fillStyle = PAL.water2
-    for (let wy = y0; wy < this.cam.y + H + tile; wy += tile) {
-      for (let wx = x0; wx < this.cam.x + W + tile; wx += tile) {
-        if (((wx / tile) + (wy / tile) + shift) % 2 !== 0) continue
-        const s = this.cam.worldToScreen(wx, wy)
-        ctx.fillRect(s.x, s.y, tile + 1, tile + 1)
+  // Flowing water across the visible world rect (drawn in world coords).
+  private drawWater(ctx: CanvasRenderingContext2D) {
+    const x0 = this.cam.x, y0 = this.cam.y
+    const w = this.cam.spanW(), h = this.cam.spanH()
+    const grad = ctx.createLinearGradient(0, y0, 0, y0 + h)
+    grad.addColorStop(0, PAL.water2)
+    grad.addColorStop(1, PAL.water1)
+    ctx.fillStyle = grad
+    ctx.fillRect(x0 - 4, y0 - 4, w + 8, h + 8)
+    // scrolling wavy foam lines (gentle flow)
+    const t = this.state.gameTime
+    const rowH = 26
+    ctx.lineWidth = 2
+    for (let row = 0; row < Math.ceil(h / rowH) + 2; row++) {
+      const baseY = Math.floor(y0 / rowH) * rowH + row * rowH
+      const speed = row % 2 === 0 ? 14 : -10
+      const phase = t * speed
+      const alpha = row % 3 === 0 ? 0.16 : 0.09
+      ctx.strokeStyle = `rgba(207,238,251,${alpha})`
+      ctx.beginPath()
+      for (let x = x0 - 8; x <= x0 + w + 8; x += 8) {
+        const y = baseY + Math.sin((x + phase) * 0.05 + row) * 3
+        if (x === x0 - 8) ctx.moveTo(x, y); else ctx.lineTo(x, y)
       }
+      ctx.stroke()
     }
   }
 
-  private drawZone(ctx: CanvasRenderingContext2D, z: LandZone, W: number, H: number) {
-    const s = this.cam.worldToScreen(z.x, z.y)
-    if (s.x > W + 40 || s.x + z.w < -40 || s.y > H + 40 || s.y + z.h < -40) return
-    // foam ring + sandy shore
-    ctx.fillStyle = PAL.waterFoam
-    this.rrect(ctx, s.x - 12, s.y - 12, z.w + 24, z.h + 24, 30); ctx.fill()
-    ctx.fillStyle = PAL.sand
-    this.rrect(ctx, s.x - 7, s.y - 7, z.w + 14, z.h + 14, 26); ctx.fill()
-    // grass clipped to rounded island
-    ctx.save()
-    this.rrect(ctx, s.x, s.y, z.w, z.h, 18); ctx.clip()
-    const tile = World.world.tile
-    const x0 = Math.floor(z.x / tile) * tile
-    const y0 = Math.floor(z.y / tile) * tile
-    for (let wy = y0; wy < z.y + z.h + tile; wy += tile) {
-      for (let wx = x0; wx < z.x + z.w + tile; wx += tile) {
-        const ss = this.cam.worldToScreen(wx, wy)
-        const checker = ((wx / tile) + (wy / tile)) % 2 === 0
-        ctx.fillStyle = checker ? PAL.grass1 : PAL.grass2
-        ctx.fillRect(ss.x, ss.y, tile + 1, tile + 1)
-      }
+  private getZoneTexture(z: LandZone): HTMLCanvasElement {
+    const cached = this.zoneTex.get(z.id)
+    if (cached) return cached
+    const pad = 16
+    const cv = document.createElement('canvas')
+    cv.width = z.w + pad * 2
+    cv.height = z.h + pad * 2
+    const c = cv.getContext('2d')!
+    const ox = pad, oy = pad
+    // foam ring + sandy shore (rounded)
+    c.fillStyle = PAL.waterFoam; this.rrect(c, ox - 12, oy - 12, z.w + 24, z.h + 24, 30); c.fill()
+    c.fillStyle = PAL.sand; this.rrect(c, ox - 7, oy - 7, z.w + 14, z.h + 14, 26); c.fill()
+    c.fillStyle = PAL.sandDark; this.rrect(c, ox - 7, oy - 7, z.w + 14, z.h + 14, 26)
+    // grass body, clipped to rounded island
+    c.save()
+    this.rrect(c, ox, oy, z.w, z.h, 18); c.clip()
+    c.fillStyle = PAL.grass2; c.fillRect(ox, oy, z.w, z.h)
+    // natural blotches (static value-noise look, no checker)
+    const hash = (x: number, y: number) => {
+      const n = Math.sin(x * 12.9898 + y * 78.233 + z.x + z.y) * 43758.5453
+      return n - Math.floor(n)
     }
-    // soft inner shade at edges
-    ctx.strokeStyle = 'rgba(70,150,70,0.25)'
-    ctx.lineWidth = 6
-    this.rrect(ctx, s.x + 3, s.y + 3, z.w - 6, z.h - 6, 16); ctx.stroke()
-    ctx.restore()
+    const tones = [PAL.grass1, PAL.grass3, PAL.grassDark]
+    for (let i = 0; i < Math.floor((z.w * z.h) / 900); i++) {
+      const hx = hash(i, 1), hy = hash(i, 2), hs = hash(i, 3)
+      const px = ox + hx * z.w, py = oy + hy * z.h
+      const rad = 10 + hs * 26
+      c.fillStyle = tones[Math.floor(hash(i, 4) * tones.length)]
+      c.globalAlpha = 0.18 + hash(i, 5) * 0.16
+      c.beginPath(); c.ellipse(px, py, rad, rad * 0.7, 0, 0, Math.PI * 2); c.fill()
+    }
+    c.globalAlpha = 1
+    // sparse grass blades
+    for (let i = 0; i < Math.floor((z.w * z.h) / 520); i++) {
+      const hx = hash(i, 7), hy = hash(i, 8)
+      const px = Math.round(ox + hx * z.w), py = Math.round(oy + hy * z.h)
+      c.fillStyle = hash(i, 9) > 0.5 ? PAL.grassDark : PAL.grass3
+      c.fillRect(px, py, 2, hash(i, 10) > 0.5 ? 3 : 2)
+    }
+    c.restore()
+    this.zoneTex.set(z.id, cv)
+    return cv
+  }
+
+  private drawZone(ctx: CanvasRenderingContext2D, z: LandZone) {
+    const tex = this.getZoneTexture(z)
+    ctx.drawImage(tex, z.x - 16, z.y - 16)
   }
 
   private drawBridge(ctx: CanvasRenderingContext2D, b: Bridge) {
-    const s = this.cam.worldToScreen(b.x, b.y)
     const horizontal = b.w > b.h
     ctx.fillStyle = PAL.trunkDark
-    ctx.fillRect(s.x - 2, s.y - 2, b.w + 4, b.h + 4)
+    ctx.fillRect(b.x - 2, b.y - 2, b.w + 4, b.h + 4)
     ctx.fillStyle = '#b9854c'
-    ctx.fillRect(s.x, s.y, b.w, b.h)
+    ctx.fillRect(b.x, b.y, b.w, b.h)
     ctx.fillStyle = '#a8743c'
-    if (horizontal) {
-      for (let i = 0; i < b.w; i += 12) ctx.fillRect(s.x + i, s.y, 2, b.h)
-    } else {
-      for (let i = 0; i < b.h; i += 12) ctx.fillRect(s.x, s.y + i, b.w, 2)
-    }
-    // side rails
+    if (horizontal) for (let i = 0; i < b.w; i += 12) ctx.fillRect(b.x + i, b.y, 2, b.h)
+    else for (let i = 0; i < b.h; i += 12) ctx.fillRect(b.x, b.y + i, b.w, 2)
     ctx.fillStyle = PAL.trunk
-    if (horizontal) {
-      ctx.fillRect(s.x, s.y - 4, b.w, 4)
-      ctx.fillRect(s.x, s.y + b.h, b.w, 4)
-    } else {
-      ctx.fillRect(s.x - 4, s.y, 4, b.h)
-      ctx.fillRect(s.x + b.w, s.y, 4, b.h)
-    }
+    if (horizontal) { ctx.fillRect(b.x, b.y - 4, b.w, 4); ctx.fillRect(b.x, b.y + b.h, b.w, 4) }
+    else { ctx.fillRect(b.x - 4, b.y, 4, b.h); ctx.fillRect(b.x + b.w, b.y, 4, b.h) }
   }
 
-  private renderIsland(ctx: CanvasRenderingContext2D, W: number, H: number) {
-    this.drawWater(ctx, W, H)
-    for (const z of World.landZones) this.drawZone(ctx, z, W, H)
+  private renderIsland(ctx: CanvasRenderingContext2D) {
+    this.drawWater(ctx)
+    for (const z of World.landZones) this.drawZone(ctx, z)
     for (const b of World.bridges) this.drawBridge(ctx, b)
 
-    // build a draw list (y-sorted)
+    // y-sorted draw list, all in world coordinates
     type Drawable = { y: number; fn: () => void }
     const list: Drawable[] = []
-
     for (const b of Buildings) {
       const bs = this.state.buildings[b.id]
-      const s = this.cam.worldToScreen(b.position.x, b.position.y)
-      if (s.x < -120 || s.x > W + 120 || s.y < -120 || s.y > H + 120) continue
-      list.push({ y: b.position.y, fn: () => this.drawBuilding(ctx, b.id, bs.built, bs.level, s.x, s.y) })
+      list.push({ y: b.position.y, fn: () => this.drawBuilding(ctx, b.id, bs.built, bs.level, b.position.x, b.position.y) })
     }
     for (const pl of this.state.plots) {
-      const s = this.cam.worldToScreen(pl.pos.x, pl.pos.y)
       const crop = CropMap[pl.cropId]
       const growth = pl.state === 'READY' ? 1 : Math.min(1, (this.state.gameTime - pl.plantedAt) / crop.growthSeconds)
-      list.push({ y: pl.pos.y, fn: () => drawCrop(ctx, s.x, s.y, growth, pl.state === 'READY', ItemMap[crop.yield.itemId]?.color || '#e3c45a') })
+      list.push({ y: pl.pos.y, fn: () => drawCrop(ctx, pl.pos.x, pl.pos.y, growth, pl.state === 'READY', ItemMap[crop.yield.itemId]?.color || '#e3c45a') })
     }
     for (const a of this.state.animals) {
-      const s = this.cam.worldToScreen(a.pos.x, a.pos.y)
-      list.push({ y: a.pos.y, fn: () => drawChicken(ctx, s.x, s.y, a.product > 0) })
+      list.push({ y: a.pos.y, fn: () => drawChicken(ctx, a.pos.x, a.pos.y, a.product > 0) })
     }
     for (const n of this.nodes) {
       if (!n.alive) continue
-      const s = this.cam.worldToScreen(n.pos.x, n.pos.y)
-      if (s.x < -60 || s.x > W + 60 || s.y < -80 || s.y > H + 60) continue
       const def = ResourceNodes[n.type]
       const shake = n.shakeUntil > performance.now() ? Math.round(Math.sin(performance.now() / 28) * 2) : 0
-      list.push({ y: n.pos.y, fn: () => this.drawResource(ctx, def.kind, n.type, s.x + shake, s.y) })
+      list.push({ y: n.pos.y, fn: () => this.drawResource(ctx, def.kind, n.type, n.pos.x + shake, n.pos.y) })
     }
-    // player
-    const ps = this.cam.worldToScreen(this.player.x, this.player.y)
-    list.push({ y: this.player.y, fn: () => drawPlayer(ctx, ps.x, ps.y, this.player.facing, this.player.walk, this.player.action, this.state.stamina <= 0) })
+    list.push({ y: this.player.y, fn: () => drawPlayer(ctx, this.player.x, this.player.y, this.player.facing, this.player.walk, this.player.action, this.state.stamina <= 0) })
 
     list.sort((a, b) => a.y - b.y)
     for (const d of list) d.fn()
-
-    // tap marker
-    if (this.tapMarker) {
-      const s = this.cam.worldToScreen(this.tapMarker.x, this.tapMarker.y)
-      const r = 6 + this.tapMarker.t * 18
-      ctx.strokeStyle = `rgba(255,255,255,${0.7 * (1 - this.tapMarker.t / 0.6)})`
-      ctx.lineWidth = 2
-      ctx.beginPath(); ctx.arc(s.x, s.y, r, 0, Math.PI * 2); ctx.stroke()
-    }
   }
 
-  private renderMine(ctx: CanvasRenderingContext2D, W: number, H: number) {
+  private renderMine(ctx: CanvasRenderingContext2D) {
     const tile = World.world.tile
     const x0 = Math.floor(this.cam.x / tile) * tile
     const y0 = Math.floor(this.cam.y / tile) * tile
-    for (let wy = y0; wy < this.cam.y + H + tile; wy += tile) {
-      for (let wx = x0; wx < this.cam.x + W + tile; wx += tile) {
-        const s = this.cam.worldToScreen(wx, wy)
+    for (let wy = y0; wy < this.cam.y + this.cam.spanH() + tile; wy += tile) {
+      for (let wx = x0; wx < this.cam.x + this.cam.spanW() + tile; wx += tile) {
         const checker = ((wx / tile) + (wy / tile)) % 2 === 0
         ctx.fillStyle = checker ? '#3a3340' : '#332d38'
-        ctx.fillRect(s.x, s.y, tile + 1, tile + 1)
+        ctx.fillRect(wx, wy, tile + 1, tile + 1)
       }
     }
     type Drawable = { y: number; fn: () => void }
     const list: Drawable[] = []
     for (const n of this.mineNodes) {
       if (!n.alive) continue
-      const s = this.cam.worldToScreen(n.pos.x, n.pos.y)
-      list.push({ y: n.pos.y, fn: () => drawOreNode(ctx, s.x, s.y) })
+      list.push({ y: n.pos.y, fn: () => drawOreNode(ctx, n.pos.x, n.pos.y) })
     }
-    const ps = this.cam.worldToScreen(this.player.x, this.player.y)
-    list.push({ y: this.player.y, fn: () => drawPlayer(ctx, ps.x, ps.y, this.player.facing, this.player.walk, this.player.action, this.state.stamina <= 0) })
+    list.push({ y: this.player.y, fn: () => drawPlayer(ctx, this.player.x, this.player.y, this.player.facing, this.player.walk, this.player.action, this.state.stamina <= 0) })
     list.sort((a, b) => a.y - b.y)
     for (const d of list) d.fn()
-
-    if (this.tapMarker) {
-      const s = this.cam.worldToScreen(this.tapMarker.x, this.tapMarker.y)
-      const r = 6 + this.tapMarker.t * 18
-      ctx.strokeStyle = `rgba(255,255,255,${0.6 * (1 - this.tapMarker.t / 0.6)})`
-      ctx.lineWidth = 2
-      ctx.beginPath(); ctx.arc(s.x, s.y, r, 0, Math.PI * 2); ctx.stroke()
-    }
-    // darkness vignette in mine
-    const g = ctx.createRadialGradient(W / 2, H / 2, H * 0.18, W / 2, H / 2, H * 0.7)
-    g.addColorStop(0, 'rgba(0,0,0,0)')
-    g.addColorStop(1, 'rgba(0,0,0,0.55)')
-    ctx.fillStyle = g
-    ctx.fillRect(0, 0, W, H)
   }
 
   private drawResource(ctx: CanvasRenderingContext2D, kind: string, type: string, x: number, y: number) {
