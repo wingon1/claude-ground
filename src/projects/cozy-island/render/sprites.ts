@@ -445,3 +445,86 @@ export function drawBuildSite(ctx: CanvasRenderingContext2D, x: number, y: numbe
   drawGrid(ctx, grid, x, y - 12, 3, 'center')
   drawGrid(ctx, ICONS.hammer, x + 14, y - 6, 2, 'center')
 }
+
+// ---------------- ground / fences (square-pixel) ----------------
+type RectT = { x: number; y: number; w: number; h: number }
+
+function pxHash(x: number, y: number): number {
+  const n = Math.sin(x * 12.9898 + y * 4.1414) * 43758.5453
+  return n - Math.floor(n)
+}
+
+/** One reusable pixel-grass texture for every (identical) pen. */
+export function makeGrassTexture(w: number, h: number): HTMLCanvasElement {
+  const cv = document.createElement('canvas')
+  cv.width = w; cv.height = h
+  const c = cv.getContext('2d')!
+  const cell = 4
+  const tones = ['#7cc25b', '#8fd06a', '#72b552', '#86c863']
+  for (let y = 0; y < h; y += cell) {
+    for (let x = 0; x < w; x += cell) {
+      const r = pxHash(x, y)
+      c.fillStyle = tones[Math.floor(r * tones.length)]
+      c.fillRect(x, y, cell, cell)
+    }
+  }
+  for (let i = 0; i < (w * h) / 360; i++) {
+    const x = Math.floor(pxHash(i, 7) * w)
+    const y = Math.floor(pxHash(i, 13) * h)
+    c.fillStyle = pxHash(i, 21) > 0.5 ? '#5fa347' : '#6bb04e'
+    c.fillRect(x, y, 2, pxHash(i, 4) > 0.5 ? 3 : 2)
+  }
+  return cv
+}
+
+/** Cobblestone path tile (square-pixel). */
+export function makeStoneTexture(tile: number): HTMLCanvasElement {
+  const cv = document.createElement('canvas')
+  cv.width = tile; cv.height = tile
+  const c = cv.getContext('2d')!
+  c.fillStyle = '#9a9183'; c.fillRect(0, 0, tile, tile)
+  const cell = 4
+  for (let y = 0; y < tile; y += cell) {
+    for (let x = 0; x < tile; x += cell) {
+      const r = pxHash(x + 1, y + 2)
+      c.fillStyle = r > 0.82 ? '#857c6f' : r > 0.5 ? '#a79e8f' : '#b4ab9c'
+      c.fillRect(x, y, cell, cell)
+    }
+  }
+  c.fillStyle = '#7d7468'
+  for (let y = 0; y < tile; y += 16) c.fillRect(0, y, tile, 1)
+  for (let x = 0; x < tile; x += 16) c.fillRect(x, 0, 1, tile)
+  return cv
+}
+
+/** Pixel wooden fence around a pen rect, leaving the gate gap on the bottom edge. */
+export function drawFence(ctx: CanvasRenderingContext2D, rect: RectT, gate: RectT) {
+  const post = '#7a4a26'
+  const rail = '#9c6a3c'
+  const railHi = '#b07f4c'
+  const x0 = Math.round(rect.x), y0 = Math.round(rect.y)
+  const x1 = Math.round(rect.x + rect.w), y1 = Math.round(rect.y + rect.h)
+  const th = 4
+  ctx.fillStyle = rail
+  ctx.fillRect(x0, y0, rect.w, th)
+  ctx.fillRect(x0, y0, th, rect.h)
+  ctx.fillRect(x1 - th, y0, th, rect.h)
+  const gx0 = Math.round(gate.x), gx1 = Math.round(gate.x + gate.w)
+  ctx.fillRect(x0, y1 - th, gx0 - x0, th)
+  ctx.fillRect(gx1, y1 - th, x1 - gx1, th)
+  ctx.fillStyle = railHi
+  ctx.fillRect(x0, y0, rect.w, 1)
+  ctx.fillStyle = post
+  const step = 26
+  for (let x = x0; x <= x1; x += step) {
+    ctx.fillRect(x - 2, y0 - 2, 5, th + 4)
+    const inGate = x > gx0 - 3 && x < gx1 + 3
+    if (!inGate) ctx.fillRect(x - 2, y1 - th - 2, 5, th + 4)
+  }
+  for (let y = y0; y <= y1; y += step) {
+    ctx.fillRect(x0 - 2, y - 2, th + 4, 5)
+    ctx.fillRect(x1 - th - 2, y - 2, th + 4, 5)
+  }
+  ctx.fillRect(gx0 - 3, y1 - th - 3, 5, th + 7)
+  ctx.fillRect(gx1 - 2, y1 - th - 3, 5, th + 7)
+}

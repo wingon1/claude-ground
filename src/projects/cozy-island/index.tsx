@@ -316,43 +316,41 @@ function ShopPanel({ game, s }: { game: Game; s: GameState }) {
   const sellable = s.inventory.filter((e) => { const it = ItemMap[e.itemId]; return it && Shops.sellableCategories.includes(it.category) })
   return (
     <div>
-      <SectionTitle>밭 늘리기</SectionTitle>
-      <Row>
-        <PixelIcon name="soil" size={26} />
-        <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 700 }}>농장 밭 ({s.plots.length}개 보유)</div>
-          <div style={{ fontSize: 11, opacity: 0.8 }}>구입 시 {cropName(s.selectedCropId)} 자동 재배</div>
-        </div>
-        <button style={btnStyle(s.gold >= game.plotCost())} onClick={() => { game.buyPlot(); force() }}><PixelIcon name="coin" size={14} />{game.plotCost()}</button>
-      </Row>
-
-      <SectionTitle>심을 작물 고르기</SectionTitle>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {Crops.map((c) => {
-          const unlocked = game.isCropUnlocked(c.id)
-          const sel = s.selectedCropId === c.id
-          return (
-            <button key={c.id} disabled={!unlocked} onClick={() => { game.setSelectedCrop(c.id); force() }} style={{
-              display: 'flex', alignItems: 'center', gap: 4, background: sel ? UI.good : unlocked ? '#fffdf6' : '#e3d8c2', color: sel ? '#fff' : UI.text,
-              border: `2px solid ${UI.border}`, borderRadius: 10, padding: '6px 10px', fontWeight: 700, fontSize: 12, cursor: unlocked ? 'pointer' : 'default',
-            }}>
-              <PixelIcon name={unlocked ? c.yield.itemId : 'lock'} size={16} /> {c.name}
+      <SectionTitle>밭 (작물별로 따로 가꿔요)</SectionTitle>
+      {Crops.map((c) => {
+        const unlocked = game.isCropUnlocked(c.id)
+        const count = game.fieldCount(c.id)
+        const max = game.fieldMax(c.id)
+        const cost = game.plotCost(c.id)
+        const full = count >= max
+        return (
+          <Row key={c.id}>
+            <PixelIcon name={unlocked ? c.yield.itemId : 'lock'} size={26} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700 }}>{c.name} 밭 {unlocked ? `(${count}/${max})` : ''}</div>
+              <div style={{ fontSize: 11, opacity: 0.8 }}>{unlocked ? (full ? '밭이 가득 찼어요' : '밭 한 칸을 더 일굽니다') : unlockText(c.unlockCondition)}</div>
+            </div>
+            <button style={btnStyle(unlocked && !full && s.gold >= cost)} onClick={() => { game.buyPlot(c.id); force() }}>
+              <PixelIcon name="coin" size={14} />{cost}
             </button>
-          )
-        })}
-      </div>
+          </Row>
+        )
+      })}
 
       <SectionTitle>동물</SectionTitle>
-      {Animals.map((a) => (
-        <Row key={a.id}>
-          <PixelIcon name="chicken" size={26} />
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700 }}>{a.name}</div>
-            <div style={{ fontSize: 11, opacity: 0.8 }}>{ItemMap[a.product.itemId]?.name} 생산 · 닭장 필요</div>
-          </div>
-          <button style={btnStyle(s.gold >= a.purchaseCost)} onClick={() => { game.buyAnimal(a.id); force() }}><PixelIcon name="coin" size={14} />{a.purchaseCost}</button>
-        </Row>
-      ))}
+      {Animals.map((a) => {
+        const reqName = Buildings.find((b) => b.id === a.requiredBuilding)?.name || '시설'
+        return (
+          <Row key={a.id}>
+            <PixelIcon name={a.product.itemId} size={26} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700 }}>{a.name}</div>
+              <div style={{ fontSize: 11, opacity: 0.8 }}>{ItemMap[a.product.itemId]?.name} 생산 · {reqName} 필요</div>
+            </div>
+            <button style={btnStyle(s.gold >= a.purchaseCost)} onClick={() => { game.buyAnimal(a.id); force() }}><PixelIcon name="coin" size={14} />{a.purchaseCost}</button>
+          </Row>
+        )
+      })}
 
       <SectionTitle>팔기</SectionTitle>
       {sellable.length === 0 && <div style={{ fontSize: 12, opacity: 0.7, padding: '6px 0' }}>팔 수 있는 물건이 없어요.</div>}
@@ -566,7 +564,6 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 function Empty({ text }: { text: string }) {
   return <div style={{ textAlign: 'center', padding: '24px 8px', fontSize: 13, opacity: 0.75 }}>{text}</div>
 }
-function cropName(id: string): string { return Crops.find((c) => c.id === id)?.name || id }
 function catLabel(cat: string): string { return ({ resource: '자원', crop: '작물', animal: '축산물', food: '음식', ore: '광물' } as Record<string, string>)[cat] || cat }
 function unlockText(c?: { requiredTotalHarvestCount?: number; requiredMaxStamina?: number }): string {
   if (!c) return '잠김'

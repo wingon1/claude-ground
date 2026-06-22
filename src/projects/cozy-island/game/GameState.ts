@@ -1,22 +1,17 @@
 import type { GameState, UnlockCondition } from '../types'
 import {
-  Buildings, BuildingMap, Economy, FarmPlots, ItemMap, Player, Sound, Stamina, World, Zones,
+  Buildings, BuildingMap, Economy, ItemMap, Player, Sound, Stamina, Zones,
 } from '../content'
 
-export const SAVE_VERSION = 3
+export const SAVE_VERSION = 4
 
 export function newGameState(): GameState {
   const buildings: GameState['buildings'] = {}
   for (const b of Buildings) {
     buildings[b.id] = { id: b.id, built: !!b.prePlaced, level: b.prePlaced ? 1 : 0 }
   }
-  // First free plot
+  // Plots (incl. the free wheat plot) are seeded by Game once the layout exists.
   const plots: GameState['plots'] = []
-  const free = FarmPlots.freeStartingPlots
-  for (let i = 0; i < free; i++) {
-    const a = World.plotAnchors[i]
-    plots.push({ id: i, pos: { ...a }, cropId: FarmPlots.defaultCropId, state: 'GROWING', plantedAt: 0, ready: false })
-  }
   const unlockedZones = Zones.filter((z) => z.defaultUnlocked).map((z) => z.id)
 
   return {
@@ -27,8 +22,6 @@ export function newGameState(): GameState {
     maxStamina: Stamina.startMax,
     inventory: [],
     plots,
-    selectedCropId: FarmPlots.defaultCropId,
-    nextPlotIndex: free,
     animals: [],
     buildings,
     cookQueue: [],
@@ -124,15 +117,6 @@ export function hasUnlock(s: GameState, key: string): boolean {
   return false
 }
 
-export function maxPlotsAllowed(s: GameState): number {
-  let cap = 1
-  // farm_sign bonus
-  const bonus = buildingEffect(s, 'farm_sign', 'plotCapBonus')
-  if (typeof bonus === 'number') cap += bonus
-  // base growth: allow a few even without sign
-  cap = Math.max(cap, 4)
-  return Math.min(FarmPlots.maxPlots, cap)
-}
 
 export function sleepDuration(s: GameState): number {
   const mult = buildingEffect(s, 'tent', 'sleepDurationMult')
