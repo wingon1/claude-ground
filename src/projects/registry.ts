@@ -57,6 +57,16 @@ export type Project = ReactProject | IframeProject | ExternalProject
  */
 export const projects: Project[] = [
   {
+    id: 'tiny-dew-valley',
+    title: '🌾 Tiny Dew Valley',
+    description:
+      'A complete cozy pixel-art farming & life sim: till, plant, water and harvest crops, befriend two townsfolk, and restore the Ancient Shrine before Day 28. Day/night cycle, stamina, shop, save/load, mobile controls — all procedurally drawn & synthesised.',
+    emoji: '🌾',
+    tags: ['react', 'canvas', 'pixel-art', 'game', 'mobile'],
+    kind: 'react',
+    load: () => import('./tiny-dew-valley'),
+  },
+  {
     id: 'shikaku',
     title: '🧩 Shikaku — Cozy Rectangles',
     description:
