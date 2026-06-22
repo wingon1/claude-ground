@@ -256,7 +256,7 @@ export class Game {
     this.phase = 'playing'
     this.audio.resume()
     this.audio.startMusic()
-    this.toast('A new spring dawns. Restore the shrine by Day 28!', 'good')
+    this.toast('새로운 봄이 밝았어요. 28일째까지 신단을 복원하세요!', 'good')
     this.emit()
   }
 
@@ -399,7 +399,7 @@ export class Game {
     const before = s.timeMinutes
     s.timeMinutes += dt * GAME_MIN_PER_SEC
     if (before < MIDNIGHT_MIN && s.timeMinutes >= MIDNIGHT_MIN) {
-      this.toast('It is past midnight! Get to bed before 2 AM.', 'bad')
+      this.toast('자정이 지났어요! 새벽 2시 전에 잠자리에 드세요.', 'bad')
     }
     if (s.timeMinutes >= PASSOUT_MIN) {
       this.passOut()
@@ -729,17 +729,17 @@ export class Game {
         t.daysUnwatered = 0
         this.audio.sfx('till')
         this.dirtPuff(px, py, '#8a5a34')
-      } else this.toast('Can only till open grass.', 'bad')
+      } else this.toast('빈 풀밭만 갈 수 있어요.', 'bad')
     } else if (toolId === 'watering_can') {
       if (t.terrain === 'water') {
         s.water = WATER_CAPACITY[s.toolUpgrades.watering_can]
         this.audio.sfx('water')
-        this.toast('Watering can refilled.', 'good')
+        this.toast('물뿌리개를 가득 채웠어요.', 'good')
       } else if (t.terrain === 'tilled') {
         if (t.wateredToday) {
-          this.toast('Already watered today.', 'info')
+          this.toast('오늘은 이미 물을 줬어요.', 'info')
         } else if (s.water <= 0) {
-          this.toast('Watering can is empty. Refill at the pond.', 'bad')
+          this.toast('물뿌리개가 비었어요. 연못에서 채우세요.', 'bad')
           this.audio.sfx('reject')
         } else if (this.spendStamina(cost)) {
           s.water--
@@ -748,14 +748,19 @@ export class Game {
           this.audio.sfx('water')
           this.waterSplash(px, py)
         }
-      } else this.toast('Nothing to water here.', 'bad')
+      } else this.toast('여기엔 물을 줄 게 없어요.', 'bad')
     } else if (toolId === 'axe') {
-      if (t.obstacle && (t.obstacle === 'tree' || t.obstacle === 'stump' || t.obstacle === 'large_stump')) {
+      if (
+        t.obstacle === 'tree' ||
+        t.obstacle === 'stump' ||
+        t.obstacle === 'large_stump' ||
+        t.obstacle === 'rock'
+      ) {
         if (!this.spendStamina(cost)) return
         this.chopObstacle(t, px, py)
       } else if (t.obstacle === 'weed' || t.obstacle === 'flower') {
-        this.toast('Use the Scythe for that.', 'info')
-      } else this.toast('Nothing to chop.', 'bad')
+        this.toast('그건 낫으로 베세요.', 'info')
+      } else this.toast('부술 것이 없습니다.', 'bad')
     } else if (toolId === 'scythe') {
       if (t.obstacle === 'weed') {
         this.clearObs(t)
@@ -769,7 +774,7 @@ export class Game {
         this.leafBurst(px, py, '#ffe14d')
       } else if (t.cropId && t.growthStage >= CROPS[t.cropId].stages - 1) {
         this.harvestCrop(t, px, py)
-      } else this.toast('Nothing to clear here.', 'info')
+      } else this.toast('여기엔 베어낼 게 없어요.', 'info')
     }
     this.emit()
   }
@@ -800,7 +805,7 @@ export class Game {
     }
     // empty tilled soil: hint to plant
     if (t.terrain === 'tilled' && !t.cropId) {
-      this.toast('Select seeds (item slot) to plant here.', 'info')
+      this.toast('심으려면 아이템 칸에서 씨앗을 고르세요.', 'info')
       return
     }
     if (t.obstacle === 'flower') {
@@ -811,7 +816,7 @@ export class Game {
       this.emit()
       return
     }
-    this.toast('Nothing to do here.', 'info')
+    this.toast('여기서는 할 일이 없어요.', 'info')
   }
 
   private plantFromSelected(seedId: string) {
@@ -822,9 +827,9 @@ export class Game {
       this.plantSeed(t, seedId)
       this.emit()
     } else if (t.cropId) {
-      this.toast('Something is already growing here.', 'info')
+      this.toast('여기엔 이미 뭔가 자라고 있어요.', 'info')
     } else {
-      this.toast('Till the soil with the Hoe first.', 'info')
+      this.toast('먼저 호미로 밭을 가세요.', 'info')
       this.audio.sfx('reject')
     }
   }
@@ -838,7 +843,7 @@ export class Game {
     t.metadata.waterStreak = 0
     this.audio.sfx('plant')
     this.dirtPuff(t.x * T + T / 2, t.y * T + T / 2, '#3a8a3a')
-    this.toast(`Planted ${crop.name}.`, 'good')
+    this.toast(`${crop.name} 씨앗을 심었어요.`, 'good')
   }
 
   private harvestCrop(t: Tile, px: number, py: number) {
@@ -847,7 +852,7 @@ export class Game {
     if (crop.rollsQuality) quality = this.rollQuality(t, crop.growDays)
     const itemId = cropItemId(crop.id, quality)
     if (!this.canAccept(itemId, 1)) {
-      this.toast('Inventory full! Make room to harvest.', 'bad')
+      this.toast('가방이 가득 찼어요! 수확하려면 공간을 비우세요.', 'bad')
       this.audio.sfx('reject')
       return
     }
@@ -864,7 +869,7 @@ export class Game {
       t.growthStage = 0
     }
     const label = quality === 'normal' ? crop.name : `${QUALITY_LABEL[quality]}${crop.name}`
-    this.toast(`Harvested ${label}!`, 'good')
+    this.toast(`${label}을(를) 수확했어요!`, 'good')
   }
 
   private rollQuality(t: Tile, growDays: number): CropQuality {
@@ -940,7 +945,7 @@ export class Game {
       left -= add
     }
     const added = qty - left
-    if (left > 0) this.toast('Inventory full — some items were lost.', 'bad')
+    if (left > 0) this.toast('가방이 가득 차 일부 아이템을 잃었어요.', 'bad')
     return added
   }
 
@@ -978,7 +983,7 @@ export class Game {
     const s = this.state
     if (cost <= 0) return true
     if (s.stamina < cost) {
-      this.toast('Too exhausted! Eat something or sleep.', 'bad')
+      this.toast('너무 지쳤어요! 뭔가 먹거나 잠을 자세요.', 'bad')
       this.audio.sfx('reject')
       s.player.exhausted = true
       return false
@@ -987,7 +992,7 @@ export class Game {
     if (s.stamina <= 0) {
       s.stamina = 0
       s.player.exhausted = true
-      this.toast('You are exhausted!', 'bad')
+      this.toast('완전히 지쳤어요!', 'bad')
     }
     return true
   }
@@ -1001,10 +1006,10 @@ export class Game {
       const s = this.state
       if (s.maxStamina < 130) {
         s.maxStamina = 130
-        this.toast('Max Stamina permanently raised to 130!', 'good')
+        this.toast('최대 스태미나가 영구히 130으로 올랐어요!', 'good')
         this.audio.sfx('sparkle')
       } else {
-        this.toast('Sipped Herbal Tea. So soothing.', 'good')
+        this.toast('허브차를 마셨어요. 정말 편안하네요.', 'good')
       }
       const restore = def.staminaRestore ?? 0
       s.stamina = Math.min(s.maxStamina, s.stamina + restore)
@@ -1023,7 +1028,7 @@ export class Game {
       if (s.stamina > 0) s.player.exhausted = false
       this.audio.sfx('eat')
       this.heartBurst(this.state.player.x, this.state.player.y - 16, '#9af0c0')
-      this.toast(`Ate ${def.name}. +${boost} stamina.`, 'good')
+      this.toast(`${def.name}을(를) 먹었어요. 스태미나 +${boost}.`, 'good')
       this.emit()
     }
   }
@@ -1039,13 +1044,13 @@ export class Game {
     }
     if (entry.upgrade === 'copper_can') {
       if (s.toolUpgrades.watering_can === 'copper') {
-        this.toast('You already own the Copper Watering Can.', 'info')
+        this.toast('이미 구리 물뿌리개를 가지고 있어요.', 'info')
         return
       }
       if (!this.spendGold(price)) return this.notEnoughGold()
       s.toolUpgrades.watering_can = 'copper'
       s.water = WATER_CAPACITY.copper
-      this.toast('Copper Watering Can! Holds 25 water.', 'good')
+      this.toast('구리 물뿌리개! 물을 25까지 담아요.', 'good')
       this.audio.sfx('sparkle')
       this.autosave()
       this.emit()
@@ -1053,19 +1058,19 @@ export class Game {
     }
     if (entry.upgrade === 'backpack') {
       if (s.unlocks.backpack) {
-        this.toast('Backpack already upgraded.', 'info')
+        this.toast('가방은 이미 업그레이드됐어요.', 'info')
         return
       }
       if (!this.spendGold(price)) return this.notEnoughGold()
       s.unlocks.backpack = true
-      this.toast('Roomier backpack! (24 slots secured.)', 'good')
+      this.toast('더 넓은 가방! (24칸 확보.)', 'good')
       this.audio.sfx('sparkle')
       this.autosave()
       this.emit()
       return
     }
     if (!this.canAccept(itemId, 1)) {
-      this.toast('Inventory full!', 'bad')
+      this.toast('가방이 가득 찼어요!', 'bad')
       return
     }
     if (!this.spendGold(price)) return this.notEnoughGold()
@@ -1075,7 +1080,7 @@ export class Game {
   }
 
   private notEnoughGold() {
-    this.toast('Not enough gold.', 'bad')
+    this.toast('골드가 부족해요.', 'bad')
     this.audio.sfx('reject')
   }
 
@@ -1094,7 +1099,7 @@ export class Game {
     this.removeItem(slot.itemId, qty)
     this.state.gold += gold
     this.audio.sfx('coin')
-    this.toast(`Sold ${qty}× ${def.name} for ${gold}G.`, 'good')
+    this.toast(`${def.name} ${qty}개를 ${gold}G에 팔았어요.`, 'good')
     this.emit()
   }
 
@@ -1135,12 +1140,12 @@ export class Game {
   giftItem(index: number) {
     const id = this.nearbyNpcId()
     if (!id) {
-      this.toast('No one nearby to gift.', 'info')
+      this.toast('선물할 사람이 근처에 없어요.', 'info')
       return
     }
     const npc = this.state.npcs[id]
     if (npc.friendship.giftedToday) {
-      this.toast('Already gave a gift today.', 'info')
+      this.toast('오늘은 이미 선물을 줬어요.', 'info')
       this.audio.sfx('reject')
       return
     }
@@ -1188,25 +1193,25 @@ export class Game {
     if (id === 'barnaby') {
       if (hearts === 2 && !s.unlocks.seedDiscount) {
         s.unlocks.seedDiscount = true
-        this.toast('Barnaby now offers a seed discount!', 'good')
+        this.toast('이제 바나비가 씨앗 할인을 해줘요!', 'good')
         rewarded = true
       } else if (hearts === 4 && !s.unlocks.backpack) {
         s.unlocks.backpack = true
-        this.toast('Barnaby upgraded your backpack!', 'good')
+        this.toast('바나비가 가방을 업그레이드해줬어요!', 'good')
         rewarded = true
       } else if (hearts === 5 && !s.unlocks.shippingBonus) {
         s.unlocks.shippingBonus = true
-        this.toast('Barnaby gives a +15% shipping bonus!', 'good')
+        this.toast('바나비가 출하 보너스 +15%를 줘요!', 'good')
         rewarded = true
       }
     } else if (id === 'faye') {
       if (hearts === 3 && !s.recipes.herbalTea) {
         s.recipes.herbalTea = true
-        this.toast('Faye taught you the Herbal Tea recipe!', 'good')
+        this.toast('페이가 허브차 비법을 알려줬어요!', 'good')
         rewarded = true
       } else if (hearts === 5 && !s.unlocks.fayeStaminaBoost) {
         s.unlocks.fayeStaminaBoost = true
-        this.toast('Food now restores +30% stamina!', 'good')
+        this.toast('이제 음식이 스태미나를 +30% 더 회복시켜요!', 'good')
         rewarded = true
       }
     }
@@ -1222,18 +1227,18 @@ export class Game {
     const s = this.state
     if (!s.recipes.herbalTea) return
     if (this.countItem('daffodil') < 1) {
-      this.toast('Need a Wild Daffodil to brew tea.', 'bad')
+      this.toast('차를 끓이려면 야생 수선화가 필요해요.', 'bad')
       this.audio.sfx('reject')
       return
     }
     if (!this.canAccept('herbal_tea', 1)) {
-      this.toast('Inventory full!', 'bad')
+      this.toast('가방이 가득 찼어요!', 'bad')
       return
     }
     this.removeItem('daffodil', 1)
     this.giveItem('herbal_tea', 1)
     this.audio.sfx('sparkle')
-    this.toast('Brewed Herbal Tea.', 'good')
+    this.toast('허브차를 끓였어요.', 'good')
     this.emit()
   }
 
@@ -1246,19 +1251,19 @@ export class Game {
       const remaining = req.needed - s.shrine.gold
       const give = Math.min(remaining, s.gold)
       if (give <= 0) {
-        this.toast(s.gold <= 0 ? 'No gold to offer.' : 'Gold offering complete.', 'info')
+        this.toast(s.gold <= 0 ? '바칠 골드가 없어요.' : '황금 공물을 모두 바쳤어요.', 'info')
         return
       }
       s.gold -= give
       s.shrine.gold += give
       this.audio.sfx('coin')
-      this.toast(`Offered ${give}G to the shrine.`, 'good')
+      this.toast(`신단에 ${give}G를 바쳤어요.`, 'good')
     } else {
       const have = this.countItem(req.itemId!)
       const remaining = req.needed - (key === 'pumpkins' ? s.shrine.pumpkins : s.shrine.logs)
       const give = Math.min(remaining, have)
       if (give <= 0) {
-        this.toast(have <= 0 ? `You have no ${req.label}.` : 'Already complete.', have <= 0 ? 'bad' : 'info')
+        this.toast(have <= 0 ? `${req.label}이(가) 없어요.` : '이미 다 채웠어요.', have <= 0 ? 'bad' : 'info')
         if (have <= 0) this.audio.sfx('reject')
         return
       }
@@ -1266,7 +1271,7 @@ export class Game {
       if (key === 'pumpkins') s.shrine.pumpkins += give
       else s.shrine.logs += give
       this.audio.sfx('sparkle')
-      this.toast(`Offered ${give}× ${req.label}.`, 'good')
+      this.toast(`${req.label} ${give}개를 바쳤어요.`, 'good')
     }
     this.checkShrineComplete()
     this.autosave()
@@ -1276,7 +1281,7 @@ export class Game {
   // shrine wrongly-typed items are simply never offered via the typed buttons,
   // but a generic "offer selected item" guard explains rejection:
   rejectShrineItem() {
-    this.toast('The shrine only accepts its listed offerings.', 'info')
+    this.toast('신단은 정해진 공물만 받아요.', 'info')
     this.audio.sfx('reject')
   }
 
@@ -1293,8 +1298,8 @@ export class Game {
 
   private triggerVictory() {
     this.endingText =
-      'The shrine blooms with light! The valley exhales a long-held breath. ' +
-      'Petals drift on a warm wind as the old stone wakes once more. You did it.'
+      '신단이 빛으로 피어나요! 골짜기가 오래 참았던 숨을 내쉽니다. ' +
+      '오래된 돌이 다시 깨어나는 동안 꽃잎이 따뜻한 바람에 흩날려요. 해냈어요.'
     this.phase = 'ending'
     this.audio.sfx('sparkle')
     setTimeout(() => this.audio.sfx('sparkle'), 300)
@@ -1340,7 +1345,7 @@ export class Game {
     const penalty = Math.round(s.gold * 0.2)
     s.gold -= penalty
     s.nextDayStaminaCap = Math.round(s.maxStamina * 0.5)
-    this.toast(`You passed out! Lost ${penalty}G.`, 'bad')
+    this.toast(`쓰러졌어요! ${penalty}G를 잃었어요.`, 'bad')
     this.doSleep(true)
   }
 
@@ -1444,12 +1449,12 @@ export class Game {
       s.ending = 'bittersweet'
       s.endless = true
       this.endingText =
-        'Spring has slipped away, and the shrine still slumbers beneath the moss. ' +
-        'The valley is patient, though. There is always another season... ' +
-        '(Endless Mode unlocked — keep farming and restore it when you can.)'
+        '봄이 지나갔지만, 신단은 여전히 이끼 아래에서 잠들어 있어요. ' +
+        '그래도 골짜기는 인내심이 깊죠. 다음 계절은 언제나 있으니까요... ' +
+        '(끝없는 모드 해금 — 계속 농사를 지으며 언제든 신단을 복원하세요.)'
       this.phase = 'ending'
     }
-    if (passedOut) this.toast('You overslept. Stamina is limited today.', 'bad')
+    if (passedOut) this.toast('늦잠을 잤어요. 오늘은 스태미나가 제한돼요.', 'bad')
     this.autosave()
   }
 
@@ -1483,7 +1488,7 @@ export class Game {
     if (existing) existing.qty += qty
     else this.state.pendingShip.push({ itemId: def.id, qty })
     this.audio.sfx('select')
-    this.toast(`Shipped ${qty}× ${def.name} (paid overnight).`, 'good')
+    this.toast(`${def.name} ${qty}개를 출하했어요 (밤사이 정산).`, 'good')
     this.emit()
   }
 
@@ -1570,7 +1575,7 @@ export class Game {
 
   saveNow(): boolean {
     const ok = saveGame(this.state)
-    this.toast(ok ? 'Game saved.' : 'Save failed.', ok ? 'good' : 'bad')
+    this.toast(ok ? '게임을 저장했어요.' : '저장에 실패했어요.', ok ? 'good' : 'bad')
     this.emit()
     return ok
   }
@@ -1881,14 +1886,14 @@ export class Game {
     const total = this.minuteOfDay()
     const h = Math.floor(total / 60)
     const m = Math.floor(total % 60)
-    const ampm = h < 12 ? 'AM' : 'PM'
+    const ampm = h < 12 ? '오전' : '오후'
     let h12 = h % 12
     if (h12 === 0) h12 = 12
-    return `${h12}:${m.toString().padStart(2, '0')} ${ampm}`
+    return `${ampm} ${h12}:${m.toString().padStart(2, '0')}`
   }
 
   private periodLabel(): string {
-    return { morning: 'Morning', afternoon: 'Afternoon', golden: 'Golden Hour', night: 'Night' }[this.period()]
+    return { morning: '아침', afternoon: '낮', golden: '황혼', night: '밤' }[this.period()]
   }
 
   private buildSnapshot(): UISnapshot {
@@ -1968,10 +1973,10 @@ export class Game {
       let desc: string
       let owned = false
       if (e.upgrade === 'copper_can') {
-        name = 'Copper Watering Can'; sprite = 'watering_can'; desc = 'Holds 25 water.'
+        name = '구리 물뿌리개'; sprite = 'watering_can'; desc = '물을 25까지 담아요.'
         owned = s.toolUpgrades.watering_can === 'copper'
       } else if (e.upgrade === 'backpack') {
-        name = 'Backpack Upgrade'; sprite = 'backpack'; desc = 'Secure your 24-slot pack.'
+        name = '가방 업그레이드'; sprite = 'backpack'; desc = '24칸 가방을 확보해요.'
         owned = s.unlocks.backpack
       } else {
         const def = getItem(e.itemId)!
@@ -1999,14 +2004,14 @@ export class Game {
     let contextAction: string | null = null
     if (this.phase === 'playing') {
       const ctx = this.nearbyContext()
-      if (ctx === 'shop') contextAction = 'Shop'
-      else if (ctx === 'shrine') contextAction = 'Shrine'
-      else if (ctx === 'bed') contextAction = 'Sleep'
-      else if (ctx === 'npc') contextAction = `Talk to ${NPCS[this.nearbyNpcId()!].name}`
+      if (ctx === 'shop') contextAction = '상점'
+      else if (ctx === 'shrine') contextAction = '신단'
+      else if (ctx === 'bed') contextAction = '잠자기'
+      else if (ctx === 'npc') contextAction = `${NPCS[this.nearbyNpcId()!].name} 대화`
       else if (s.selectedSlot < 5) contextAction = TOOLS[TOOL_ORDER[s.selectedSlot]].name
       else if (s.hotbarItems[s.selectedSlot - 5]) {
         const hid = s.hotbarItems[s.selectedSlot - 5]!
-        contextAction = getItem(hid)?.type === 'seed' ? 'Plant' : 'Use'
+        contextAction = getItem(hid)?.type === 'seed' ? '심기' : '사용'
       }
     }
 
