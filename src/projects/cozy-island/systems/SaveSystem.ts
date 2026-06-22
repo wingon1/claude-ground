@@ -18,6 +18,8 @@ export function loadState(): { state: GameState; offlineSeconds: number } | null
     if (!raw) return null
     const parsed = JSON.parse(raw) as Partial<GameState>
     if (!parsed || typeof parsed !== 'object') return null
+    // Older layouts stored entity positions that no longer fit the island map — start fresh.
+    if (parsed.version !== SAVE_VERSION) return null
     const fresh = newGameState()
     // Shallow-merge onto a fresh state so new fields get defaults (forward-compatible).
     const state: GameState = {
