@@ -149,6 +149,7 @@ npm run lint
 
 | 이모지 | 이름 | 종류 | 설명 |
 | --- | --- | --- | --- |
+| 🏝️ | 코지 아일랜드 | react / canvas | 탭 이동·자동 상호작용 픽셀 섬 키우기. 스태미나·수면 성장·농사·요리·건설·퀘스트·광산, 절차적 사운드. |
 | 🍃 | Cozy Cove | react / three.js | 3D 디오라마. 드래그로 돌려보기. |
 | 🏡 | Pixel Village | react / canvas | 절차적 픽셀아트 마을. 아이소 타일·디더링·물결 애니·드래그 패닝. |
 | 🟣 | Bouncing Orbs | html / canvas | 클릭하면 공이 떨어지는 물리 장난감. |

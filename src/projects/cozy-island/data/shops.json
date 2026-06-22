@@ -1,0 +1,10 @@
+{
+  "sellMultiplier": 1.0,
+  "sellableCategories": ["resource", "crop", "animal", "food", "ore"],
+  "buyListings": [
+    { "id": "buy_plot",    "kind": "plot",     "name": "농장 밭",   "emoji": "🟫", "desc": "작물이 자동으로 자라는 밭을 늘립니다." },
+    { "id": "buy_chicken", "kind": "animal",   "animalId": "chicken", "name": "닭",  "emoji": "🐔", "desc": "달걀을 낳습니다. 닭장이 필요해요." },
+    { "id": "buy_seed_carrot", "kind": "cropSelect", "cropId": "carrot", "name": "당근 씨앗", "emoji": "🥕", "desc": "새 밭에 당근을 심도록 설정합니다.", "cost": 60 },
+    { "id": "buy_seed_strawberry", "kind": "cropSelect", "cropId": "strawberry", "name": "딸기 씨앗", "emoji": "🍓", "desc": "새 밭에 딸기를 심도록 설정합니다.", "cost": 120 }
+  ]
+}

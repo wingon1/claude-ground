@@ -1,0 +1,7 @@
+{
+  "zones": [
+    { "id": "home_meadow", "name": "보금자리 들판", "defaultUnlocked": true },
+    { "id": "large_field", "name": "넓은 밭", "unlockCondition": { "requiredTotalHarvestCount": 20 } },
+    { "id": "rocky_shore", "name": "바위 해안", "unlockCondition": { "requiredBuilding": "mine_entrance" } }
+  ]
+}

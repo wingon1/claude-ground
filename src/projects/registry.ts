@@ -57,6 +57,16 @@ export type Project = ReactProject | IframeProject | ExternalProject
  */
 export const projects: Project[] = [
   {
+    id: 'cozy-island',
+    title: '🏝️ 코지 아일랜드',
+    description:
+      '탭으로 이동하고 나무·바위·작물 곁에 서면 자동으로 일하는 포근한 픽셀 섬 키우기. 스태미나를 모두 쓰면 텐트에서 자고, 깨어나면 최대 스태미나가 +1. 농사·동물·요리·상점·건설·퀘스트·광산과 절차적 사운드까지 모두 자체 제작.',
+    emoji: '🏝️',
+    tags: ['react', 'canvas', 'pixel-art', 'game', 'mobile'],
+    kind: 'react',
+    load: () => import('./cozy-island'),
+  },
+  {
     id: 'tiny-dew-valley',
     title: '🌾 Tiny Dew Valley',
     description:
