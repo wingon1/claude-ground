@@ -234,6 +234,57 @@ const ORE = [
   '..RRRRR..',
 ]
 
+const COW = [
+  '.........WWW.',
+  '..WWWWWWWWWWk',
+  '.WWKKWWWWWWWe',
+  'WWWKKWWWWKWWW',
+  'WWWWWWWWKKWWW',
+  '.WWWWWWWWWWW.',
+  '.W.W...W.W...',
+  '.u.u...u.u...',
+]
+const COW_PAL: Record<string, string> = {
+  W: '#fbf7ee', K: '#5a4636', e: '#2f2418', k: '#f2b0a0', u: '#6e4a32',
+}
+const BEE = [
+  '.W...W.',
+  '.WbbbW.',
+  'bKbKbKb',
+  'bbbbbbb',
+  '.bKbKb.',
+  '..bbb..',
+]
+const BEE_PAL: Record<string, string> = { W: '#eaf4ff', b: '#ffce3a', K: '#3a2f1a' }
+const BARN = [
+  '......rrr......',
+  '....rrrrrrr....',
+  '..rrrrrrrrrrr..',
+  '.rrrrrrrrrrrrr.',
+  'rrrrrrrrrrrrrrr',
+  'XXXXXXXXXXXXXXX',
+  'XWWXXXKKKXXXWWX',
+  'XWWXXXKKKXXXWWX',
+  'XXXXXXKKKXXXXXX',
+  'XXXXXXKKKXXXXXX',
+  'XXXXXXXXXXXXXXX',
+]
+const BARN_PAL: Record<string, string> = {
+  r: '#d2503f', X: '#b9854c', W: '#fff3da', K: '#6e4626',
+}
+const APIARY = [
+  '.kkkkkkkkk.',
+  '.kkkkekkkk.',
+  '.kkkkkkkkk.',
+  '.KKKKKKKKK.',
+  '.kkkkkkkkk.',
+  '.kkkkekkkk.',
+  '.KKKKKKKKK.',
+  '...ttttt...',
+  '...t...t...',
+]
+const APIARY_PAL: Record<string, string> = { k: '#e8b84a', K: '#c2913a', e: '#3a2f1a', t: '#8a5a32' }
+
 // ---------------- draw functions ----------------
 const WALK_CYCLE = [WALK_A, STAND, WALK_C, STAND]
 
@@ -356,6 +407,25 @@ export function drawCoop(ctx: CanvasRenderingContext2D, x: number, y: number) {
 export function drawStorage(ctx: CanvasRenderingContext2D, x: number, y: number) {
   shadow(ctx, x, y, 44)
   drawGrid(ctx, STORAGE, x, y, PXB, 'foot')
+}
+export function drawBarn(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  shadow(ctx, x, y, 56)
+  drawGrid(ctx, BARN, x, y, PXB, 'foot', BARN_PAL)
+}
+export function drawApiary(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  shadow(ctx, x, y, 40)
+  drawGrid(ctx, APIARY, x, y, PXB, 'foot', APIARY_PAL)
+}
+export function drawCow(ctx: CanvasRenderingContext2D, x: number, y: number, hasMilk: boolean) {
+  shadow(ctx, x, y, 30)
+  drawGrid(ctx, COW, x, y, PXR, 'foot', COW_PAL)
+  if (hasMilk) drawGrid(ctx, ICONS.milk, x + 16, y - 22, 2, 'center')
+}
+export function drawBee(ctx: CanvasRenderingContext2D, x: number, y: number, hasHoney: boolean) {
+  const fly = Math.round(Math.sin(performance.now() / 180) * 2)
+  shadow(ctx, x, y, 12)
+  drawGrid(ctx, BEE, x, y - 14 - fly, PXR, 'foot', BEE_PAL)
+  if (hasHoney) drawGrid(ctx, ICONS.honey, x + 12, y - 18, 2, 'center')
 }
 export function drawFarmSign(ctx: CanvasRenderingContext2D, x: number, y: number) {
   shadow(ctx, x, y, 28)

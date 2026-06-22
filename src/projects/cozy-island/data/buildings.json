@@ -41,6 +41,30 @@
       ]
     },
     {
+      "id": "barn", "name": "외양간", "emoji": "🐄", "category": "animal",
+      "position": { "x": 570, "y": 190 }, "footprint": { "w": 84, "h": 64 },
+      "buildCost": { "gold": 220, "items": [{ "itemId": "wood", "amount": 28 }] },
+      "unlockCondition": { "requiredTotalHarvestCount": 14 },
+      "maxLevel": 3,
+      "levels": [
+        { "effects": { "unlock": "barn", "animalCapacity": 2 } },
+        { "upgradeCost": { "gold": 400, "items": [{ "itemId": "wood", "amount": 40 }] }, "effects": { "unlock": "barn", "animalCapacity": 3 } },
+        { "upgradeCost": { "gold": 800, "items": [{ "itemId": "stone", "amount": 40 }, { "itemId": "iron_ore", "amount": 10 }] }, "effects": { "unlock": "barn", "animalCapacity": 5 } }
+      ]
+    },
+    {
+      "id": "apiary", "name": "양봉장", "emoji": "🐝", "category": "animal",
+      "position": { "x": 760, "y": 430 }, "footprint": { "w": 60, "h": 56 },
+      "buildCost": { "gold": 180, "items": [{ "itemId": "wood", "amount": 20 }, { "itemId": "fiber", "amount": 15 }] },
+      "unlockCondition": { "requiredTotalHarvestCount": 30 },
+      "maxLevel": 3,
+      "levels": [
+        { "effects": { "unlock": "apiary", "animalCapacity": 2 } },
+        { "upgradeCost": { "gold": 360, "items": [{ "itemId": "wood", "amount": 30 }] }, "effects": { "unlock": "apiary", "animalCapacity": 3 } },
+        { "upgradeCost": { "gold": 700, "items": [{ "itemId": "wood", "amount": 45 }] }, "effects": { "unlock": "apiary", "animalCapacity": 4 } }
+      ]
+    },
+    {
       "id": "storage", "name": "창고", "emoji": "📦", "category": "storage",
       "position": { "x": 220, "y": 430 }, "footprint": { "w": 64, "h": 58 },
       "buildCost": { "gold": 80, "items": [{ "itemId": "wood", "amount": 12 }] },

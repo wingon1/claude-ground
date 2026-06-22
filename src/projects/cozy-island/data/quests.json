@@ -17,6 +17,10 @@
     { "id": "q_egg", "name": "달걀 모으기", "desc": "달걀을 3개 모으세요.", "requires": "q_coop", "objective": { "type": "collectAnimal", "target": 3 }, "reward": { "gold": 30 } },
     { "id": "q_carrot", "name": "주황빛 수확", "desc": "당근을 수확하세요.", "requires": "q_egg", "objective": { "type": "collectItem", "itemId": "carrot", "target": 1 }, "reward": { "gold": 45, "gems": 1 } },
     { "id": "q_mine_open", "name": "광산을 향해", "desc": "광산 입구를 지으세요.", "requires": "q_carrot", "objective": { "type": "build", "buildingId": "mine_entrance", "target": 1 }, "reward": { "gold": 100, "gems": 3 } },
-    { "id": "q_max40", "name": "튼튼한 일꾼", "desc": "최대 스태미나를 40까지 올리세요.", "requires": "q_max31", "objective": { "type": "maxStamina", "target": 40 }, "reward": { "gems": 5 } }
+    { "id": "q_max40", "name": "튼튼한 일꾼", "desc": "최대 스태미나를 40까지 올리세요.", "requires": "q_max31", "objective": { "type": "maxStamina", "target": 40 }, "reward": { "gems": 5 } },
+    { "id": "q_barn", "name": "외양간 짓기", "desc": "외양간을 지으세요.", "requires": "q_carrot", "objective": { "type": "build", "buildingId": "barn", "target": 1 }, "reward": { "gold": 60 } },
+    { "id": "q_milk", "name": "신선한 우유", "desc": "우유를 모으세요.", "requires": "q_barn", "objective": { "type": "collectItem", "itemId": "milk", "target": 2 }, "reward": { "gold": 50 } },
+    { "id": "q_cheese", "name": "치즈 만들기", "desc": "치즈를 한 번 만들어 보세요.", "requires": "q_milk", "objective": { "type": "craft", "recipeId": "cheese", "target": 1 }, "reward": { "gold": 70, "gems": 1 } },
+    { "id": "q_apiary", "name": "달콤한 양봉", "desc": "양봉장을 짓고 꿀을 모으세요.", "requires": "q_cheese", "objective": { "type": "collectItem", "itemId": "honey", "target": 2 }, "reward": { "gold": 90, "gems": 2 } }
   ]
 }
