@@ -17,21 +17,45 @@ function r(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: nu
 }
 
 // ---------------- grids ----------------
-const PLAYER = [
-  '..hhhhh..',
-  '.hhhhhhh.',
-  '.hsssssh.',
-  '.hsesesh.',
-  '.hsssssh.',
-  '..SSSSS..',
-  '.SSSSSSS.',
-  'sSSSSSSSs',
-  '.SSSSSSS.',
-  '.SSSSSSS.',
-  '..pp.pp..',
-  '..pp.pp..',
-  '..KK.KK..',
+// ---- cute, detailed player (side view, ~13x17) ----
+const PLAYER_PAL: Record<string, string> = {
+  k: '#6b4a2e', j: '#8a6440', s: '#f6cda0', S: '#e3b083', c: '#ef9a9a',
+  e: '#2f2418', w: '#ffffff', r: '#e0584f', R: '#b8423b', v: '#4f7bbf',
+  V: '#3a5d96', b: '#ffd34d', h: '#fff0d6', u: '#7a4a2a', U: '#5e3720',
+}
+const HEAD_OPEN = [
+  '..kkkkkkkkk..',
+  '.kkkkkkkkkkk.',
+  '.kkjjkkkjjkk.',
+  '.kkssssssskk.',
+  '.kswesssewsk.',
+  '.kscsssscsk..',
+  '..ssssossss..',
+  '...sSSSSSs...',
 ]
+const HEAD_BLINK = [
+  '..kkkkkkkkk..',
+  '.kkkkkkkkkkk.',
+  '.kkjjkkkjjkk.',
+  '.kkssssssskk.',
+  '.ksseesseesk.',
+  '.kscsssscsk..',
+  '..ssssossss..',
+  '...sSSSSSs...',
+]
+const TORSO = [
+  '..rrrrrrrrr..',
+  'hhvvvvvvvvvhh',
+  '.hvvbvvvbvvh.',
+  '.hvvvvvvvvvh.',
+  '.svvvvvvvvvs.',
+]
+const STAND = ['...vv..vv....', '...vv..vv....', '...uu..uu....', '..uuu.uuu....']
+const WALK_A = ['..vv...vv....', '..vv....vv...', '..uu....uu...', '.uuu....uuu..']
+const WALK_C = ['....vv..vv...', '...vv...vv...', '...uu...uu...', '..uuu...uuu..']
+function playerFrame(head: string[], legs: string[]): string[] {
+  return [...head, ...TORSO, ...legs]
+}
 
 const CHICKEN = [
   '...cc....',
@@ -211,23 +235,48 @@ const ORE = [
 ]
 
 // ---------------- draw functions ----------------
+const WALK_CYCLE = [WALK_A, STAND, WALK_C, STAND]
+
 export function drawPlayer(
   ctx: CanvasRenderingContext2D, x: number, y: number,
-  facing: number, walk: number, action: number, tired: boolean,
+  facing: number, walk: number, action: number, tired: boolean, moving: boolean,
 ) {
   shadow(ctx, x, y, 22)
-  const bob = Math.round(Math.sin(walk * Math.PI * 2) * 1.5)
-  const swing = action > 0 ? Math.round(Math.sin(action * Math.PI) * 4) : 0
+  const now = performance.now()
+  const a = Math.max(0, Math.min(1, action))
+  const blinking = now / 1000 % 3.6 < 0.12
+  const head = (tired || blinking) ? HEAD_BLINK : HEAD_OPEN
+  let legs = STAND
+  if (moving && a <= 0) legs = WALK_CYCLE[Math.floor(walk * 4) & 3]
+  // little hop while walking, gentle breathing while idle, slump when tired
+  let bob = moving
+    ? Math.round(Math.abs(Math.sin(walk * Math.PI * 2)) * 2)
+    : Math.round(Math.sin(now / 600) * 1)
+  if (tired) bob -= 1
+
   ctx.save()
   if (facing < 0) { ctx.translate(Math.round(x) * 2, 0); ctx.scale(-1, 1) }
-  drawGrid(ctx, PLAYER, x, y - bob, PXR, 'foot')
+  drawGrid(ctx, playerFrame(head, legs), x, y - bob, PXR, 'foot', PLAYER_PAL)
   ctx.restore()
-  // simple swinging tool
-  if (action > 0) {
-    r(ctx, x + facing * 13, y - 30 - swing, 3, 12, '#8a5a32')
-    r(ctx, x + facing * 12, y - 32 - swing, 7, 4, '#b8bcc4')
+
+  if (a > 0) drawTool(ctx, x, y - bob, facing, a)
+  if (tired) { r(ctx, x + 9, y - 42, 2, 4, '#9fd8ff'); r(ctx, x + 8, y - 38, 4, 3, '#7fc8f0') }
+}
+
+// Pixel tool: wind-up (raised) then strike (down), blocky — no rotation.
+function drawTool(ctx: CanvasRenderingContext2D, x: number, y: number, facing: number, a: number) {
+  const d = facing
+  if (a < 0.5) {
+    r(ctx, x + d * 4, y - 50, 3, 20, '#8a5a32')
+    r(ctx, x + d * 1, y - 52, 9, 6, '#b8bcc4')
+    r(ctx, x + d * 1, y - 52, 9, 2, '#dce1e6')
+    r(ctx, x + d * 5 - 1, y - 32, 3, 9, '#f6cda0')
+  } else {
+    r(ctx, x + d * 6, y - 32, 3, 15, '#8a5a32')
+    r(ctx, x + d * 7, y - 20, 9, 6, '#b8bcc4')
+    r(ctx, x + d * 7, y - 20, 9, 2, '#dce1e6')
+    r(ctx, x + d * 4, y - 28, 7, 3, '#f6cda0')
   }
-  if (tired) r(ctx, x + 12, y - 34, 3, 4, '#7fd4ff')
 }
 
 export function drawChicken(ctx: CanvasRenderingContext2D, x: number, y: number, hasEgg: boolean) {
