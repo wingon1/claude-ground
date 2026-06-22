@@ -66,6 +66,33 @@ export const LOCATIONS: WorldLocations = {
   square: { x: 16, y: 31 },
 }
 
+// Stamps the general store's static structure onto a tiles array.
+// The store is an open-front stall: solid back walls, with a walk-in
+// interior the player steps into to trade. Safe to re-apply on load
+// (the player never tills/plants/builds on these tiles), which lets old
+// saves pick up the new layout via migration.
+export function stampStore(tiles: Tile[]) {
+  // Back walls (the building body, hidden behind the store sprite).
+  rect(tiles, 14, 26, 19, 27, (t) => {
+    t.terrain = 'blocked'
+    t.obstacle = null
+    t.cropId = null
+  })
+  // Open interior + front. No fence here so the player can walk straight in
+  // from the village square and up to the counter where Barnaby stands.
+  rect(tiles, 14, 28, 19, 29, (t) => {
+    t.terrain = 'path'
+    t.obstacle = null
+    t.cropId = null
+  })
+  // Mark every interior/front tile so the shop opens however the player
+  // approaches: standing inside, or facing the counter from the square.
+  for (let x = 14; x <= 19; x++) {
+    tiles[idx(x, 28)].metadata.storeInterior = true
+    tiles[idx(x, 29)].metadata.storeCounter = true
+  }
+}
+
 // Builds the initial farm + village world.
 export function generateWorld(): Tile[] {
   const tiles: Tile[] = []
@@ -93,16 +120,7 @@ export function generateWorld(): Tile[] {
   tiles[idx(LOCATIONS.bed.x, LOCATIONS.bed.y)].terrain = 'path'
 
   // ---- General Store (south) ----
-  // Back walls (blocked), an open interior floor row where Barnaby stands,
-  // and a counter row the player interacts across.
-  rect(tiles, 14, 26, 19, 27, (t) => (t.terrain = 'blocked'))
-  rect(tiles, 14, 28, 19, 28, (t) => (t.terrain = 'path')) // interior floor
-  rect(tiles, 14, 29, 19, 29, (t) => (t.terrain = 'blocked')) // counter
-  tiles[idx(16, 29)].terrain = 'path' // front entrance gap
-  // mark all counter tiles (incl. entrance path) so interaction works from any approach
-  for (let x = 14; x <= 19; x++) tiles[idx(x, 29)].metadata.storeCounter = true
-  // mark interior floor so shop opens when player is inside
-  for (let x = 14; x <= 19; x++) tiles[idx(x, 28)].metadata.storeInterior = true
+  stampStore(tiles)
 
   // ---- Village square paths (south) ----
   rect(tiles, 12, 30, 24, 33, (t) => {
