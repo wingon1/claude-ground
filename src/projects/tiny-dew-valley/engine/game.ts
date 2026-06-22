@@ -650,7 +650,7 @@ export class Game {
     // also check the player's own tile for bed/shrine
     const pt = this.playerTile()
     const self = this.state.tiles[idx(pt.x, pt.y)]
-    if (ft?.metadata.shop || ft?.metadata.storeCounter) {
+    if (ft?.metadata.shop || ft?.metadata.storeCounter || self.metadata.storeCounter || self.metadata.storeInterior) {
       if (this.npcRt.barnaby.isShop) return 'shop'
     }
     if (ft?.metadata.shrine || self.metadata.shrine) return 'shrine'

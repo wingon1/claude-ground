@@ -98,8 +98,11 @@ export function generateWorld(): Tile[] {
   rect(tiles, 14, 26, 19, 27, (t) => (t.terrain = 'blocked'))
   rect(tiles, 14, 28, 19, 28, (t) => (t.terrain = 'path')) // interior floor
   rect(tiles, 14, 29, 19, 29, (t) => (t.terrain = 'blocked')) // counter
-  const c = LOCATIONS.storeCounter
-  tiles[idx(c.x, c.y)].metadata.storeCounter = true
+  tiles[idx(16, 29)].terrain = 'path' // front entrance gap
+  // mark all counter tiles (incl. entrance path) so interaction works from any approach
+  for (let x = 14; x <= 19; x++) tiles[idx(x, 29)].metadata.storeCounter = true
+  // mark interior floor so shop opens when player is inside
+  for (let x = 14; x <= 19; x++) tiles[idx(x, 28)].metadata.storeInterior = true
 
   // ---- Village square paths (south) ----
   rect(tiles, 12, 30, 24, 33, (t) => {
