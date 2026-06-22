@@ -46,6 +46,7 @@ export class Game {
   private nodes: WorldNode[] = []
   private mineNodes: WorldNode[] = []
   private actionTimer = 0
+  private actionDur = 0.5
   private staminaEmptyShown = false
   private vignette = 0
   private sleepPhase = 0 // 0 none, 1 fading, 2 dark, 3 waking
@@ -225,7 +226,7 @@ export class Game {
   }
 
   private updateInteraction(dt: number) {
-    if (this.actionTimer > 0) { this.actionTimer -= dt; this.player.action = 1 - this.actionTimer / 0.3; return }
+    if (this.actionTimer > 0) { this.actionTimer -= dt; this.player.action = 1 - this.actionTimer / Math.max(0.0001, this.actionDur); return }
     this.player.action = 0
     if (this.state.stamina <= 0) { this.onStaminaEmpty(); return }
     const target = this.nearestActionable()
@@ -273,6 +274,7 @@ export class Game {
     node.hp -= 1
     node.shakeUntil = performance.now() + 200
     this.actionTimer = (rule?.durationMs ?? 600) / 1000
+    this.actionDur = this.actionTimer
 
     if (inMine) {
       this.audio.sfx('mineRock')
@@ -316,6 +318,7 @@ export class Game {
     this.faceTo(plot.pos.x)
     this.spendStamina(crop.harvestStaminaCost)
     this.actionTimer = (Interactions.cropPlot.durationMs ?? 480) / 1000
+    this.actionDur = this.actionTimer
     const bonus = this.passive('cropYieldBonus')
     const amt = randInt(crop.yield.min, crop.yield.max) + Math.floor(bonus)
     this.gainItems(crop.yield.itemId, amt, plot.pos.x, plot.pos.y)
@@ -333,6 +336,7 @@ export class Game {
     this.faceTo(a.pos.x)
     this.spendStamina(def.collectStaminaCost)
     this.actionTimer = (Interactions.animal.durationMs ?? 500) / 1000
+    this.actionDur = this.actionTimer
     const amt = randInt(def.product.min, def.product.max)
     this.gainItems(def.product.itemId, amt, a.pos.x, a.pos.y)
     this.state.counters.animalCollect += 1
@@ -915,7 +919,7 @@ export class Game {
       const shake = n.shakeUntil > performance.now() ? Math.round(Math.sin(performance.now() / 28) * 2) : 0
       list.push({ y: n.pos.y, fn: () => this.drawResource(ctx, def.kind, n.type, n.pos.x + shake, n.pos.y) })
     }
-    list.push({ y: this.player.y, fn: () => drawPlayer(ctx, this.player.x, this.player.y, this.player.facing, this.player.walk, this.player.action, this.state.stamina <= 0) })
+    list.push({ y: this.player.y, fn: () => drawPlayer(ctx, this.player.x, this.player.y, this.player.facing, this.player.walk, this.player.action, this.state.stamina <= 0, this.player.moving) })
 
     list.sort((a, b) => a.y - b.y)
     for (const d of list) d.fn()
@@ -938,7 +942,7 @@ export class Game {
       if (!n.alive) continue
       list.push({ y: n.pos.y, fn: () => drawOreNode(ctx, n.pos.x, n.pos.y) })
     }
-    list.push({ y: this.player.y, fn: () => drawPlayer(ctx, this.player.x, this.player.y, this.player.facing, this.player.walk, this.player.action, this.state.stamina <= 0) })
+    list.push({ y: this.player.y, fn: () => drawPlayer(ctx, this.player.x, this.player.y, this.player.facing, this.player.walk, this.player.action, this.state.stamina <= 0, this.player.moving) })
     list.sort((a, b) => a.y - b.y)
     for (const d of list) d.fn()
   }
