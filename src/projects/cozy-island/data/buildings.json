@@ -2,7 +2,7 @@
   "buildings": [
     {
       "id": "tent", "name": "텐트", "emoji": "⛺", "category": "rest",
-      "prePlaced": true, "position": { "x": 380, "y": 470 }, "footprint": { "w": 96, "h": 84 },
+      "prePlaced": true, "position": { "x": 400, "y": 440 }, "footprint": { "w": 96, "h": 84 },
       "maxLevel": 3,
       "levels": [
         { "effects": { "sleepDurationMult": 1.0 } },
@@ -12,13 +12,13 @@
     },
     {
       "id": "shop_stall", "name": "상점", "emoji": "🏪", "category": "shop",
-      "prePlaced": true, "position": { "x": 195, "y": 470 }, "footprint": { "w": 104, "h": 86 },
+      "prePlaced": true, "position": { "x": 250, "y": 440 }, "footprint": { "w": 104, "h": 86 },
       "maxLevel": 1,
       "levels": [{ "effects": {} }]
     },
     {
       "id": "cooking_fire", "name": "요리 화덕", "emoji": "🔥", "category": "cooking",
-      "position": { "x": 560, "y": 470 }, "footprint": { "w": 90, "h": 78 },
+      "position": { "x": 552, "y": 440 }, "footprint": { "w": 90, "h": 78 },
       "buildCost": { "gold": 60, "items": [{ "itemId": "wood", "amount": 10 }] },
       "unlockCondition": { "defaultUnlocked": true },
       "maxLevel": 3,
@@ -30,7 +30,7 @@
     },
     {
       "id": "chicken_coop", "name": "닭장", "emoji": "🐔", "category": "animal",
-      "position": { "x": 380, "y": 905 }, "footprint": { "w": 104, "h": 84 },
+      "position": { "x": 1010, "y": 440 }, "footprint": { "w": 104, "h": 84 },
       "buildCost": { "gold": 120, "items": [{ "itemId": "wood", "amount": 18 }] },
       "unlockCondition": { "requiredTotalHarvestCount": 6 },
       "maxLevel": 3,
@@ -42,7 +42,7 @@
     },
     {
       "id": "storage", "name": "창고", "emoji": "📦", "category": "storage",
-      "position": { "x": 290, "y": 610 }, "footprint": { "w": 92, "h": 80 },
+      "position": { "x": 320, "y": 600 }, "footprint": { "w": 92, "h": 80 },
       "buildCost": { "gold": 80, "items": [{ "itemId": "wood", "amount": 12 }] },
       "unlockCondition": { "defaultUnlocked": true },
       "maxLevel": 3,
@@ -54,7 +54,7 @@
     },
     {
       "id": "farm_sign", "name": "농장 표지판", "emoji": "🪧", "category": "farm",
-      "position": { "x": 380, "y": 1310 }, "footprint": { "w": 64, "h": 64 },
+      "position": { "x": 400, "y": 960 }, "footprint": { "w": 64, "h": 64 },
       "buildCost": { "gold": 100, "items": [{ "itemId": "wood", "amount": 15 }] },
       "unlockCondition": { "requiredTotalHarvestCount": 10 },
       "maxLevel": 2,
@@ -65,7 +65,7 @@
     },
     {
       "id": "mine_entrance", "name": "광산 입구", "emoji": "⛏️", "category": "mine",
-      "position": { "x": 600, "y": 300 }, "footprint": { "w": 108, "h": 96 },
+      "position": { "x": 545, "y": 250 }, "footprint": { "w": 108, "h": 96 },
       "buildCost": { "gold": 200, "items": [{ "itemId": "stone", "amount": 25 }] },
       "unlockCondition": { "requiredMaxStamina": 33 },
       "maxLevel": 1,
