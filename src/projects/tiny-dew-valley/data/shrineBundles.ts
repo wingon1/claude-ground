@@ -9,17 +9,17 @@ export interface ShrineRequirement {
 }
 
 export const SHRINE_REQUIREMENTS: ShrineRequirement[] = [
-  { key: 'gold', label: 'Gold Offering', needed: 1000, icon: '💰' },
+  { key: 'gold', label: '황금 공물', needed: 1000, icon: '💰' },
   {
     key: 'pumpkins',
-    label: 'Perfect Golden Pumpkins',
+    label: '퍼펙트 황금 호박',
     needed: 5,
     itemId: 'crop_golden_pumpkin_perfect',
     icon: '🎃',
   },
   {
     key: 'logs',
-    label: 'Hardwood Logs',
+    label: '단단한 통나무',
     needed: 20,
     itemId: 'hardwood',
     icon: '🪵',

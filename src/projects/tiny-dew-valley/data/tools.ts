@@ -3,38 +3,38 @@ import type { ToolDef, ToolId } from '../types'
 export const TOOLS: Record<ToolId, ToolDef> = {
   hoe: {
     id: 'hoe',
-    name: 'Hoe',
+    name: '호미',
     hotbarSlot: 0,
     staminaCost: 3,
-    description: 'Tills grass into soil ready for planting.',
+    description: '풀밭을 갈아 심을 수 있는 밭으로 만든다.',
   },
   watering_can: {
     id: 'watering_can',
-    name: 'Watering Can',
+    name: '물뿌리개',
     hotbarSlot: 1,
     staminaCost: 3,
-    description: 'Waters tilled soil. Refill at the pond.',
+    description: '갈아놓은 밭에 물을 준다. 연못에서 다시 채운다.',
   },
   axe: {
     id: 'axe',
-    name: 'Axe',
+    name: '도끼',
     hotbarSlot: 2,
     staminaCost: 3,
-    description: 'Chops trees and stumps for wood & hardwood.',
+    description: '나무·그루터기·돌을 부숴 목재를 얻는다.',
   },
   scythe: {
     id: 'scythe',
-    name: 'Scythe',
+    name: '낫',
     hotbarSlot: 3,
     staminaCost: 0,
-    description: 'Clears wild weeds instantly. Costs no stamina.',
+    description: '잡초를 즉시 베어낸다. 스태미나 소모 없음.',
   },
   hand: {
     id: 'hand',
-    name: 'Hand',
+    name: '손',
     hotbarSlot: 4,
     staminaCost: 0,
-    description: 'Harvest crops, pick forage, and interact.',
+    description: '작물 수확, 채집, 상호작용.',
   },
 }
 

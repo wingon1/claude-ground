@@ -199,19 +199,21 @@ function bakeFence(): HTMLCanvasElement {
 
 // ---------------- Obstacles ----------------
 function bakeTree(): HTMLCanvasElement {
-  const c = cv(T, T + 14)
+  const c = cv(T, T + 16)
   const g = ctxOf(c)
-  const oy = 14
-  px(g, 3, oy + 1, 8, 4, 'rgba(0,0,0,0.15)')
-  // trunk
-  px(g, 7, oy + 2, 3, 8, '#7a4a26')
-  px(g, 7, oy + 2, 1, 8, '#8f5a30')
-  // canopy
-  px(g, 3, 2, 10, 10, '#2f7d3a')
-  px(g, 2, 4, 12, 7, '#2f7d3a')
-  px(g, 4, 0, 8, 5, '#3a9148')
-  px(g, 4, 1, 5, 3, '#49a657')
-  for (let i = 0; i < 10; i++) dot(g, 3 + ((i * 5) % 10), 3 + ((i * 7) % 9), '#256b30')
+  // shadow
+  px(g, 3, 28, 10, 3, 'rgba(0,0,0,0.18)')
+  // trunk (tall enough to meet the canopy with no gap)
+  px(g, 7, 13, 3, 16, '#7a4a26')
+  px(g, 7, 13, 1, 16, '#8f5a30')
+  px(g, 6, 27, 5, 2, '#6e4426')
+  // canopy (overlaps the trunk top so they read as one tree)
+  px(g, 3, 5, 10, 11, '#2f7d3a')
+  px(g, 2, 7, 12, 8, '#2f7d3a')
+  px(g, 4, 2, 8, 6, '#3a9148')
+  px(g, 5, 1, 6, 4, '#49a657')
+  px(g, 6, 13, 4, 3, '#2f7d3a')
+  for (let i = 0; i < 12; i++) dot(g, 3 + ((i * 5) % 10), 4 + ((i * 7) % 11), '#256b30')
   return c
 }
 
@@ -553,32 +555,49 @@ function bakeToolIcon(tool: string): HTMLCanvasElement {
   const g = ctxOf(c)
   switch (tool) {
     case 'hoe':
-      px(g, 4, 3, 2, 9, '#9a6a3a')
-      px(g, 4, 3, 6, 2, '#8b8f99')
-      px(g, 8, 3, 2, 4, '#8b8f99')
+      // diagonal wooden handle (top-right → bottom-left) + flat metal blade
+      px(g, 11, 2, 2, 2, '#9a6a3a')
+      px(g, 9, 4, 2, 2, '#a87a44')
+      px(g, 7, 6, 2, 2, '#9a6a3a')
+      px(g, 5, 8, 2, 2, '#a87a44')
+      px(g, 2, 10, 6, 2, '#b8bcc6')
+      px(g, 2, 10, 6, 1, '#dfe3ec')
+      px(g, 2, 12, 2, 1, '#8f939c')
       break
     case 'watering_can':
-      px(g, 4, 6, 7, 6, '#7fa8c0')
-      px(g, 4, 6, 7, 2, '#a7cbe0')
-      px(g, 10, 4, 3, 3, '#7fa8c0')
-      px(g, 11, 3, 3, 2, '#a7cbe0')
-      px(g, 3, 5, 2, 3, '#5e89a0')
+      // blue can with spout, handle and droplets
+      px(g, 4, 7, 7, 6, '#4f8fd0')
+      px(g, 4, 7, 7, 2, '#7fb6e6')
+      px(g, 4, 11, 7, 2, '#3f73c4')
+      px(g, 3, 6, 2, 4, '#5e89a0')
+      px(g, 11, 5, 3, 3, '#4f8fd0')
+      px(g, 13, 4, 2, 2, '#7fb6e6')
+      dot(g, 14, 8, '#9fd0ff')
+      dot(g, 13, 10, '#9fd0ff')
       break
     case 'axe':
-      px(g, 7, 3, 2, 10, '#9a6a3a')
-      px(g, 8, 3, 4, 4, '#c0c4cd')
-      px(g, 8, 3, 4, 1, '#e0e4ed')
+      // vertical handle + chunky triangular steel head (top-left)
+      px(g, 8, 3, 2, 10, '#9a6a3a')
+      px(g, 3, 3, 6, 3, '#c8ccd6')
+      px(g, 3, 3, 6, 1, '#eef0f6')
+      px(g, 4, 6, 4, 2, '#aeb2bc')
+      px(g, 8, 4, 1, 3, '#c8ccd6')
       break
     case 'scythe':
-      px(g, 6, 4, 2, 9, '#9a6a3a')
-      px(g, 6, 4, 6, 2, '#c0c4cd')
-      px(g, 10, 4, 2, 4, '#c0c4cd')
+      // long handle + wide sweeping curved blade hooking down at the top
+      px(g, 9, 4, 2, 9, '#9a6a3a')
+      px(g, 2, 4, 8, 2, '#cfd3dc')
+      px(g, 2, 4, 2, 4, '#cfd3dc')
+      px(g, 2, 3, 7, 1, '#eef0f6')
+      px(g, 3, 8, 2, 1, '#aeb2bc')
       break
     case 'hand':
-      px(g, 5, 5, 6, 7, '#f0c79a')
-      px(g, 5, 4, 2, 3, '#f0c79a')
-      px(g, 7, 4, 2, 2, '#f0c79a')
-      px(g, 9, 4, 2, 3, '#f0c79a')
+      // an open hand
+      px(g, 5, 7, 6, 5, '#f6cfa0')
+      px(g, 5, 4, 1, 4, '#f6cfa0')
+      px(g, 7, 3, 1, 5, '#f6cfa0')
+      px(g, 9, 4, 1, 4, '#f6cfa0')
+      px(g, 4, 8, 1, 3, '#f6cfa0')
       px(g, 5, 11, 6, 1, '#d8a878')
       break
     case 'backpack':

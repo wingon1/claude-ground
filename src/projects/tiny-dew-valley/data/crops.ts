@@ -5,7 +5,7 @@ import type { CropDef } from '../types'
 export const CROPS: Record<string, CropDef> = {
   parsnip: {
     id: 'parsnip',
-    name: 'Parsnip',
+    name: '파스닙',
     seedItemId: 'seed_parsnip',
     growDays: 2,
     stages: 4,
@@ -15,7 +15,7 @@ export const CROPS: Record<string, CropDef> = {
   },
   strawberry: {
     id: 'strawberry',
-    name: 'Strawberry',
+    name: '딸기',
     seedItemId: 'seed_strawberry',
     growDays: 4,
     stages: 5,
@@ -26,7 +26,7 @@ export const CROPS: Record<string, CropDef> = {
   },
   golden_pumpkin: {
     id: 'golden_pumpkin',
-    name: 'Golden Pumpkin',
+    name: '황금 호박',
     seedItemId: 'seed_golden_pumpkin',
     growDays: 6,
     stages: 6,

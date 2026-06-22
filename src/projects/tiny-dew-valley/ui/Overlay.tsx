@@ -8,11 +8,19 @@ const QUALITY_GLYPH: Record<string, string> = {
   perfect: '★',
 }
 
+// 터치(모바일) 환경에서만 가상 조작 버튼을 노출한다.
+function detectTouch(): boolean {
+  if (typeof window === 'undefined') return false
+  const coarse = window.matchMedia?.('(pointer: coarse)')?.matches ?? false
+  return coarse || 'ontouchstart' in window || navigator.maxTouchPoints > 0
+}
+
 export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [invOpen, setInvOpen] = useState(false)
   const [invSel, setInvSel] = useState<number | null>(null)
   const [shopTab, setShopTab] = useState<'buy' | 'sell'>('buy')
+  const [isTouch] = useState(detectTouch)
 
   if (ui.phase === 'title') {
     return <TitleScreen game={game} />
@@ -27,7 +35,7 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
       <div className="tdv-hud">
         <div className="tdv-panel tdv-clock">
           <div className="row big">
-            <span>Day {ui.day}</span>
+            <span>{ui.day}일째</span>
             <span>{ui.clock}</span>
           </div>
           <div className="tdv-period">{ui.period}</div>
@@ -39,8 +47,8 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
 
         <div className="tdv-rightcol">
           <div className="tdv-iconbtns">
-            <button className="tdv-iconbtn" title="Menu" onClick={() => setMenuOpen((v) => !v)}>☰</button>
-            <button className="tdv-iconbtn" title="Backpack" onClick={() => { setInvOpen(true); setInvSel(null) }}>🎒</button>
+            <button className="tdv-iconbtn" title="메뉴" onClick={() => setMenuOpen((v) => !v)}>☰</button>
+            <button className="tdv-iconbtn" title="가방" onClick={() => { setInvOpen(true); setInvSel(null) }}>🎒</button>
           </div>
           <div className="tdv-panel tdv-bars">
             <Bar
@@ -62,7 +70,7 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
         </div>
       </div>
 
-      {ui.exhausted && <div className="tdv-exhaust">EXHAUSTED — half speed</div>}
+      {ui.exhausted && <div className="tdv-exhaust">기진맥진 — 이동 속도 절반</div>}
 
       {/* Toasts */}
       <div className="tdv-toasts">
@@ -73,28 +81,27 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
 
       {menuOpen && (
         <div className="tdv-menu">
-          <button className="tdv-btn" onClick={() => { game.saveNow(); setMenuOpen(false) }}>💾 Save</button>
-          <button className="tdv-btn ghost" onClick={() => game.toggleMute()}>{ui.muted ? '🔇 Unmute' : '🔊 Mute'}</button>
-          <button className="tdv-btn ghost" onClick={() => game.toggleMusic()}>{ui.musicOn ? '🎵 Music On' : '🎵 Music Off'}</button>
+          <button className="tdv-btn" onClick={() => { game.saveNow(); setMenuOpen(false) }}>💾 저장</button>
+          <button className="tdv-btn ghost" onClick={() => game.toggleMute()}>{ui.muted ? '🔇 음소거 해제' : '🔊 음소거'}</button>
+          <button className="tdv-btn ghost" onClick={() => game.toggleMusic()}>{ui.musicOn ? '🎵 음악 켜짐' : '🎵 음악 꺼짐'}</button>
           <button
             className="tdv-btn red"
             onClick={() => {
-              if (confirm('Delete save and return to title? This cannot be undone.')) {
+              if (confirm('저장을 삭제하고 타이틀로 돌아갈까요? 되돌릴 수 없어요.')) {
                 game.deleteSaveData()
                 location.reload()
               }
             }}
-          >🗑 Delete Save</button>
-          <button className="tdv-btn ghost" onClick={() => setMenuOpen(false)}>Close</button>
+          >🗑 저장 삭제</button>
+          <button className="tdv-btn ghost" onClick={() => setMenuOpen(false)}>닫기</button>
         </div>
       )}
 
       {/* Hotbar */}
       <div className="tdv-hotbar">
         {ui.tools.map((t, i) => (
-          <Slot key={`t${i}`} keyLabel={`${i + 1}`} selected={t.selected} onClick={() => game.selectSlot(i)}>
+          <Slot key={`t${i}`} keyLabel={`${i + 1}`} selected={t.selected} cap={t.label} onClick={() => game.selectSlot(i)}>
             <img src={iconURL(t.sprite, t.color)} alt={t.label} />
-            {t.extra && <span className="extra">{t.extra}</span>}
           </Slot>
         ))}
         {ui.items.map((it, i) => (
@@ -112,8 +119,15 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
         ))}
       </div>
 
-      {/* Mobile + action controls */}
-      {!modalOpen && !ui.dialogue && (
+      {/* 데스크톱: 상호작용 안내 */}
+      {!isTouch && !modalOpen && !ui.dialogue && ui.contextAction && (
+        <div className="tdv-deskhint">
+          <kbd>Space</kbd> / <kbd>E</kbd> · {ui.contextAction}
+        </div>
+      )}
+
+      {/* 모바일 전용 조작 버튼 */}
+      {isTouch && !modalOpen && !ui.dialogue && (
         <>
           <Joystick onVec={(x, y) => game.setMobileVector(x, y)} />
           <div className="tdv-minibtns">
@@ -124,7 +138,7 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
             className="tdv-action"
             onPointerDown={(e) => { e.preventDefault(); game.pressAction() }}
           >
-            {ui.contextAction ?? 'Act'}
+            {ui.contextAction ?? '행동'}
           </button>
         </>
       )}
@@ -137,7 +151,7 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
             {ui.dialogue.name}
           </div>
           <div className="txt">{ui.dialogue.text}</div>
-          <div className="hint">tap to continue ▸</div>
+          <div className="hint">눌러서 계속 ▸</div>
         </div>
       )}
 
@@ -178,6 +192,7 @@ function Slot({
   selected,
   empty,
   sep,
+  cap,
   onClick,
 }: {
   children: React.ReactNode
@@ -185,6 +200,7 @@ function Slot({
   selected: boolean
   empty?: boolean
   sep?: boolean
+  cap?: string
   onClick: () => void
 }) {
   return (
@@ -194,6 +210,7 @@ function Slot({
     >
       <span className="key">{keyLabel}</span>
       {children}
+      {cap && <span className="cap">{cap}</span>}
     </div>
   )
 }
@@ -248,23 +265,23 @@ function TitleScreen({ game }: { game: Game }) {
     <div className="tdv-title">
       <div className="tdv-titlecard">
         <h1>🌾 Tiny Dew Valley</h1>
-        <div className="tag">A cozy farming & life sim. Restore the Shrine by Day 28.</div>
+        <div className="tag">아늑한 농사 & 생활 시뮬레이션. 28일째까지 신단을 복원하세요.</div>
         <div className="col">
           {hasSave && (
-            <button className="tdv-bigbtn gold" onClick={() => game.continueGame()}>▶ Continue</button>
+            <button className="tdv-bigbtn gold" onClick={() => game.continueGame()}>▶ 이어하기</button>
           )}
-          <button className="tdv-bigbtn" onClick={() => game.newGame()}>🌱 New Game</button>
+          <button className="tdv-bigbtn" onClick={() => game.newGame()}>🌱 새 게임</button>
           {hasSave && (
             <button
               className="tdv-bigbtn ghost"
-              onClick={() => { if (confirm('Delete saved game?')) { game.deleteSaveData(); location.reload() } }}
-            >🗑 Delete Save</button>
+              onClick={() => { if (confirm('저장된 게임을 삭제할까요?')) { game.deleteSaveData(); location.reload() } }}
+            >🗑 저장 삭제</button>
           )}
         </div>
         <div className="help">
-          Move: WASD / Arrows or joystick · Tools: keys 1–5 · Items: 6–0<br />
-          Act / Interact: Space, E, or the round button<br />
-          Till → Plant seeds → Water daily → Harvest → Ship · Sleep to pass the day
+          이동: WASD / 방향키 또는 조이스틱 · 농기구: 1–5 키 · 아이템: 6–0 키<br />
+          행동 / 상호작용: Space, E, 또는 둥근 버튼<br />
+          밭 갈기 → 씨앗 심기 → 매일 물 주기 → 수확 → 출하 · 잠을 자면 하루가 지나요
         </div>
       </div>
     </div>
@@ -286,11 +303,11 @@ function ShopModal({
   return (
     <div className="tdv-modal-bg" onClick={() => game.closeModal()}>
       <div className="tdv-modal" onClick={(e) => e.stopPropagation()}>
-        <h2>🛒 General Store</h2>
-        <div className="sub">Barnaby: "Welcome! Buy fresh, sell fresh — {ui.gold}G in your purse."</div>
+        <h2>🛒 잡화점</h2>
+        <div className="sub">바나비: "어서 오게! 신선하게 사고 신선하게 팔게나 — 지갑엔 {ui.gold}G."</div>
         <div className="tdv-tabs">
-          <div className={`tdv-tab${tab === 'buy' ? ' on' : ''}`} onClick={() => setTab('buy')}>Buy</div>
-          <div className={`tdv-tab${tab === 'sell' ? ' on' : ''}`} onClick={() => setTab('sell')}>Sell</div>
+          <div className={`tdv-tab${tab === 'buy' ? ' on' : ''}`} onClick={() => setTab('buy')}>구매</div>
+          <div className={`tdv-tab${tab === 'sell' ? ' on' : ''}`} onClick={() => setTab('sell')}>판매</div>
         </div>
         {tab === 'buy' ? (
           <div className="tdv-grid">
@@ -300,7 +317,7 @@ function ShopModal({
                 <div className="nm">{b.name}</div>
                 <div className="ds">{b.desc}</div>
                 {b.owned ? (
-                  <div className="price">Owned</div>
+                  <div className="price">보유 중</div>
                 ) : (
                   <button
                     className="tdv-btn gold"
@@ -313,22 +330,22 @@ function ShopModal({
           </div>
         ) : (
           <div className="tdv-grid">
-            {sellables.length === 0 && <div className="sub">Nothing to sell right now.</div>}
+            {sellables.length === 0 && <div className="sub">지금 팔 물건이 없어요.</div>}
             {sellables.map((s) => (
               <div className="tdv-card" key={s.index}>
                 <img src={iconURL(s.sprite, s.color)} alt={s.name} />
                 <div className="nm">{s.name} ×{s.qty}</div>
-                <div className="price">{s.sellPrice}G each</div>
+                <div className="price">개당 {s.sellPrice}G</div>
                 <div className="tdv-row" style={{ marginTop: 4 }}>
-                  <button className="tdv-btn sm" onClick={() => game.sellItem(s.index, false)}>Sell 1</button>
-                  <button className="tdv-btn sm gold" onClick={() => game.sellItem(s.index, true)}>All</button>
+                  <button className="tdv-btn sm" onClick={() => game.sellItem(s.index, false)}>1개 판매</button>
+                  <button className="tdv-btn sm gold" onClick={() => game.sellItem(s.index, true)}>전부</button>
                 </div>
               </div>
             ))}
           </div>
         )}
         <div className="tdv-row">
-          <button className="tdv-btn ghost" onClick={() => game.closeModal()}>Close</button>
+          <button className="tdv-btn ghost" onClick={() => game.closeModal()}>닫기</button>
         </div>
       </div>
     </div>
@@ -340,11 +357,11 @@ function ShrineModal({ game, ui }: { game: Game; ui: UISnapshot }) {
   return (
     <div className="tdv-modal-bg" onClick={() => game.closeModal()}>
       <div className="tdv-modal" onClick={(e) => e.stopPropagation()}>
-        <h2>⛩ Ancient Shrine</h2>
+        <h2>⛩ 고대 신단</h2>
         <div className="sub">
           {sh.restored
-            ? 'The shrine is restored. The valley thanks you.'
-            : `Offer all three to restore it. ${sh.daysLeft} day(s) until end of Spring.`}
+            ? '신단이 복원되었어요. 골짜기가 당신에게 감사를 전해요.'
+            : `세 가지를 모두 바쳐 복원하세요. 봄이 끝나기까지 ${sh.daysLeft}일 남았어요.`}
         </div>
         {sh.reqs.map((r) => (
           <div className={`tdv-req${r.done ? ' done' : ''}`} key={r.key}>
@@ -361,12 +378,12 @@ function ShrineModal({ game, ui }: { game: Game; ui: UISnapshot }) {
                 className="tdv-btn gold sm"
                 disabled={r.canDeposit <= 0}
                 onClick={() => game.depositShrine(r.key)}
-              >Offer {r.canDeposit > 0 ? `×${r.canDeposit}` : ''}</button>
+              >바치기 {r.canDeposit > 0 ? `×${r.canDeposit}` : ''}</button>
             )}
           </div>
         ))}
         <div className="tdv-row">
-          <button className="tdv-btn ghost" onClick={() => game.closeModal()}>Close</button>
+          <button className="tdv-btn ghost" onClick={() => game.closeModal()}>닫기</button>
         </div>
       </div>
     </div>
@@ -377,11 +394,11 @@ function SleepConfirm({ game }: { game: Game }) {
   return (
     <div className="tdv-modal-bg">
       <div className="tdv-modal" style={{ width: 'min(360px, 92vw)', textAlign: 'center' }}>
-        <h2 style={{ justifyContent: 'center' }}>🛏 Go to sleep?</h2>
-        <div className="sub">Crops watered today will grow overnight, and shipped items are tallied.</div>
+        <h2 style={{ justifyContent: 'center' }}>🛏 잠자리에 들까요?</h2>
+        <div className="sub">오늘 물을 준 작물은 밤사이 자라고, 출하한 물건은 정산돼요.</div>
         <div className="tdv-row">
-          <button className="tdv-btn gold" onClick={() => game.confirmSleep()}>Sleep</button>
-          <button className="tdv-btn ghost" onClick={() => game.cancelSleep()}>Not yet</button>
+          <button className="tdv-btn gold" onClick={() => game.confirmSleep()}>잠자기</button>
+          <button className="tdv-btn ghost" onClick={() => game.cancelSleep()}>아직</button>
         </div>
       </div>
     </div>
@@ -395,9 +412,9 @@ function TallyModal({ game, ui }: { game: Game; ui: UISnapshot }) {
   return (
     <div className="tdv-modal-bg">
       <div className="tdv-modal tdv-tally">
-        <h2>🌙 Overnight Shipping</h2>
-        <div className="sub">Day {ui.day} earnings</div>
-        {t.items.length === 0 && <div className="sub">Nothing was shipped today.</div>}
+        <h2>🌙 밤사이 출하 정산</h2>
+        <div className="sub">{ui.day}일째 수입</div>
+        {t.items.length === 0 && <div className="sub">오늘은 출하한 물건이 없어요.</div>}
         {t.items.slice(0, t.shown).map((it, i) => (
           <div className="line" key={i}>
             <img src={iconURL(it.sprite, it.color)} alt={it.name} />
@@ -407,12 +424,12 @@ function TallyModal({ game, ui }: { game: Game; ui: UISnapshot }) {
           </div>
         ))}
         <div className="total">
-          <span>Total</span>
+          <span>합계</span>
           <span>+{shownTotal}G</span>
         </div>
         <div className="tdv-row">
           <button className="tdv-btn gold" disabled={!done && t.items.length > 0} onClick={() => game.finishTally()}>
-            {done || t.items.length === 0 ? 'Good morning ☀' : '...'}
+            {done || t.items.length === 0 ? '좋은 아침 ☀' : '...'}
           </button>
         </div>
       </div>
@@ -426,11 +443,11 @@ function EndingModal({ game, ui }: { game: Game; ui: UISnapshot }) {
     <div className="tdv-modal-bg">
       <div className="tdv-modal tdv-ending" style={{ textAlign: 'center' }}>
         <div className="art">{good ? '🌸⛩🌸' : '🍂⛩🍂'}</div>
-        <h2 style={{ justifyContent: 'center' }}>{good ? 'The Shrine Restored!' : 'A Spring Passes'}</h2>
+        <h2 style={{ justifyContent: 'center' }}>{good ? '신단 복원 완료!' : '봄이 지나가고'}</h2>
         <div className="sub" style={{ fontSize: 12 }}>{ui.endingText}</div>
         <div className="tdv-row">
           <button className="tdv-btn gold" onClick={() => game.dismissEnding()}>
-            Continue (Endless Mode)
+            계속하기 (끝없는 모드)
           </button>
         </div>
       </div>
@@ -453,12 +470,13 @@ function InventoryModal({
 }) {
   const item = sel != null ? ui.inventory[sel] : null
   const hasItem = item && item.itemId
+  const nearbyName = ui.npcHearts.find((n) => n.id === ui.nearbyNpc)?.name
   return (
     <div className="tdv-modal-bg" onClick={onClose}>
       <div className="tdv-modal" onClick={(e) => e.stopPropagation()}>
-        <h2>🎒 Backpack</h2>
+        <h2>🎒 가방</h2>
         <div className="sub">
-          {ui.nearbyNpc ? `${ui.npcHearts.find((n) => n.id === ui.nearbyNpc)?.name} is nearby — you can gift.` : 'Tap an item to inspect, eat, ship, or gift.'}
+          {nearbyName ? `${nearbyName}이(가) 근처에 있어요 — 선물할 수 있어요.` : '아이템을 눌러 살펴보고, 먹고, 출하하거나 선물하세요.'}
         </div>
         <div className="tdv-invgrid">
           {ui.inventory.map((s) => (
@@ -480,31 +498,31 @@ function InventoryModal({
             <>
               <div className="nm">{item!.name}</div>
               <div className="ds">{item!.desc}</div>
-              <div style={{ fontSize: 11 }}>Sells for {item!.sellPrice}G each</div>
+              <div style={{ fontSize: 11 }}>개당 {item!.sellPrice}G에 판매</div>
               <div className="tdv-row" style={{ marginTop: 8, justifyContent: 'flex-start' }}>
                 {item!.usable && (
-                  <button className="tdv-btn sm" onClick={() => game.useItem(item!.itemId!)}>🍽 Eat</button>
+                  <button className="tdv-btn sm" onClick={() => game.useItem(item!.itemId!)}>🍽 먹기</button>
                 )}
                 {item!.sellPrice > 0 && (
-                  <button className="tdv-btn sm gold" onClick={() => game.shipItem(item!.index, false)}>📦 Ship 1</button>
+                  <button className="tdv-btn sm gold" onClick={() => game.shipItem(item!.index, false)}>📦 1개 출하</button>
                 )}
                 {item!.sellPrice > 0 && (
-                  <button className="tdv-btn sm gold" onClick={() => game.shipItem(item!.index, true)}>📦 Ship All</button>
+                  <button className="tdv-btn sm gold" onClick={() => game.shipItem(item!.index, true)}>📦 전부 출하</button>
                 )}
                 {item!.giftable && (
-                  <button className="tdv-btn sm" onClick={() => { game.giftItem(item!.index); onClose() }}>🎁 Gift</button>
+                  <button className="tdv-btn sm" onClick={() => { game.giftItem(item!.index); onClose() }}>🎁 선물</button>
                 )}
               </div>
             </>
           ) : (
-            <div className="ds">No item selected.</div>
+            <div className="ds">선택된 아이템이 없어요.</div>
           )}
         </div>
         <div className="tdv-row">
           {ui.recipes.herbalTea && (
-            <button className="tdv-btn" onClick={() => game.brewHerbalTea()}>🍵 Brew Herbal Tea (1 Daffodil)</button>
+            <button className="tdv-btn" onClick={() => game.brewHerbalTea()}>🍵 허브차 끓이기 (수선화 1개)</button>
           )}
-          <button className="tdv-btn ghost" onClick={onClose}>Close</button>
+          <button className="tdv-btn ghost" onClick={onClose}>닫기</button>
         </div>
       </div>
     </div>
