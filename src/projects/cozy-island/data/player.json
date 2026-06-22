@@ -1,0 +1,10 @@
+{
+  "startGold": 30,
+  "startGems": 0,
+  "startMaxStamina": 30,
+  "startCurrentStamina": 30,
+  "moveSpeed": 116,
+  "interactionRange": 34,
+  "inventorySlotCount": 24,
+  "stackLimit": 999
+}

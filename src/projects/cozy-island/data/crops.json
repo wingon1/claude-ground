@@ -1,0 +1,19 @@
+{
+  "crops": [
+    {
+      "id": "wheat", "name": "밀", "growthSeconds": 18, "harvestStaminaCost": 1,
+      "yield": { "itemId": "wheat", "min": 1, "max": 2 },
+      "unlockCondition": { "defaultUnlocked": true }
+    },
+    {
+      "id": "carrot", "name": "당근", "growthSeconds": 40, "harvestStaminaCost": 1,
+      "yield": { "itemId": "carrot", "min": 1, "max": 3 },
+      "unlockCondition": { "requiredTotalHarvestCount": 15, "requiredGold": 120 }
+    },
+    {
+      "id": "strawberry", "name": "딸기", "growthSeconds": 65, "harvestStaminaCost": 1,
+      "yield": { "itemId": "strawberry", "min": 1, "max": 2 },
+      "unlockCondition": { "requiredTotalHarvestCount": 45, "requiredGold": 400 }
+    }
+  ]
+}

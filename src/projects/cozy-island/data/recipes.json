@@ -1,0 +1,25 @@
+{
+  "recipes": [
+    {
+      "id": "bread", "name": "빵", "emoji": "🍞",
+      "inputs": [{ "itemId": "wheat", "amount": 3 }],
+      "outputs": [{ "itemId": "bread", "amount": 1 }],
+      "craftSeconds": 8,
+      "unlockCondition": { "defaultUnlocked": true }
+    },
+    {
+      "id": "pancake", "name": "팬케이크", "emoji": "🥞",
+      "inputs": [{ "itemId": "egg", "amount": 1 }, { "itemId": "wheat", "amount": 2 }],
+      "outputs": [{ "itemId": "pancake", "amount": 1 }],
+      "craftSeconds": 16,
+      "unlockCondition": { "requiredRecipeDiscoveredCount": 1 }
+    },
+    {
+      "id": "berry_jam", "name": "딸기잼", "emoji": "🍯",
+      "inputs": [{ "itemId": "strawberry", "amount": 3 }],
+      "outputs": [{ "itemId": "berry_jam", "amount": 1 }],
+      "craftSeconds": 22,
+      "unlockCondition": { "requiredItemSeen": "strawberry" }
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "startMax": 30,
+  "startCurrent": 30,
+  "hardCap": 300,
+  "defaultActionCost": 1,
+  "canSleepOnlyWhenStaminaIsZero": true,
+  "actions": {
+    "chopTree": 1,
+    "mineRock": 1,
+    "mineOre": 1,
+    "harvestCrop": 1,
+    "collectAnimalProduct": 1,
+    "clearBush": 1,
+    "dungeonAction": 1
+  },
+  "sleep": {
+    "enabled": true,
+    "buildingId": "tent",
+    "durationSeconds": 3.2,
+    "recoverType": "full",
+    "increaseMaxOnWakeUp": true,
+    "increaseAmount": 1
+  }
+}
