@@ -365,8 +365,8 @@ function bakeStore(): HTMLCanvasElement {
   g.fillStyle = '#6e4426'
   g.font = '6px monospace'
   g.fillText('STORE', w / 2 - 15, bodyY + 11)
-  // door
-  px(g, 8, h - 22, 14, 20, '#6e4426')
+  // door — centered on tile x=16 (sprite offset 32..48)
+  px(g, 33, h - 22, 14, 20, '#6e4426')
   // window
   px(g, w - 26, bodyY + 18, 16, 12, '#9fd0e8')
   px(g, w - 18, bodyY + 18, 1, 12, '#6e4426')
