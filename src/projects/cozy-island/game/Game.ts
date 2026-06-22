@@ -16,8 +16,9 @@ import { AudioManager } from '../audio/AudioManager'
 import { checkQuests } from '../systems/QuestSystem'
 import { clearSave, loadState, saveState } from '../systems/SaveSystem'
 import {
-  drawBuildSite, drawBush, drawChicken, drawCookingFire, drawCoop, drawCrop, drawFarmSign,
-  drawMine, drawOreNode, drawPlayer, drawRock, drawShell, drawShop, drawStorage, drawTent, drawTree,
+  drawApiary, drawBarn, drawBee, drawBuildSite, drawBush, drawChicken, drawCookingFire, drawCoop,
+  drawCow, drawCrop, drawFarmSign, drawMine, drawOreNode, drawPlayer, drawRock, drawShell, drawShop,
+  drawStorage, drawTent, drawTree,
 } from '../render/sprites'
 import { PAL } from '../render/palette'
 
@@ -25,7 +26,7 @@ type Mode = 'island' | 'mine'
 
 const BUILD_ICON: Record<string, string> = {
   tent: 'tent', shop_stall: 'shop', cooking_fire: 'fire', chicken_coop: 'chicken',
-  storage: 'box', farm_sign: 'sign', mine_entrance: 'pickaxe',
+  storage: 'box', farm_sign: 'sign', mine_entrance: 'pickaxe', barn: 'barn', apiary: 'beehive',
 }
 
 export type ContextAction = { id: string; label: string; enabled: boolean; reason?: string; icon: string }
@@ -650,10 +651,11 @@ export class Game {
   buyAnimal(animalId: string): boolean {
     const def = AnimalMap[animalId]
     if (!def) return false
-    if (!hasUnlock(this.state, def.id)) { this.bus.emit({ t: 'toast', text: `${def.name}장이 필요해요.`, kind: 'bad' }); this.audio.sfx('error'); return false }
+    const bldg = BuildingMap[def.requiredBuilding]
+    if (!this.state.buildings[def.requiredBuilding]?.built) { this.bus.emit({ t: 'toast', text: `${bldg?.name ?? '시설'}이(가) 필요해요.`, kind: 'bad' }); this.audio.sfx('error'); return false }
     const cap = (buildingEffect(this.state, def.requiredBuilding, 'animalCapacity') as number) || 0
     const count = this.state.animals.filter((a) => a.animalId === animalId).length
-    if (count >= cap) { this.bus.emit({ t: 'toast', text: '닭장이 가득 찼어요. 업그레이드 하세요.', kind: 'bad' }); return false }
+    if (count >= cap) { this.bus.emit({ t: 'toast', text: `${bldg?.name ?? '시설'}이(가) 가득 찼어요. 업그레이드 하세요.`, kind: 'bad' }); return false }
     if (this.state.gold < def.purchaseCost) { this.bus.emit({ t: 'toast', text: '골드가 부족해요.', kind: 'bad' }); this.audio.sfx('error'); return false }
     this.state.gold -= def.purchaseCost
     const b = BuildingMap[def.requiredBuilding]
@@ -911,7 +913,7 @@ export class Game {
       list.push({ y: pl.pos.y, fn: () => drawCrop(ctx, pl.pos.x, pl.pos.y, growth, pl.state === 'READY', ItemMap[crop.yield.itemId]?.color || '#e3c45a') })
     }
     for (const a of this.state.animals) {
-      list.push({ y: a.pos.y, fn: () => drawChicken(ctx, a.pos.x, a.pos.y, a.product > 0) })
+      list.push({ y: a.pos.y, fn: () => this.drawAnimal(ctx, a.animalId, a.pos.x, a.pos.y, a.product > 0) })
     }
     for (const n of this.nodes) {
       if (!n.alive) continue
@@ -967,8 +969,16 @@ export class Game {
       case 'storage': drawStorage(ctx, x, y); break
       case 'farm_sign': drawFarmSign(ctx, x, y); break
       case 'mine_entrance': drawMine(ctx, x, y); break
+      case 'barn': drawBarn(ctx, x, y); break
+      case 'apiary': drawApiary(ctx, x, y); break
       default: break
     }
+  }
+
+  private drawAnimal(ctx: CanvasRenderingContext2D, animalId: string, x: number, y: number, ready: boolean) {
+    if (animalId === 'cow') drawCow(ctx, x, y, ready)
+    else if (animalId === 'bee') drawBee(ctx, x, y, ready)
+    else drawChicken(ctx, x, y, ready)
   }
 
   private renderOverlays(ctx: CanvasRenderingContext2D, W: number, H: number) {
