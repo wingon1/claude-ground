@@ -149,16 +149,9 @@ export class Game {
     if (this.autosaveTimer >= 10) { this.autosaveTimer = 0; this.persist(false) }
   }
 
-  private activeZoneId = World.landZones[0].id
-
-  /** Zone-snap camera: frame the whole region the player is in; pan only when entering a new one. */
+  /** Follow the player (zoom keeps a whole region on screen; neighbours reveal as you near an edge). */
   private followCam(instant = false) {
-    if (this.mode === 'mine') { this.cam.centerOn(this.player.x, this.player.y, instant); return }
-    const z = World.landZones.find((z) =>
-      this.player.x >= z.x && this.player.x <= z.x + z.w && this.player.y >= z.y && this.player.y <= z.y + z.h)
-    if (z) this.activeZoneId = z.id
-    const az = World.landZones.find((z) => z.id === this.activeZoneId) || World.landZones[0]
-    this.cam.centerOn(az.x + az.w / 2, az.y + az.h / 2, instant)
+    this.cam.centerOn(this.player.x, this.player.y, instant)
   }
 
   private updateScene() {
