@@ -26,6 +26,7 @@ import {
   inBounds,
   LOCATIONS,
   setObstacle,
+  stampCookingFire,
   WORLD_H,
   WORLD_W,
 } from './world'
@@ -299,6 +300,7 @@ export class Game {
     this.applyFieldRows()
     this.applyAnimalFarms()
     this.applyFieldExpansions()
+    stampCookingFire(this.state.tiles)
     this.initRuntime()
     this.phase = 'playing'
     this.audio.resume()
@@ -489,6 +491,7 @@ export class Game {
 
   private tileSolid(t: Tile): boolean {
     if (t.metadata.animalFence === true) return false
+    if (t.metadata.cookingFireBlock === true) return true
     if (TERRAIN_SOLID[t.terrain]) return true
     if (t.obstacle && OBSTACLE_SOLID[t.obstacle]) return true
     return false
@@ -1528,6 +1531,7 @@ export class Game {
       t.hp = undefined
       delete t.metadata.animalFarm
       delete t.metadata.animalFence
+      delete t.metadata.animalFenceAxis
     }
     for (const farm of ANIMAL_FARMS) {
       for (let y = farm.y; y < farm.y + farm.h; y++) {
@@ -1541,6 +1545,7 @@ export class Game {
           t.hp = undefined
           delete t.metadata.animalFarm
           delete t.metadata.animalFence
+          delete t.metadata.animalFenceAxis
         }
       }
       if (!this.animalFarmOwned(farm)) continue
@@ -1554,8 +1559,13 @@ export class Game {
           const gate = x === gateX && y === gateY
           t.terrain = edge && !gate ? 'blocked' : 'grass'
           t.metadata.animalFarm = farm.id
-          if (edge && !gate) t.metadata.animalFence = true
-          else delete t.metadata.animalFence
+          if (edge && !gate) {
+            t.metadata.animalFence = true
+            t.metadata.animalFenceAxis = x === farm.x || x === farm.x + farm.w - 1 ? 'vertical' : 'horizontal'
+          } else {
+            delete t.metadata.animalFence
+            delete t.metadata.animalFenceAxis
+          }
         }
       }
     }
@@ -1757,6 +1767,14 @@ export class Game {
     else if (t.terrain === 'path') img = this.sprites.path
     else if (t.terrain === 'blocked') {
       this.ctx.drawImage(this.sprites.grass[(t.x * 7 + t.y * 13) % 3], dx, dy, sz, sz)
+      if (t.metadata.animalFenceAxis === 'vertical') {
+        this.ctx.save()
+        this.ctx.translate(dx + sz / 2, dy + sz / 2)
+        this.ctx.rotate(Math.PI / 2)
+        this.ctx.drawImage(this.sprites.fence, -sz / 2, -sz / 2, sz, sz)
+        this.ctx.restore()
+        return
+      }
       img = this.sprites.fence
     }
     else if (t.terrain === 'soil' || t.terrain === 'tilled') img = this.sprites.soil
@@ -1866,14 +1884,25 @@ export class Game {
     const ctx = this.ctx
     const x = this.wx(LOCATIONS.cookingFire.x * T)
     const y = this.wy(LOCATIONS.cookingFire.y * T)
-    ctx.fillStyle = '#6b6255'
-    ctx.fillRect(x + 3 * S, y + 11 * S, 10 * S, 3 * S)
+    ctx.fillStyle = 'rgba(0,0,0,0.16)'
+    ctx.fillRect(x + 4 * S, y + 26 * S, 24 * S, 4 * S)
+    ctx.fillStyle = '#5c5145'
+    ctx.fillRect(x + 4 * S, y + 14 * S, 24 * S, 13 * S)
+    ctx.fillStyle = '#817263'
+    ctx.fillRect(x + 2 * S, y + 12 * S, 28 * S, 4 * S)
+    ctx.fillRect(x + 5 * S, y + 24 * S, 22 * S, 4 * S)
+    ctx.fillStyle = '#3e352f'
+    ctx.fillRect(x + 8 * S, y + 16 * S, 16 * S, 8 * S)
     ctx.fillStyle = '#f0b23b'
-    ctx.fillRect(x + 6 * S, y + 5 * S, 5 * S, 7 * S)
+    ctx.fillRect(x + 12 * S, y + 14 * S, 8 * S, 10 * S)
     ctx.fillStyle = '#e05a36'
-    ctx.fillRect(x + 5 * S, y + 7 * S, 7 * S, 5 * S)
+    ctx.fillRect(x + 10 * S, y + 17 * S, 12 * S, 7 * S)
     ctx.fillStyle = '#fff0a6'
-    ctx.fillRect(x + 8 * S, y + 6 * S, 2 * S, 4 * S)
+    ctx.fillRect(x + 15 * S, y + 15 * S, 3 * S, 6 * S)
+    ctx.fillStyle = '#49362b'
+    ctx.fillRect(x + 6 * S, y + 5 * S, 20 * S, 3 * S)
+    ctx.fillRect(x + 8 * S, y + 7 * S, 3 * S, 6 * S)
+    ctx.fillRect(x + 21 * S, y + 7 * S, 3 * S, 6 * S)
   }
 
   private drawObstacle(t: Tile, S: number) {
@@ -2259,6 +2288,9 @@ export class Game {
       const out = getItem(recipe.output.itemId)
       const inputs = costViews(recipe.inputs)
       const unlocked = this.flagEnabled(recipe.unlockFlag)
+      const lockText = recipe.unlockFlag?.startsWith('unlock:crop:')
+        ? '상점에서 재배권 필요'
+        : '목장 허가서 필요'
       const maxCookQty = this.recipeMaxCookQty(recipe)
       return {
         id: recipe.id,
@@ -2275,7 +2307,7 @@ export class Game {
           maxCookQty > 0,
         maxCookQty,
         unlocked,
-        lockText: unlocked ? null : '목장 허가서 필요',
+        lockText: unlocked ? null : lockText,
         craftSeconds: recipe.craftSeconds,
         difficulty: recipe.difficulty,
         sellPrice: out?.sellPrice ?? 0,

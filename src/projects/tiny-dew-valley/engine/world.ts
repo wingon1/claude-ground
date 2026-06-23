@@ -100,6 +100,33 @@ export function stampStore(tiles: Tile[]) {
   }
 }
 
+export function stampCookingFire(tiles: Tile[]) {
+  for (const t of tiles) {
+    if (t.metadata.cookingFire === true || t.metadata.cookingFireBlock === true) {
+      t.terrain = 'grass'
+      t.obstacle = null
+      t.cropId = null
+      delete t.metadata.cookingFire
+      delete t.metadata.cookingFireBlock
+    }
+  }
+  rect(
+    tiles,
+    LOCATIONS.cookingFire.x,
+    LOCATIONS.cookingFire.y,
+    LOCATIONS.cookingFire.x + 1,
+    LOCATIONS.cookingFire.y + 1,
+    (t) => {
+      t.terrain = 'grass'
+      clearObstacle(t)
+      t.cropId = null
+      t.growthStage = 0
+      t.metadata.cookingFire = true
+      t.metadata.cookingFireBlock = true
+    },
+  )
+}
+
 function stampFields(tiles: Tile[]) {
   for (const plot of FIELD_PLOTS) {
     for (let y = plot.y; y < plot.y + FIELD_SIZE; y++) {
@@ -143,8 +170,7 @@ export function generateWorld(): Tile[] {
   // ---- General Store (beside the farmhouse) ----
   stampStore(tiles)
 
-  tiles[idx(LOCATIONS.cookingFire.x, LOCATIONS.cookingFire.y)].terrain = 'grass'
-  tiles[idx(LOCATIONS.cookingFire.x, LOCATIONS.cookingFire.y)].metadata.cookingFire = true
+  stampCookingFire(tiles)
 
   // ---- Western woods: trees, stumps, daffodils, weeds ----
   const w = LOCATIONS.woods

@@ -481,6 +481,50 @@ export function bakeItemIcon(sprite: string, color?: string): HTMLCanvasElement 
       px(g, 5, 8, 6, 1, '#f2d08a')
       px(g, 5, 10, 6, 1, '#9a6428')
       break
+    case 'strawberry_jam':
+      px(g, 4, 5, 8, 9, '#d8e2f0')
+      px(g, 5, 7, 6, 5, '#d93f5f')
+      px(g, 4, 4, 8, 2, '#e8c75a')
+      dot(g, 7, 8, '#ffb0c0')
+      dot(g, 9, 10, '#ffb0c0')
+      break
+    case 'strawberry_milk':
+      px(g, 5, 4, 6, 9, '#f4c6d5')
+      px(g, 5, 4, 6, 2, '#d93f5f')
+      px(g, 6, 7, 4, 3, '#ffd8e4')
+      dot(g, 8, 9, '#ffffff')
+      break
+    case 'strawberry_jam_toast':
+      px(g, 3, 6, 10, 7, '#c78335')
+      px(g, 4, 7, 8, 4, '#f0c070')
+      px(g, 5, 8, 6, 3, '#d93f5f')
+      px(g, 6, 7, 4, 1, '#f5d35f')
+      break
+    case 'parsnip_soup':
+      px(g, 3, 7, 10, 6, '#d8e2f0')
+      px(g, 4, 6, 8, 2, '#ffffff')
+      px(g, 5, 8, 6, 3, '#efd77a')
+      dot(g, 7, 9, '#7bbf6a')
+      break
+    case 'cream_stew':
+      px(g, 3, 7, 10, 6, '#d8e2f0')
+      px(g, 4, 6, 8, 2, '#ffffff')
+      px(g, 5, 8, 6, 3, '#f1e0ad')
+      dot(g, 6, 9, '#efd77a')
+      dot(g, 10, 9, '#f0c34a')
+      break
+    case 'pumpkin_soup':
+      px(g, 3, 7, 10, 6, '#d8e2f0')
+      px(g, 4, 6, 8, 2, '#ffffff')
+      px(g, 5, 8, 6, 3, '#e8912f')
+      dot(g, 8, 8, '#fff0a6')
+      break
+    case 'pumpkin_pie':
+      px(g, 3, 6, 10, 7, '#b97832')
+      px(g, 4, 5, 8, 2, '#e4b25f')
+      px(g, 5, 7, 6, 4, '#e8912f')
+      px(g, 6, 8, 4, 1, '#fff0a6')
+      break
     case 'permit_chicken':
     case 'permit_dairy':
     case 'permit_pig':

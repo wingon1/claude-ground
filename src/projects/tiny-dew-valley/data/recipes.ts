@@ -1,5 +1,5 @@
 import type { RecipeDef } from '../types'
-import { CHICKEN_UNLOCK_FLAG, DAIRY_UNLOCK_FLAG, PIG_UNLOCK_FLAG } from './unlocks'
+import { CHICKEN_UNLOCK_FLAG, DAIRY_UNLOCK_FLAG, PIG_UNLOCK_FLAG, cropUnlockFlag } from './unlocks'
 
 export const RECIPES: RecipeDef[] = [
   {
@@ -34,6 +34,19 @@ export const RECIPES: RecipeDef[] = [
     difficulty: 2,
   },
   {
+    id: 'parsnip_soup',
+    name: '파스닙 수프 끓이기',
+    description: '파스닙을 끓여 초반에 팔기 좋은 채소 수프를 만듭니다.',
+    inputs: [
+      { itemId: 'crop_parsnip_normal', qty: 2 },
+      { itemId: 'fiber', qty: 1 },
+    ],
+    output: { itemId: 'parsnip_soup', qty: 1 },
+    unlockFlag: cropUnlockFlag('parsnip'),
+    craftSeconds: 18,
+    difficulty: 2,
+  },
+  {
     id: 'butter',
     name: '버터 만들기',
     description: '우유를 저어 버터를 만듭니다.',
@@ -54,6 +67,33 @@ export const RECIPES: RecipeDef[] = [
     difficulty: 2,
   },
   {
+    id: 'strawberry_milk',
+    name: '딸기우유 만들기',
+    description: '딸기와 우유를 섞어 목장 확장 뒤 바로 만들 수 있는 음료를 만듭니다.',
+    inputs: [
+      { itemId: 'crop_strawberry_normal', qty: 1 },
+      { itemId: 'milk', qty: 1 },
+    ],
+    output: { itemId: 'strawberry_milk', qty: 1 },
+    unlockFlag: cropUnlockFlag('strawberry'),
+    craftSeconds: 22,
+    difficulty: 2,
+  },
+  {
+    id: 'cream_stew',
+    name: '크림 스튜 끓이기',
+    description: '파스닙, 우유, 치즈를 오래 끓여 든든한 중급 스튜를 만듭니다.',
+    inputs: [
+      { itemId: 'crop_parsnip_normal', qty: 2 },
+      { itemId: 'milk', qty: 1 },
+      { itemId: 'cheese', qty: 1 },
+    ],
+    output: { itemId: 'cream_stew', qty: 1 },
+    unlockFlag: cropUnlockFlag('parsnip'),
+    craftSeconds: 34,
+    difficulty: 3,
+  },
+  {
     id: 'pastry',
     name: '페스츄리 굽기',
     description: '밀가루와 버터를 조합해 고급 요리를 만듭니다.',
@@ -65,6 +105,58 @@ export const RECIPES: RecipeDef[] = [
     unlockFlag: DAIRY_UNLOCK_FLAG,
     craftSeconds: 42,
     difficulty: 4,
+  },
+  {
+    id: 'strawberry_jam',
+    name: '딸기쨈 졸이기',
+    description: '딸기를 오래 졸여 빵과 유제품 체인에 쓰는 달콤한 쨈을 만듭니다.',
+    inputs: [{ itemId: 'crop_strawberry_normal', qty: 2 }],
+    output: { itemId: 'strawberry_jam', qty: 1 },
+    unlockFlag: cropUnlockFlag('strawberry'),
+    craftSeconds: 30,
+    difficulty: 3,
+  },
+  {
+    id: 'strawberry_jam_toast',
+    name: '딸기쨈 토스트 굽기',
+    description: '빵, 버터, 딸기쨈을 조합해 딸기 밭과 젖소 농장을 잇는 고급 토스트를 만듭니다.',
+    inputs: [
+      { itemId: 'bread', qty: 1 },
+      { itemId: 'butter', qty: 1 },
+      { itemId: 'strawberry_jam', qty: 1 },
+    ],
+    output: { itemId: 'strawberry_jam_toast', qty: 1 },
+    unlockFlag: cropUnlockFlag('strawberry'),
+    craftSeconds: 48,
+    difficulty: 4,
+  },
+  {
+    id: 'pumpkin_soup',
+    name: '호박 수프 끓이기',
+    description: '호박과 우유를 끓여 후반 밭에서 높은 가격을 노리는 수프를 만듭니다.',
+    inputs: [
+      { itemId: 'crop_golden_pumpkin_normal', qty: 1 },
+      { itemId: 'milk', qty: 1 },
+    ],
+    output: { itemId: 'pumpkin_soup', qty: 1 },
+    unlockFlag: cropUnlockFlag('golden_pumpkin'),
+    craftSeconds: 58,
+    difficulty: 5,
+  },
+  {
+    id: 'pumpkin_pie',
+    name: '호박 파이 굽기',
+    description: '호박, 밀가루, 버터, 달걀을 써서 긴 조리 시간이 필요한 최상급 베이킹 요리를 만듭니다.',
+    inputs: [
+      { itemId: 'crop_golden_pumpkin_normal', qty: 1 },
+      { itemId: 'flour', qty: 1 },
+      { itemId: 'butter', qty: 1 },
+      { itemId: 'egg', qty: 1 },
+    ],
+    output: { itemId: 'pumpkin_pie', qty: 1 },
+    unlockFlag: cropUnlockFlag('golden_pumpkin'),
+    craftSeconds: 76,
+    difficulty: 5,
   },
   {
     id: 'bacon_toast',
