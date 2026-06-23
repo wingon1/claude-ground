@@ -405,18 +405,18 @@ export function drawOreNode(ctx: CanvasRenderingContext2D, x: number, y: number)
 
 // buildings
 export function drawTent(ctx: CanvasRenderingContext2D, x: number, y: number, level: number) {
-  shadow(ctx, x, y, 50)
+  shadow(ctx, x, y, 66)
   const pal = level >= 3 ? { d: '#e6a35a', D: '#c8823c' } : level >= 2 ? { d: '#e4b06a', D: '#c2864a' } : undefined
-  drawGrid(ctx, TENT, x, y, PXB, 'foot', pal)
+  drawGrid(ctx, TENT, x, y, 5, 'foot', pal)
 }
 export function drawShop(ctx: CanvasRenderingContext2D, x: number, y: number) {
-  shadow(ctx, x, y, 48)
-  drawGrid(ctx, ICONS.shop, x, y, 5, 'foot')
+  shadow(ctx, x, y, 58)
+  drawGrid(ctx, ICONS.shop, x, y, 7, 'foot')
 }
 export function drawCookingFire(ctx: CanvasRenderingContext2D, x: number, y: number, _level: number) {
   void _level
-  shadow(ctx, x, y, 40)
-  drawGrid(ctx, COOKFIRE, x, y, PXB, 'foot')
+  shadow(ctx, x, y, 54)
+  drawGrid(ctx, COOKFIRE, x, y, 5, 'foot')
 }
 export function drawCoop(ctx: CanvasRenderingContext2D, x: number, y: number) {
   shadow(ctx, x, y, 58)

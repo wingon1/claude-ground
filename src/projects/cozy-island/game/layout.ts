@@ -114,10 +114,11 @@ export function buildLayout(): Layout {
   for (const pen of pens) {
     const c = center(pen.rect)
     if (pen.content === 'home') {
-      buildingPos['tent'] = { x: c.x - 48, y: c.y - 18 }
-      buildingPos['shop_stall'] = { x: c.x + 48, y: c.y - 18 }
-      buildingPos['cooking_fire'] = { x: c.x - 48, y: c.y + 42 }
-      buildingPos['storage'] = { x: c.x + 48, y: c.y + 42 }
+      // tent centered; shop on the left, cooking fire on the right; storage in front
+      buildingPos['tent'] = { x: c.x, y: c.y - 8 }
+      buildingPos['shop_stall'] = { x: c.x - 64, y: c.y - 2 }
+      buildingPos['cooking_fire'] = { x: c.x + 64, y: c.y - 2 }
+      buildingPos['storage'] = { x: c.x, y: c.y + 56 }
     } else if (pen.building) {
       buildingPos[pen.building] = { x: c.x, y: c.y - 24 }
     }
