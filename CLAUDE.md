@@ -19,6 +19,7 @@
 
 ```
 src/projects/<id>/        ← React(TSX) 작업물
+src/projects/<id>/docs    ← 기획서 및 초기 프롬프트
 public/projects/<id>/     ← 정적(HTML/JS) 작업물
 src/projects/registry.ts  ← 갤러리 카드 등록 파일 (공통 인프라)
 plan/<id>/PLAN.md         ← plan
