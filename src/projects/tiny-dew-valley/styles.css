@@ -63,10 +63,12 @@
 }
 .tdv-clock .big {
   font-size: 16px;
+  display: none;
 }
 .tdv-period {
   font-size: 10px;
   opacity: 0.75;
+  display: none;
 }
 .tdv-gold {
   color: #a6791f;

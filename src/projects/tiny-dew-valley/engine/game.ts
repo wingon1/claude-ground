@@ -462,7 +462,7 @@ export class Game {
     p.moving = true
     if (Math.abs(vx) > Math.abs(vy)) p.dir = vx > 0 ? 'right' : 'left'
     else p.dir = vy > 0 ? 'down' : 'up'
-    const speed = (p.exhausted ? WALK_SPEED * 0.5 : WALK_SPEED) * dt
+    const speed = WALK_SPEED * dt
     const nx = p.x + vx * speed
     const ny = p.y + vy * speed
     let moved = false
