@@ -46,6 +46,8 @@ function dot(g: CanvasRenderingContext2D, x: number, y: number, color: string) {
 const HUMAN_W = 16
 const HUMAN_H = 22
 
+const OUTLINE = '#2e2630'
+
 function drawHumanoid(
   g: CanvasRenderingContext2D,
   dir: Direction,
@@ -53,63 +55,86 @@ function drawHumanoid(
   pal: Pal,
 ) {
   const legSwing = frame === 1 ? 1 : frame === 2 ? -1 : 0
-  // Shadow
-  px(g, 4, 21, 8, 1, 'rgba(0,0,0,0.18)')
+  // Soft layered ground shadow.
+  px(g, 4, 21, 8, 1, 'rgba(0,0,0,0.22)')
+  px(g, 5, 20, 6, 1, 'rgba(0,0,0,0.12)')
 
-  // Legs
-  const legY = 17
-  px(g, 5, legY, 2, 4 + (legSwing > 0 ? 0 : -1), pal.bottom)
-  px(g, 9, legY, 2, 4 + (legSwing < 0 ? 0 : -1), pal.bottom)
-  px(g, 5, 20, 2, 1, '#3a2a1a')
-  px(g, 9, 20, 2, 1, '#3a2a1a')
+  // Legs with boots and a dark outline base.
+  const legY = 16
+  const lL = 4 + (legSwing > 0 ? 0 : -1)
+  const rL = 4 + (legSwing < 0 ? 0 : -1)
+  px(g, 5, legY, 2, lL, pal.bottom)
+  px(g, 9, legY, 2, rL, pal.bottom)
+  px(g, 5, legY, 1, lL, 'rgba(255,255,255,0.12)') // leg highlight
+  px(g, 9, legY, 1, rL, 'rgba(255,255,255,0.12)')
+  px(g, 5, legY + lL, 2, 1, '#3a2a1a') // boots
+  px(g, 9, legY + rL, 2, 1, '#3a2a1a')
 
-  // Torso
-  px(g, 4, 11, 8, 7, pal.top)
-  px(g, 4, 15, 8, 3, pal.topShade)
-  px(g, 4, 11, 8, 1, pal.accent)
-  // Arms
-  px(g, 3, 12, 2, 4, pal.top)
-  px(g, 11, 12, 2, 4, pal.top)
+  // Torso: base, lower shade band, collar accent, side shading + outline.
+  px(g, 4, 10, 8, 7, pal.top)
+  px(g, 4, 14, 8, 3, pal.topShade)
+  px(g, 4, 10, 8, 1, pal.accent)
+  px(g, 11, 11, 1, 6, 'rgba(0,0,0,0.18)') // right-side shade
+  px(g, 4, 10, 1, 7, 'rgba(255,255,255,0.10)') // left-side light
+  px(g, 3, 16, 10, 1, OUTLINE) // belt/hem outline
+
+  // Arms + hands.
+  px(g, 3, 11, 2, 5, pal.top)
+  px(g, 11, 11, 2, 5, pal.top)
+  px(g, 11, 11, 1, 5, pal.topShade)
   px(g, 3, 15, 2, 1, pal.skin)
   px(g, 11, 15, 2, 1, pal.skin)
 
-  // Head
-  px(g, 4, 4, 8, 8, pal.skin)
+  // Head with cheek shading.
+  px(g, 4, 4, 8, 7, pal.skin)
   px(g, 4, 10, 8, 1, pal.skinShade)
+  px(g, 11, 5, 1, 5, pal.skinShade)
+  px(g, 4, 5, 1, 5, 'rgba(255,255,255,0.10)')
 
-  // Hair / hood
+  // Hair / hood.
   if (pal.hood) {
-    px(g, 3, 3, 10, 6, pal.hair)
-    px(g, 4, 6, 8, 4, pal.skin) // face opening
+    px(g, 3, 2, 10, 7, pal.hair)
+    px(g, 3, 2, 10, 1, lighten(pal.hair))
+    px(g, 4, 5, 8, 5, pal.skin) // face opening
     px(g, 4, 10, 8, 1, pal.skinShade)
+    px(g, 11, 6, 1, 4, pal.skinShade)
   } else {
-    px(g, 4, 3, 8, 3, pal.hair)
-    px(g, 3, 4, 1, 3, pal.hair)
-    px(g, 12, 4, 1, 3, pal.hair)
+    px(g, 4, 2, 8, 4, pal.hair)
+    px(g, 3, 3, 1, 4, pal.hair)
+    px(g, 12, 3, 1, 4, pal.hair)
+    px(g, 4, 2, 8, 1, lighten(pal.hair)) // hair sheen
   }
 
-  // Hat (straw)
+  // Hat (straw) with brim shadow.
   if (pal.hat) {
     px(g, 2, 4, 12, 2, pal.hat)
-    px(g, 4, 2, 8, 2, pal.hat)
+    px(g, 4, 1, 8, 3, pal.hat)
+    px(g, 4, 1, 8, 1, lighten(pal.hat))
     px(g, 2, 5, 12, 1, pal.hatShade ?? pal.hat)
+    px(g, 4, 6, 8, 1, 'rgba(0,0,0,0.18)') // brim shadow on face
   }
 
-  // Face by direction
-  const eye = '#2a2230'
+  // Face by direction.
+  const eye = OUTLINE
   if (dir === 'down') {
     px(g, 6, 7, 1, 2, eye)
     px(g, 9, 7, 1, 2, eye)
-    px(g, 7, 9, 2, 1, pal.skinShade)
+    dot(g, 6, 7, lighten(eye))
+    dot(g, 9, 7, lighten(eye))
+    px(g, 7, 9, 2, 1, pal.skinShade) // mouth/nose
+    dot(g, 5, 8, '#e8a890') // cheek blush
+    dot(g, 10, 8, '#e8a890')
   } else if (dir === 'up') {
-    // back of head — no eyes
-    px(g, 5, 6, 6, 2, pal.hair)
+    px(g, 5, 5, 6, 3, pal.hair) // back of head
+    px(g, 5, 5, 6, 1, lighten(pal.hair))
   } else if (dir === 'left') {
     px(g, 5, 7, 1, 2, eye)
     px(g, 4, 8, 1, 1, pal.skinShade)
+    dot(g, 5, 8, '#e8a890')
   } else {
     px(g, 10, 7, 1, 2, eye)
     px(g, 11, 8, 1, 1, pal.skinShade)
+    dot(g, 10, 8, '#e8a890')
   }
 }
 
@@ -189,10 +214,20 @@ function bakePath(): HTMLCanvasElement {
 function bakeFence(): HTMLCanvasElement {
   const c = cv(T, T)
   const g = ctxOf(c)
-  px(g, 0, 5, T, 3, '#8a6a40')
-  px(g, 2, 2, 2, 12, '#6e5230')
-  px(g, 11, 2, 2, 12, '#6e5230')
-  px(g, 0, 5, T, 1, '#a07b48')
+  // Two horizontal rails spanning the full tile so runs join seamlessly, plus
+  // two capped posts. Reads correctly when rotated 90° for vertical runs.
+  for (const ry of [5, 10]) {
+    px(g, 0, ry, T, 2, '#9a6a3a') // rail
+    px(g, 0, ry, T, 1, '#b3824a') // top highlight
+    px(g, 0, ry + 2, T, 1, 'rgba(60,40,24,0.4)') // underside shadow
+  }
+  for (const pxn of [2, 11]) {
+    px(g, pxn, 2, 3, 13, '#7a5230') // post
+    px(g, pxn, 2, 1, 13, '#92663c') // lit edge
+    px(g, pxn + 2, 2, 1, 13, 'rgba(50,34,20,0.5)') // shaded edge
+    px(g, pxn - 1, 2, 5, 1, '#a07b48') // cap
+    dot(g, pxn + 1, 7, '#6a4a2a') // grain
+  }
   return c
 }
 
@@ -283,23 +318,37 @@ function bakeCrop(color: string, stages: number): HTMLCanvasElement[] {
     const g = ctxOf(c)
     const t = s / (stages - 1)
     if (s === 0) {
-      // seed mound
-      px(g, 6, 11, 4, 2, '#5a3a22')
-      dot(g, 7, 10, '#3a8a3a')
+      // seed mound with a sprouting tip
+      px(g, 5, 11, 6, 2, '#6e4426')
+      px(g, 5, 11, 6, 1, '#8a5a32')
+      px(g, 7, 9, 1, 2, '#3a8a3a')
+      dot(g, 8, 9, '#56a84a')
     } else if (t < 0.7) {
-      const h = Math.round(2 + t * 8)
+      // leafy sprout with highlighted blades
+      const h = Math.round(3 + t * 7)
       px(g, 7, 13 - h, 2, h, '#3a8a3a')
-      px(g, 5, 13 - h, 2, 1, '#56a84a')
-      px(g, 9, 13 - h + 1, 2, 1, '#56a84a')
+      px(g, 8, 13 - h, 1, h, '#56a84a') // stem light
+      px(g, 4, 13 - h + 1, 3, 2, '#3a8a3a') // left leaf
+      px(g, 4, 13 - h + 1, 2, 1, '#6fc25a')
+      px(g, 9, 13 - h + 2, 3, 2, '#3a8a3a') // right leaf
+      px(g, 10, 13 - h + 2, 2, 1, '#6fc25a')
+      px(g, 6, 12, 4, 1, 'rgba(0,0,0,0.12)')
     } else {
-      // mature with fruit
-      px(g, 7, 5, 2, 8, '#2f7d3a')
-      px(g, 4, 6, 3, 1, '#3a8a3a')
-      px(g, 9, 7, 3, 1, '#3a8a3a')
-      px(g, 5, 8, 6, 5, color)
-      px(g, 5, 8, 6, 2, lighten(color))
-      px(g, 6, 12, 4, 1, darken(color))
-      dot(g, 7, 9, '#ffffff')
+      // mature bush with shaded fruit + leaves
+      px(g, 7, 4, 2, 9, '#2f7d3a')
+      px(g, 3, 5, 4, 2, '#3a8a3a') // leaf cluster L
+      px(g, 3, 5, 2, 1, '#6fc25a')
+      px(g, 9, 6, 4, 2, '#3a8a3a') // leaf cluster R
+      px(g, 11, 6, 2, 1, '#6fc25a')
+      // two fruit
+      px(g, 4, 8, 5, 5, color)
+      px(g, 4, 8, 5, 2, lighten(color))
+      px(g, 5, 12, 3, 1, darken(color))
+      dot(g, 5, 9, '#ffffff')
+      px(g, 9, 9, 4, 4, color)
+      px(g, 9, 9, 4, 1, lighten(color))
+      px(g, 9, 12, 3, 1, darken(color))
+      dot(g, 10, 10, '#ffffff')
     }
     out.push(c)
   }
@@ -321,54 +370,101 @@ function shade(hex: string, amt: number): string {
 }
 
 // ---------------- Buildings ----------------
+// NOTE: This is now the player's home TENT (A-frame), ~1.5× smaller than the
+// old farmhouse. Still stored under Sprites.farmhouse to avoid a wide rename.
 function bakeFarmhouse(): HTMLCanvasElement {
-  const w = 5 * T
-  const h = 3 * T + 18
+  const w = 3 * T // 48
+  const h = 3 * T // 48
   const c = cv(w, h)
   const g = ctxOf(c)
-  const bodyY = 22
-  px(g, 4, bodyY, w - 8, h - bodyY - 2, '#d8b07a')
-  px(g, 4, bodyY, w - 8, 4, '#e8c590')
-  // roof
-  px(g, 0, 6, w, 18, '#b14b3a')
-  px(g, 0, 6, w, 4, '#c75c48')
-  for (let i = 6; i < w; i += 8) px(g, i, 6, 1, 18, '#9c3e30')
-  // chimney
-  px(g, w - 22, 0, 8, 10, '#8a6a48')
-  // door
-  px(g, w / 2 - 7, h - 22, 14, 20, '#6e4426')
-  px(g, w / 2 - 7, h - 22, 14, 2, '#8a5a32')
-  dot(g, w / 2 + 4, h - 12, '#ffd65c')
-  // windows
-  px(g, 12, bodyY + 8, 10, 9, '#9fd0e8')
-  px(g, w - 22, bodyY + 8, 10, 9, '#9fd0e8')
-  px(g, 12, bodyY + 12, 10, 1, '#6e4426')
-  px(g, 16, bodyY + 8, 1, 9, '#6e4426')
+  const apexX = 24
+  const apexY = 8
+  const baseY = 42
+  // Ground shadow.
+  px(g, 6, baseY + 1, 36, 3, 'rgba(0,0,0,0.18)')
+  // A-frame fabric — left panel lit, right panel shaded, drawn as scanlines.
+  for (let y = apexY; y <= baseY; y++) {
+    const t = (y - apexY) / (baseY - apexY)
+    const half = Math.round(2 + t * 20)
+    px(g, apexX - half, y, half, 1, '#dd8f5e') // lit side
+    px(g, apexX, y, half, 1, '#c2723f') // shade side
+  }
+  // Ridge highlight + base trim.
+  for (let y = apexY; y <= apexY + 6; y++) {
+    const t = (y - apexY) / (baseY - apexY)
+    const half = Math.round(2 + t * 20)
+    px(g, apexX - half, y, half * 2, 1, '#eaa873')
+  }
+  px(g, apexX - 21, baseY - 1, 42, 2, '#9c542c') // hem
+  // Fabric seams.
+  for (const sx of [-12, 12]) {
+    for (let y = apexY + 6; y <= baseY; y++) {
+      const t = (y - apexY) / (baseY - apexY)
+      if (Math.abs(sx) < 2 + t * 20) px(g, apexX + Math.round(sx * t) , y, 1, 1, 'rgba(120,70,40,0.4)')
+    }
+  }
+  // Door flap — dark triangular opening, with tied-back flaps either side.
+  const dTop = 22
+  for (let y = dTop; y <= baseY - 1; y++) {
+    const t = (y - dTop) / (baseY - dTop)
+    const half = Math.round(1 + t * 7)
+    px(g, apexX - half, y, half * 2, 1, '#3a2a30')
+  }
+  px(g, apexX - 8, dTop, 3, 6, '#b06b3c') // left tied flap
+  px(g, apexX + 5, dTop, 3, 6, '#b06b3c') // right tied flap
+  dot(g, apexX - 7, dTop + 5, '#e8c08a') // tie knots
+  dot(g, apexX + 7, dTop + 5, '#e8c08a')
+  // Ridge pole + pennant flag.
+  px(g, apexX - 1, 2, 2, 8, '#6e4426')
+  px(g, apexX + 1, 2, 8, 4, '#e0653f')
+  px(g, apexX + 1, 2, 8, 1, '#f0855f')
+  // Guy ropes + pegs.
+  for (let i = 0; i < 6; i++) {
+    dot(g, apexX - 14 - i, apexY + 8 + i * 4, 'rgba(90,70,50,0.7)')
+    dot(g, apexX + 14 + i, apexY + 8 + i * 4, 'rgba(90,70,50,0.7)')
+  }
+  px(g, 3, baseY, 2, 2, '#5a4028')
+  px(g, w - 5, baseY, 2, 2, '#5a4028')
   return c
 }
 
+// Open-air market stall: striped awning roof, side posts, an open central
+// bay (player walks straight in to the counter), goods crates and a sign.
 function bakeStore(): HTMLCanvasElement {
-  const w = 6 * T
-  const h = 3 * T + 16
+  const w = 6 * T // 96
+  const h = 3 * T + 16 // 64
   const c = cv(w, h)
   const g = ctxOf(c)
-  const bodyY = 20
-  px(g, 2, bodyY, w - 4, h - bodyY - 2, '#caa9d6')
-  px(g, 2, bodyY, w - 4, 4, '#dcc0e8')
-  // roof
-  px(g, 0, 4, w, 18, '#5c8a5a')
-  px(g, 0, 4, w, 4, '#6fa06a')
-  // sign
-  px(g, w / 2 - 22, bodyY + 4, 44, 10, '#6e4426')
-  px(g, w / 2 - 20, bodyY + 6, 40, 6, '#f0d89a')
+  // Support posts (left + right), drawn first so the roof caps them.
+  for (const pxn of [4, w - 10]) {
+    px(g, pxn, 16, 6, h - 18, '#8a5a32')
+    px(g, pxn, 16, 2, h - 18, '#a8743f') // lit edge
+    px(g, pxn + 4, 16, 2, h - 18, 'rgba(50,34,20,0.4)') // shade edge
+  }
+  // Back counter spanning the bay.
+  px(g, 10, 44, w - 20, 10, '#9a6a3a')
+  px(g, 10, 44, w - 20, 2, '#b3824a')
+  px(g, 10, 52, w - 20, 2, 'rgba(50,34,20,0.4)')
+  for (let i = 14; i < w - 10; i += 6) px(g, i, 46, 1, 6, 'rgba(60,40,24,0.25)')
+  // Goods on the counter: crates + a barrel.
+  px(g, 16, 36, 12, 9, '#b07a44'); px(g, 16, 36, 12, 2, '#caa066')
+  px(g, 18, 38, 3, 3, '#e2c47a'); px(g, 23, 38, 3, 3, '#e2c47a')
+  px(g, w - 30, 35, 11, 10, '#9a6a3a'); px(g, w - 30, 35, 11, 2, '#b3824a')
+  px(g, w - 28, 33, 7, 3, '#6fae54'); dot(g, w - 26, 34, '#8fcf6a') // greens
+  // Striped awning roof.
+  px(g, 0, 4, w, 16, '#b14b3a')
+  px(g, 0, 4, w, 3, '#c75c48') // top highlight
+  for (let i = 0; i < w; i += 12) px(g, i, 4, 6, 16, '#f0e2cc') // cream stripes
+  px(g, 0, 16, w, 2, 'rgba(60,30,24,0.35)') // roof underside shadow
+  // Scalloped valance.
+  for (let i = 0; i < w; i += 8) px(g, i + 1, 18, 5, 3, '#c75c48')
+  // Hanging sign board "STORE".
+  px(g, w / 2 - 24, 22, 48, 12, '#6e4426')
+  px(g, w / 2 - 22, 24, 44, 8, '#f0d89a')
+  px(g, w / 2 - 4, 20, 2, 2, '#5a3a22') // hanger
   g.fillStyle = '#6e4426'
-  g.font = '6px monospace'
-  g.fillText('STORE', w / 2 - 15, bodyY + 11)
-  // door — centered on tile x=16 (sprite offset 32..48)
-  px(g, 33, h - 22, 14, 20, '#6e4426')
-  // window
-  px(g, w - 26, bodyY + 18, 16, 12, '#9fd0e8')
-  px(g, w - 18, bodyY + 18, 1, 12, '#6e4426')
+  g.font = '7px monospace'
+  g.fillText('STORE', w / 2 - 16, 31)
   return c
 }
 
