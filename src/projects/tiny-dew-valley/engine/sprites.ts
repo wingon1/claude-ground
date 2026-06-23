@@ -258,20 +258,25 @@ function bakeFenceSmall(): HTMLCanvasElement {
 function bakeFenceCorner(): HTMLCanvasElement {
   const c = cv(T, T)
   const g = ctxOf(c)
-  // Top rail running right from the junction.
-  px(g, 5, 4, T - 5, 2, '#9a6a3a')
-  px(g, 5, 4, T - 5, 1, '#b3824a')
-  px(g, 5, 6, T - 5, 1, 'rgba(60,40,24,0.4)')
-  // Left rail running down from the junction.
-  px(g, 4, 5, 2, T - 5, '#9a6a3a')
-  px(g, 4, 5, 1, T - 5, '#b3824a')
-  px(g, 6, 5, 1, T - 5, 'rgba(60,40,24,0.4)')
-  // Single corner post — same slim profile as the straight piece's posts,
-  // sitting at the junction without poking out past the rails.
-  px(g, 3, 1, 3, 8, '#7a5230')
-  px(g, 3, 1, 1, 8, '#92663c') // lit edge
-  px(g, 5, 1, 1, 8, 'rgba(50,34,20,0.5)') // shaded edge
-  px(g, 2, 1, 5, 1, '#a07b48') // cap
+  // Top rail running right from the corner (canonical = top-left corner).
+  px(g, 4, 4, T - 4, 2, '#9a6a3a')
+  px(g, 4, 4, T - 4, 1, '#b3824a')
+  px(g, 4, 6, T - 4, 1, 'rgba(60,40,24,0.4)')
+  // Left rail running down from the corner.
+  px(g, 4, 4, 2, T - 4, '#9a6a3a')
+  px(g, 4, 4, 1, T - 4, '#b3824a')
+  px(g, 6, 4, 1, T - 4, 'rgba(60,40,24,0.4)')
+  // No post at the bend itself — posts sit on each arm flanking the corner.
+  // Post on the top arm (vertical stake straddling the rail).
+  px(g, 9, 1, 3, 8, '#7a5230')
+  px(g, 9, 1, 1, 8, '#92663c')
+  px(g, 11, 1, 1, 8, 'rgba(50,34,20,0.5)')
+  px(g, 8, 1, 5, 1, '#a07b48') // cap
+  // Post on the left arm (horizontal stake straddling the rail).
+  px(g, 1, 9, 8, 3, '#7a5230')
+  px(g, 1, 9, 8, 1, '#92663c')
+  px(g, 1, 11, 8, 1, 'rgba(50,34,20,0.5)')
+  px(g, 1, 8, 1, 5, '#a07b48') // cap
   return c
 }
 
