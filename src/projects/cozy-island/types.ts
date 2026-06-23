@@ -151,8 +151,6 @@ export type GameState = {
   maxStamina: number
   inventory: InventoryEntry[]
   plots: Plot[]
-  selectedCropId: string
-  nextPlotIndex: number // how many plot anchors consumed
   animals: AnimalInst[]
   buildings: Record<string, BuildingState>
   cookQueue: CookJob[]

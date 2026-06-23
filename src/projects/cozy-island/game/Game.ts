@@ -1,11 +1,10 @@
-import type { AnimalInst, GameState, Plot, WorldNode } from '../types'
-import type { Bridge, LandZone } from '../content'
+import type { AnimalInst, GameState, Plot, Vec, WorldNode } from '../types'
 import {
   AnimalMap, Buildings, BuildingMap, CropMap, FarmPlots, Interactions, ItemMap, MineLevels,
   Player, RecipeMap, ResourceNodes, Stamina, World,
 } from '../content'
 import {
-  buildingEffect, hasUnlock, invAdd, invCount, invIsFull, invRemove, maxPlotsAllowed,
+  buildingEffect, hasUnlock, invAdd, invCount, invIsFull, invRemove,
   meetsCondition, newGameState, sellPriceOf, sleepDuration,
 } from './GameState'
 import { Camera } from './Camera'
@@ -15,10 +14,14 @@ import { chance, dist2, pickWeighted, randInt } from './rng'
 import { AudioManager } from '../audio/AudioManager'
 import { checkQuests } from '../systems/QuestSystem'
 import { clearSave, loadState, saveState } from '../systems/SaveSystem'
+import { buildLayout, layoutWalkable } from './layout'
+import type { Layout, Pen } from './layout'
+import { buildGrid, findPath } from '../utils/pathfind'
+import type { Grid } from '../utils/pathfind'
 import {
   drawApiary, drawBarn, drawBee, drawBuildSite, drawBush, drawChicken, drawCookingFire, drawCoop,
-  drawCow, drawCrop, drawFarmSign, drawMine, drawOreNode, drawPlayer, drawRock, drawShell, drawShop,
-  drawStorage, drawTent, drawTree,
+  drawCow, drawCrop, drawFence, drawMine, drawOreNode, drawPlayer, drawRock, drawShell, drawShop,
+  drawStorage, drawTent, drawTree, makeGrassTexture, makeStoneTexture,
 } from '../render/sprites'
 import { PAL } from '../render/palette'
 
@@ -26,7 +29,7 @@ type Mode = 'island' | 'mine'
 
 const BUILD_ICON: Record<string, string> = {
   tent: 'tent', shop_stall: 'shop', cooking_fire: 'fire', chicken_coop: 'chicken',
-  storage: 'box', farm_sign: 'sign', mine_entrance: 'pickaxe', barn: 'barn', apiary: 'beehive',
+  storage: 'box', mine_entrance: 'pickaxe', barn: 'barn', apiary: 'beehive',
 }
 
 export type ContextAction = { id: string; label: string; enabled: boolean; reason?: string; icon: string }
@@ -42,7 +45,7 @@ export class Game {
   mineFloor = 1
 
   private player = { x: 0, y: 0, facing: 1, walk: 0, action: 0, moving: false }
-  private moveTarget: { x: number; y: number } | null = null
+  private movePath: Vec[] = []
   private tapMarker: { x: number; y: number; t: number } | null = null
   private nodes: WorldNode[] = []
   private mineNodes: WorldNode[] = []
@@ -57,7 +60,10 @@ export class Game {
   private nodeIdSeq = 1
   private ctxScene = ''
   private invFullToastAt = -10
-  private zoneTex = new Map<string, HTMLCanvasElement>()
+  private layout!: Layout
+  private grid: Grid | null = null
+  private grassTex: HTMLCanvasElement | null = null
+  private stoneTex: HTMLCanvasElement | null = null
 
   constructor() {
     this.state = newGameState()
@@ -73,15 +79,29 @@ export class Game {
     } else {
       this.buildWorld()
     }
-    this.player.x = World.playerStart.x
-    this.player.y = World.playerStart.y
+    const home = this.layout.pens.find((p) => p.content === 'home') || this.layout.pens[0]
+    this.player.x = home.rect.x + home.rect.w / 2
+    this.player.y = home.rect.y + home.rect.h / 2
+    if (this.state.plots.length === 0) this.grantFreeWheatPlot()
     this.followCam(true)
     this.audio.setSettings(this.state.audio)
   }
 
+  private grantFreeWheatPlot() {
+    const anchors = this.layout.cropAnchors['wheat']
+    if (!anchors || anchors.length === 0) return
+    this.state.plots.push({ id: 0, pos: { ...anchors[0] }, cropId: 'wheat', state: 'GROWING', plantedAt: this.state.gameTime, ready: false })
+    this.state.counters.plotsBought += 0
+  }
+
   private buildWorld() {
+    this.layout = buildLayout()
+    this.cam.setWorld(this.layout.worldW, this.layout.worldH, this.layout.penW, this.layout.penH)
+    this.grid = buildGrid(this.layout.worldW, this.layout.worldH, 16, (x, y) => layoutWalkable(this.layout, x, y))
+    this.grassTex = makeGrassTexture(this.layout.penW, this.layout.penH)
+    this.stoneTex = makeStoneTexture(64)
     this.nodes = []
-    for (const n of World.resourceNodes) {
+    for (const n of this.layout.resourceSpots) {
       const def = ResourceNodes[n.type]
       if (!def) continue
       this.nodes.push({
@@ -94,7 +114,7 @@ export class Game {
   private buildMineFloor(floor: number) {
     const conf = MineLevels.floors.find((f) => f.floor === floor) || MineLevels.floors[0]
     this.mineNodes = []
-    const anchors = World.mineNodeAnchors
+    const anchors = this.layout.mineAnchors
     for (let i = 0; i < conf.nodeCount && i < anchors.length; i++) {
       this.mineNodes.push({
         id: this.nodeIdSeq++, type: 'mine_ore', pos: { ...anchors[i] },
@@ -113,8 +133,13 @@ export class Game {
     this.audio.resume()
     if (this.sleepPhase !== 0) return
     const w = this.cam.screenToWorld(sx, sy)
-    this.moveTarget = { x: w.x, y: w.y }
     this.tapMarker = { x: w.x, y: w.y, t: 0 }
+    if (this.mode === 'mine') {
+      this.movePath = [{ x: w.x, y: w.y }]
+    } else {
+      const path = this.grid ? findPath(this.grid, { x: this.player.x, y: this.player.y }, { x: w.x, y: w.y }) : null
+      this.movePath = path && path.length ? path : [{ x: w.x, y: w.y }]
+    }
     this.player.moving = true
     this.audio.sfx('tapMove')
   }
@@ -167,39 +192,35 @@ export class Game {
   private updateMovement(dt: number) {
     const p = this.player
     if (this.actionTimer > 0) { p.moving = false; return }
-    if (!this.moveTarget) { p.moving = false; p.walk = 0; return }
-    const dx = this.moveTarget.x - p.x
-    const dy = this.moveTarget.y - p.y
-    const d = Math.hypot(dx, dy)
-    if (d < 4) { p.moving = false; p.walk = 0; this.moveTarget = null; return }
+    if (this.movePath.length === 0) { p.moving = false; p.walk = 0; return }
     // If we can work and an actionable target is in range, stop to work.
-    // When tired or bag-full we keep walking (e.g. toward the tent).
     if (this.canWork() && this.nearestActionable()) { p.moving = false; p.walk = 0; return }
+    const target = this.movePath[0]
+    const dx = target.x - p.x
+    const dy = target.y - p.y
+    const d = Math.hypot(dx, dy)
+    if (d < 5) {
+      this.movePath.shift()
+      if (this.movePath.length === 0) { p.moving = false; p.walk = 0 }
+      return
+    }
     const sp = Player.moveSpeed
     const step = Math.min(d, sp * dt)
     const nx = p.x + (dx / d) * step
     const ny = p.y + (dy / d) * step
-    // Water is non-walkable: try full step, then slide along one axis (bridges only crossing).
     if (this.mode === 'mine' || this.walkable(nx, ny)) { p.x = nx; p.y = ny }
     else if (this.walkable(nx, p.y)) { p.x = nx }
     else if (this.walkable(p.x, ny)) { p.y = ny }
-    else { p.moving = false; p.walk = 0; this.moveTarget = null; return }
+    else { this.movePath = []; p.moving = false; p.walk = 0; return }
     p.facing = dx >= 0 ? 1 : -1
     p.moving = true
     p.walk = (p.walk + dt * 2.2) % 1
     if (Math.random() < dt * 8) this.fx.dust(p.x, p.y + 2)
   }
 
-  /** Island walkability: inside any land zone or bridge (with a small inset so feet stay on land). */
+  /** Land + pen-interior + gate walkable; fences and outer sea block. */
   walkable(x: number, y: number): boolean {
-    const inset = 12
-    for (const z of World.landZones) {
-      if (x >= z.x + inset && x <= z.x + z.w - inset && y >= z.y + inset && y <= z.y + z.h - inset) return true
-    }
-    for (const b of World.bridges) {
-      if (x >= b.x + 6 && x <= b.x + b.w - 6 && y >= b.y && y <= b.y + b.h) return true
-    }
-    return false
+    return this.mode === 'mine' ? true : layoutWalkable(this.layout, x, y)
   }
 
   private currentNodes(): WorldNode[] {
@@ -484,7 +505,7 @@ export class Game {
     }
     this.sleepPhase = 1
     this.sleepTimer = 0
-    this.moveTarget = null
+    this.movePath = []
     this.audio.sfx('sleepStart')
     this.audio.setScene('islandNight')
     this.bus.emit({ t: 'sleepStart' })
@@ -497,7 +518,9 @@ export class Game {
     const range2 = 56 * 56
     for (const b of Buildings) {
       const bs = this.state.buildings[b.id]
-      const near = dist2(this.player.x, this.player.y, b.position.x, b.position.y) <= range2
+      const bp = this.layout.buildingPos[b.id]
+      if (!bp) continue
+      const near = dist2(this.player.x, this.player.y, bp.x, bp.y) <= range2
       if (!near) continue
       if (!bs.built) {
         // build site
@@ -528,34 +551,34 @@ export class Game {
   }
 
   // ---------- shop / build / farm / cook actions (called by UI) ----------
-  plotCost(): number {
-    const owned = this.state.plots.length
-    return Math.round(FarmPlots.basePurchaseCost * Math.pow(FarmPlots.costGrowthMultiplier, Math.max(0, owned - FarmPlots.freeStartingPlots)))
+  fieldCount(cropId: string): number {
+    return this.state.plots.filter((p) => p.cropId === cropId).length
+  }
+  fieldMax(cropId: string): number {
+    const anchors = this.layout.cropAnchors[cropId]
+    return Math.min(FarmPlots.maxPlots, anchors ? anchors.length : 0)
+  }
+  plotCost(cropId: string): number {
+    const free = cropId === 'wheat' ? FarmPlots.freeStartingPlots : 0
+    const eff = Math.max(0, this.fieldCount(cropId) - free)
+    return Math.round(FarmPlots.basePurchaseCost * Math.pow(FarmPlots.costGrowthMultiplier, eff))
   }
 
-  buyPlot(): boolean {
-    if (this.state.plots.length >= maxPlotsAllowed(this.state)) {
-      this.bus.emit({ t: 'toast', text: '더 짓려면 농장 표지판이 필요해요.', kind: 'bad' }); return false
-    }
-    if (this.state.nextPlotIndex >= World.plotAnchors.length) { this.bus.emit({ t: 'toast', text: '자리가 없어요.', kind: 'bad' }); return false }
-    const cost = this.plotCost()
+  /** Buy a plot inside the given crop's field (each field grows only that crop). */
+  buyPlot(cropId: string): boolean {
+    const crop = CropMap[cropId]
+    if (!crop) return false
+    if (!meetsCondition(this.state, crop.unlockCondition)) { this.bus.emit({ t: 'toast', text: '아직 잠겨 있어요.', kind: 'bad' }); this.audio.sfx('error'); return false }
+    const count = this.fieldCount(cropId)
+    if (count >= this.fieldMax(cropId)) { this.bus.emit({ t: 'toast', text: '밭이 가득 찼어요.', kind: 'bad' }); return false }
+    const cost = this.plotCost(cropId)
     if (this.state.gold < cost) { this.bus.emit({ t: 'toast', text: '골드가 부족해요.', kind: 'bad' }); this.audio.sfx('error'); return false }
     this.state.gold -= cost
-    const a = World.plotAnchors[this.state.nextPlotIndex++]
-    this.state.plots.push({ id: this.state.plots.length, pos: { ...a }, cropId: this.state.selectedCropId, state: 'GROWING', plantedAt: this.state.gameTime, ready: false })
+    const a = this.layout.cropAnchors[cropId][count]
+    this.state.plots.push({ id: Date.now(), pos: { ...a }, cropId, state: 'GROWING', plantedAt: this.state.gameTime, ready: false })
     this.state.counters.plotsBought += 1
     this.audio.sfx('build')
     this.fx.burst('sparkle', a.x, a.y - 10, 8, '#fff0a0')
-    this.after()
-    return true
-  }
-
-  setSelectedCrop(cropId: string): boolean {
-    const crop = CropMap[cropId]
-    if (!crop) return false
-    if (!meetsCondition(this.state, crop.unlockCondition)) { this.bus.emit({ t: 'toast', text: '아직 잠겨 있어요.', kind: 'bad' }); return false }
-    this.state.selectedCropId = cropId
-    this.bus.emit({ t: 'toast', text: `새 밭에 ${crop.name}을(를) 심어요.`, kind: 'info' })
     this.after()
     return true
   }
@@ -610,6 +633,10 @@ export class Game {
     if (cost.items) for (const it of cost.items) invRemove(this.state, it.itemId, it.amount)
   }
 
+  private bpos(id: string): Vec {
+    return this.layout.buildingPos[id] || { x: 0, y: 0 }
+  }
+
   build(buildingId: string): boolean {
     const def = BuildingMap[buildingId]
     const bs = this.state.buildings[buildingId]
@@ -620,7 +647,7 @@ export class Game {
     bs.built = true
     bs.level = 1
     this.audio.sfx('build')
-    this.fx.burst('sparkle', def.position.x, def.position.y - 10, 12, '#fff0a0')
+    this.fx.burst('sparkle', this.bpos(buildingId).x, this.bpos(buildingId).y - 10, 12, '#fff0a0')
     this.bus.emit({ t: 'toast', text: `${def.name} 완성!`, kind: 'good' })
     this.after()
     return true
@@ -642,7 +669,7 @@ export class Game {
     this.payCost(cost)
     bs.level += 1
     this.audio.sfx('upgrade')
-    this.fx.burst('sparkle', def.position.x, def.position.y - 10, 12, '#fff0a0')
+    this.fx.burst('sparkle', this.bpos(buildingId).x, this.bpos(buildingId).y - 10, 12, '#fff0a0')
     this.bus.emit({ t: 'toast', text: `${def.name} Lv.${bs.level}!`, kind: 'good' })
     this.after()
     return true
@@ -658,9 +685,9 @@ export class Game {
     if (count >= cap) { this.bus.emit({ t: 'toast', text: `${bldg?.name ?? '시설'}이(가) 가득 찼어요. 업그레이드 하세요.`, kind: 'bad' }); return false }
     if (this.state.gold < def.purchaseCost) { this.bus.emit({ t: 'toast', text: '골드가 부족해요.', kind: 'bad' }); this.audio.sfx('error'); return false }
     this.state.gold -= def.purchaseCost
-    const b = BuildingMap[def.requiredBuilding]
+    const b = this.bpos(def.requiredBuilding)
     const slot = count
-    const pos = { x: b.position.x - 30 + (slot % 3) * 26, y: b.position.y + 14 + Math.floor(slot / 3) * 18 }
+    const pos = { x: b.x - 30 + (slot % 3) * 26, y: b.y + 30 + Math.floor(slot / 3) * 18 }
     this.state.animals.push({ id: Date.now() + slot, animalId, pos, product: 0, nextAt: this.state.gameTime + def.produceSeconds })
     this.audio.sfx('build')
     this.after()
@@ -696,9 +723,9 @@ export class Game {
     this.mode = 'mine'
     this.mineFloor = 1
     this.buildMineFloor(this.mineFloor)
-    this.player.x = World.world.width / 2
-    this.player.y = World.world.height - 120
-    this.moveTarget = null
+    this.player.x = this.layout.worldW / 2
+    this.player.y = this.layout.worldH - 120
+    this.movePath = []
     this.followCam(true)
     this.audio.setScene('mine')
     this.audio.sfx('uiOpen')
@@ -707,9 +734,9 @@ export class Game {
 
   exitMine() {
     this.mode = 'island'
-    this.player.x = BuildingMap['mine_entrance'].position.x
-    this.player.y = BuildingMap['mine_entrance'].position.y + 50
-    this.moveTarget = null
+    this.player.x = this.bpos('mine_entrance').x
+    this.player.y = this.bpos('mine_entrance').y + 40
+    this.movePath = []
     this.followCam(true)
     this.audio.setScene('islandDay')
     this.persist(false)
@@ -726,8 +753,8 @@ export class Game {
     if (!conf) return false
     this.mineFloor = next
     this.buildMineFloor(next)
-    this.player.x = World.world.width / 2
-    this.player.y = World.world.height - 120
+    this.player.x = this.layout.worldW / 2
+    this.player.y = this.layout.worldH - 120
     this.followCam(true)
     this.audio.sfx('uiOpen')
     this.bus.emit({ t: 'state' })
@@ -747,8 +774,10 @@ export class Game {
     this.state = newGameState()
     this.mode = 'island'
     this.buildWorld()
-    this.player.x = World.playerStart.x
-    this.player.y = World.playerStart.y
+    const home = this.layout.pens.find((p) => p.content === 'home') || this.layout.pens[0]
+    this.player.x = home.rect.x + home.rect.w / 2
+    this.player.y = home.rect.y + home.rect.h / 2
+    if (this.state.plots.length === 0) this.grantFreeWheatPlot()
     this.staminaEmptyShown = false
     this.followCam(true)
     this.audio.setSettings(this.state.audio)
@@ -793,119 +822,57 @@ export class Game {
     ctx.fillRect(0, 0, W, H)
   }
 
-  private rrect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-    const rr = Math.min(r, w / 2, h / 2)
-    ctx.beginPath()
-    ctx.moveTo(x + rr, y)
-    ctx.arcTo(x + w, y, x + w, y + h, rr)
-    ctx.arcTo(x + w, y + h, x, y + h, rr)
-    ctx.arcTo(x, y + h, x, y, rr)
-    ctx.arcTo(x, y, x + w, y, rr)
-    ctx.closePath()
-  }
-
-  // Flowing water across the visible world rect (drawn in world coords).
-  private drawWater(ctx: CanvasRenderingContext2D) {
+  // Blocky animated sea over the visible world rect (square-pixel cells, no curves).
+  private drawSea(ctx: CanvasRenderingContext2D) {
     const x0 = this.cam.x, y0 = this.cam.y
     const w = this.cam.spanW(), h = this.cam.spanH()
-    const grad = ctx.createLinearGradient(0, y0, 0, y0 + h)
-    grad.addColorStop(0, PAL.water2)
-    grad.addColorStop(1, PAL.water1)
-    ctx.fillStyle = grad
-    ctx.fillRect(x0 - 4, y0 - 4, w + 8, h + 8)
-    // scrolling wavy foam lines (gentle flow)
-    const t = this.state.gameTime
-    const rowH = 26
-    ctx.lineWidth = 2
-    for (let row = 0; row < Math.ceil(h / rowH) + 2; row++) {
-      const baseY = Math.floor(y0 / rowH) * rowH + row * rowH
-      const speed = row % 2 === 0 ? 14 : -10
-      const phase = t * speed
-      const alpha = row % 3 === 0 ? 0.16 : 0.09
-      ctx.strokeStyle = `rgba(207,238,251,${alpha})`
-      ctx.beginPath()
-      for (let x = x0 - 8; x <= x0 + w + 8; x += 8) {
-        const y = baseY + Math.sin((x + phase) * 0.05 + row) * 3
-        if (x === x0 - 8) ctx.moveTo(x, y); else ctx.lineTo(x, y)
+    const cell = 8
+    const sx = Math.floor((x0 - cell) / cell) * cell
+    const sy = Math.floor((y0 - cell) / cell) * cell
+    const shades = [PAL.water2, PAL.water1, '#7fd0e6']
+    const t = Math.floor(this.state.gameTime * 3)
+    for (let y = sy; y < y0 + h + cell; y += cell) {
+      for (let x = sx; x < x0 + w + cell; x += cell) {
+        const k = (((x / cell) | 0) * 7 + ((y / cell) | 0) * 13 + t) % 11
+        ctx.fillStyle = k === 0 ? shades[2] : (((x / cell + y / cell) | 0) % 2 === 0 ? shades[0] : shades[1])
+        ctx.fillRect(x, y, cell, cell)
       }
-      ctx.stroke()
     }
   }
 
-  private getZoneTexture(z: LandZone): HTMLCanvasElement {
-    const cached = this.zoneTex.get(z.id)
-    if (cached) return cached
-    const pad = 16
-    const cv = document.createElement('canvas')
-    cv.width = z.w + pad * 2
-    cv.height = z.h + pad * 2
-    const c = cv.getContext('2d')!
-    const ox = pad, oy = pad
-    // foam ring + sandy shore (rounded)
-    c.fillStyle = PAL.waterFoam; this.rrect(c, ox - 12, oy - 12, z.w + 24, z.h + 24, 30); c.fill()
-    c.fillStyle = PAL.sand; this.rrect(c, ox - 7, oy - 7, z.w + 14, z.h + 14, 26); c.fill()
-    c.fillStyle = PAL.sandDark; this.rrect(c, ox - 7, oy - 7, z.w + 14, z.h + 14, 26)
-    // grass body, clipped to rounded island
-    c.save()
-    this.rrect(c, ox, oy, z.w, z.h, 18); c.clip()
-    c.fillStyle = PAL.grass2; c.fillRect(ox, oy, z.w, z.h)
-    // natural blotches (static value-noise look, no checker)
-    const hash = (x: number, y: number) => {
-      const n = Math.sin(x * 12.9898 + y * 78.233 + z.x + z.y) * 43758.5453
-      return n - Math.floor(n)
-    }
-    const tones = [PAL.grass1, PAL.grass3, PAL.grassDark]
-    for (let i = 0; i < Math.floor((z.w * z.h) / 900); i++) {
-      const hx = hash(i, 1), hy = hash(i, 2), hs = hash(i, 3)
-      const px = ox + hx * z.w, py = oy + hy * z.h
-      const rad = 10 + hs * 26
-      c.fillStyle = tones[Math.floor(hash(i, 4) * tones.length)]
-      c.globalAlpha = 0.18 + hash(i, 5) * 0.16
-      c.beginPath(); c.ellipse(px, py, rad, rad * 0.7, 0, 0, Math.PI * 2); c.fill()
-    }
-    c.globalAlpha = 1
-    // sparse grass blades
-    for (let i = 0; i < Math.floor((z.w * z.h) / 520); i++) {
-      const hx = hash(i, 7), hy = hash(i, 8)
-      const px = Math.round(ox + hx * z.w), py = Math.round(oy + hy * z.h)
-      c.fillStyle = hash(i, 9) > 0.5 ? PAL.grassDark : PAL.grass3
-      c.fillRect(px, py, 2, hash(i, 10) > 0.5 ? 3 : 2)
-    }
-    c.restore()
-    this.zoneTex.set(z.id, cv)
-    return cv
+  // One pixel-grass canvas reused for every (identical) pen.
+  private drawPenGrass(ctx: CanvasRenderingContext2D, pen: Pen) {
+    if (this.grassTex) ctx.drawImage(this.grassTex, pen.rect.x, pen.rect.y)
   }
 
-  private drawZone(ctx: CanvasRenderingContext2D, z: LandZone) {
-    const tex = this.getZoneTexture(z)
-    ctx.drawImage(tex, z.x - 16, z.y - 16)
-  }
-
-  private drawBridge(ctx: CanvasRenderingContext2D, b: Bridge) {
-    const horizontal = b.w > b.h
-    ctx.fillStyle = PAL.trunkDark
-    ctx.fillRect(b.x - 2, b.y - 2, b.w + 4, b.h + 4)
-    ctx.fillStyle = '#b9854c'
-    ctx.fillRect(b.x, b.y, b.w, b.h)
-    ctx.fillStyle = '#a8743c'
-    if (horizontal) for (let i = 0; i < b.w; i += 12) ctx.fillRect(b.x + i, b.y, 2, b.h)
-    else for (let i = 0; i < b.h; i += 12) ctx.fillRect(b.x, b.y + i, b.w, 2)
-    ctx.fillStyle = PAL.trunk
-    if (horizontal) { ctx.fillRect(b.x, b.y - 4, b.w, 4); ctx.fillRect(b.x, b.y + b.h, b.w, 4) }
-    else { ctx.fillRect(b.x - 4, b.y, 4, b.h); ctx.fillRect(b.x + b.w, b.y, 4, b.h) }
+  // Stone-path tiles fill the land; pens are painted over with grass.
+  private drawPaths(ctx: CanvasRenderingContext2D) {
+    if (!this.stoneTex) return
+    const L = this.layout.land
+    const tile = this.stoneTex.width
+    const x0 = Math.max(L.x, Math.floor(this.cam.x / tile) * tile)
+    const y0 = Math.max(L.y, Math.floor(this.cam.y / tile) * tile)
+    const x1 = Math.min(L.x + L.w, this.cam.x + this.cam.spanW())
+    const y1 = Math.min(L.y + L.h, this.cam.y + this.cam.spanH())
+    for (let y = y0; y < y1; y += tile) {
+      for (let x = x0; x < x1; x += tile) ctx.drawImage(this.stoneTex, x, y)
+    }
   }
 
   private renderIsland(ctx: CanvasRenderingContext2D) {
-    this.drawWater(ctx)
-    for (const z of World.landZones) this.drawZone(ctx, z)
-    for (const b of World.bridges) this.drawBridge(ctx, b)
+    this.drawSea(ctx)
+    this.drawPaths(ctx)
+    for (const pen of this.layout.pens) this.drawPenGrass(ctx, pen)
+    for (const pen of this.layout.pens) drawFence(ctx, pen.rect, pen.gate)
 
     // y-sorted draw list, all in world coordinates
     type Drawable = { y: number; fn: () => void }
     const list: Drawable[] = []
     for (const b of Buildings) {
       const bs = this.state.buildings[b.id]
-      list.push({ y: b.position.y, fn: () => this.drawBuilding(ctx, b.id, bs.built, bs.level, b.position.x, b.position.y) })
+      const bp = this.layout.buildingPos[b.id]
+      if (!bp) continue
+      list.push({ y: bp.y, fn: () => this.drawBuilding(ctx, b.id, bs.built, bs.level, bp.x, bp.y) })
     }
     for (const pl of this.state.plots) {
       const crop = CropMap[pl.cropId]
@@ -928,7 +895,7 @@ export class Game {
   }
 
   private renderMine(ctx: CanvasRenderingContext2D) {
-    const tile = World.world.tile
+    const tile = World.world.tile || 32
     const x0 = Math.floor(this.cam.x / tile) * tile
     const y0 = Math.floor(this.cam.y / tile) * tile
     for (let wy = y0; wy < this.cam.y + this.cam.spanH() + tile; wy += tile) {
@@ -967,7 +934,6 @@ export class Game {
       case 'cooking_fire': drawCookingFire(ctx, x, y, level); break
       case 'chicken_coop': drawCoop(ctx, x, y); break
       case 'storage': drawStorage(ctx, x, y); break
-      case 'farm_sign': drawFarmSign(ctx, x, y); break
       case 'mine_entrance': drawMine(ctx, x, y); break
       case 'barn': drawBarn(ctx, x, y); break
       case 'apiary': drawApiary(ctx, x, y); break

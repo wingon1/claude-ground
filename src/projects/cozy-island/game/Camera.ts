@@ -1,21 +1,35 @@
-import { World } from '../content'
-
+// Camera zooms so one pen (region) fits the screen, and follows the player.
 export class Camera {
-  x = 0 // world coord at top-left of the view
+  x = 0
   y = 0
   viewW = 360
   viewH = 640
   zoom = 1
+  worldW = 1000
+  worldH = 1000
+  penW = 200
+  penH = 170
+
+  setWorld(worldW: number, worldH: number, penW: number, penH: number) {
+    this.worldW = worldW
+    this.worldH = worldH
+    this.penW = penW
+    this.penH = penH
+    this.recomputeZoom()
+  }
 
   setView(w: number, h: number) {
     this.viewW = w
     this.viewH = h
-    // Zoom so a whole region (one zone) fits the screen.
-    const z = Math.min(w / World.zoneSize.w, h / World.zoneSize.h) * 0.98
-    this.zoom = Math.max(0.45, Math.min(1.6, z))
+    this.recomputeZoom()
   }
 
-  /** Visible world span in world units. */
+  private recomputeZoom() {
+    // fit one pen + a margin of path around it
+    const z = Math.min(this.viewW / (this.penW + 90), this.viewH / (this.penH + 90))
+    this.zoom = Math.max(0.4, Math.min(2.4, z))
+  }
+
   spanW() { return this.viewW / this.zoom }
   spanH() { return this.viewH / this.zoom }
 
@@ -30,12 +44,10 @@ export class Camera {
   clamp() {
     const spanW = this.spanW()
     const spanH = this.spanH()
-    const maxX = Math.max(0, World.world.width - spanW)
-    const maxY = Math.max(0, World.world.height - spanH)
-    if (World.world.width < spanW) this.x = (World.world.width - spanW) / 2
-    else this.x = Math.max(0, Math.min(maxX, this.x))
-    if (World.world.height < spanH) this.y = (World.world.height - spanH) / 2
-    else this.y = Math.max(0, Math.min(maxY, this.y))
+    if (this.worldW < spanW) this.x = (this.worldW - spanW) / 2
+    else this.x = Math.max(0, Math.min(this.worldW - spanW, this.x))
+    if (this.worldH < spanH) this.y = (this.worldH - spanH) / 2
+    else this.y = Math.max(0, Math.min(this.worldH - spanH, this.y))
   }
 
   worldToScreen(wx: number, wy: number): { x: number; y: number } {
