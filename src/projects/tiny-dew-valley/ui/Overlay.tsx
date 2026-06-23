@@ -2,6 +2,11 @@ import { useState } from 'react'
 import type { Game, UISnapshot } from '../engine/game'
 import { iconURL } from '../engine/sprites'
 
+// Pixel-art icon, used everywhere emoji used to be.
+function Ic({ k, cls }: { k: string; cls?: string }) {
+  return <img className={`tdv-ic${cls ? ' ' + cls : ''}`} src={iconURL(k)} alt="" aria-hidden="true" draggable={false} />
+}
+
 export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [invOpen, setInvOpen] = useState(false)
@@ -35,7 +40,7 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
           </div>
           <div className="tdv-period">{ui.period}</div>
           <div className="row">
-            <span>💰</span>
+            <Ic k="ui_coin" cls="sm" />
             <span className="tdv-gold">{ui.gold}G</span>
           </div>
         </div>
@@ -46,7 +51,8 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
               cls={ui.stamina <= ui.maxStamina * 0.25 ? 'stam low' : 'stam'}
               value={ui.stamina}
               max={ui.maxStamina}
-              label={`⚡ ${ui.stamina}/${ui.maxStamina}`}
+              iconKey="ui_bolt"
+              text={`${ui.stamina}/${ui.maxStamina}`}
             />
           </div>
         </div>
@@ -71,9 +77,9 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
 
       {menuOpen && (
         <div className="tdv-menu">
-          <button className="tdv-btn" onClick={() => { game.saveNow(); setMenuOpen(false) }}>💾 저장</button>
-          <button className="tdv-btn ghost" onClick={() => game.toggleMute()}>{ui.muted ? '🔇 음소거 해제' : '🔊 음소거'}</button>
-          <button className="tdv-btn ghost" onClick={() => game.toggleMusic()}>{ui.musicOn ? '🎵 음악 켜짐' : '🎵 음악 꺼짐'}</button>
+          <button className="tdv-btn" onClick={() => { game.saveNow(); setMenuOpen(false) }}><Ic k="ui_save" cls="sm" /> 저장</button>
+          <button className="tdv-btn ghost" onClick={() => game.toggleMute()}><Ic k={ui.muted ? 'ui_mute' : 'ui_sound'} cls="sm" /> {ui.muted ? '음소거 해제' : '음소거'}</button>
+          <button className="tdv-btn ghost" onClick={() => game.toggleMusic()}><Ic k="ui_music" cls="sm" /> {ui.musicOn ? '음악 켜짐' : '음악 꺼짐'}</button>
           <button
             className="tdv-btn red"
             onClick={() => {
@@ -82,7 +88,7 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
                 location.reload()
               }
             }}
-          >🗑 저장 삭제</button>
+          ><Ic k="ui_trash" cls="sm" /> 저장 삭제</button>
           <button className="tdv-btn ghost" onClick={() => setMenuOpen(false)}>닫기</button>
         </div>
       )}
@@ -120,7 +126,7 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
           className="tdv-navbtn"
           onClick={() => { setInvOpen(true); setInvSel(null); setMenuOpen(false) }}
         >
-          <span>🎒</span>
+          <span><Ic k="backpack" /></span>
           <small>가방</small>
         </button>
         <button
@@ -128,7 +134,7 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
           title="건설 열기"
           onClick={() => { game.openBuild(); setMenuOpen(false) }}
         >
-          <span>🔨</span>
+          <span><Ic k="ui_hammer" /></span>
           <small>건설</small>
         </button>
         <button
@@ -136,7 +142,7 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
           title="목표 보기"
           onClick={() => { setObjectiveOpen(true); setMenuOpen(false) }}
         >
-          <span>🎯</span>
+          <span><Ic k="ui_target" /></span>
           <small>목표</small>
         </button>
       </nav>
@@ -207,7 +213,7 @@ function ObjectiveModal({
   return (
     <div className="tdv-modal-bg" onClick={onClose}>
       <div className="tdv-modal tdv-objective-modal" style={{ width: 'min(420px, 92vw)' }} onClick={(e) => e.stopPropagation()}>
-        <h2>🎯 목표</h2>
+        <h2><Ic k="ui_target" /> 목표</h2>
         <div className="sub">현재 목표를 확인하고 상단에 다시 고정할 수 있어요.</div>
         {ui.objective && (
           <button className="tdv-objective-row current" onClick={onPin}>
@@ -241,12 +247,12 @@ function ObjectiveModal({
   )
 }
 
-function Bar({ cls, value, max, label }: { cls: string; value: number; max: number; label: string }) {
+function Bar({ cls, value, max, iconKey, text }: { cls: string; value: number; max: number; iconKey?: string; text: string }) {
   const pct = Math.max(0, Math.min(100, (value / max) * 100))
   return (
     <div className="tdv-bar">
       <span className={cls} style={{ width: `${pct}%` }} />
-      <label>{label}</label>
+      <label>{iconKey && <Ic k={iconKey} cls="sm" />}{text}</label>
     </div>
   )
 }
@@ -256,7 +262,7 @@ function TitleScreen({ game, ui }: { game: Game; ui: UISnapshot }) {
   return (
     <div className="tdv-title">
       <div className="tdv-titlecard">
-        <h1>🌾 Tiny Dew Valley</h1>
+        <h1><Ic k="ui_wheat" cls="big" /> Tiny Dew Valley</h1>
         <div className="tag">탭으로 거닐며 곁에 서면 저절로 일하는 포근한 도트 농장</div>
         <div className="col">
           {ui.hasSave && (
@@ -280,7 +286,7 @@ function ShopModal({ game, ui }: { game: Game; ui: UISnapshot }) {
   return (
     <div className="tdv-modal-bg" onClick={() => game.closeShop()}>
       <div className="tdv-modal" onClick={(e) => e.stopPropagation()}>
-        <h2>🛒 잡화점</h2>
+        <h2><Ic k="ui_basket" /> 잡화점</h2>
         <div className="sub">씨앗을 사고, 수확물을 팔아 골드를 모아요. (보유 {ui.gold}G)</div>
         <div className="tdv-tabs">
           <button className={`tdv-tab ${tab === 'buy' ? 'on' : ''}`} onClick={() => setTab('buy')}>구매</button>
@@ -339,7 +345,7 @@ function InventoryModal({
   return (
     <div className="tdv-modal-bg" onClick={onClose}>
       <div className="tdv-modal" onClick={(e) => e.stopPropagation()}>
-        <h2>🎒 가방</h2>
+        <h2><Ic k="backpack" /> 가방</h2>
         <div className="sub">수확물·자원을 모아 잡화점에서 팔아요.</div>
         <div className="tdv-invgrid">
           {ui.inventory.map((s, i) => (
@@ -374,7 +380,7 @@ function BuildModal({ game, ui }: { game: Game; ui: UISnapshot }) {
   return (
     <div className="tdv-modal-bg" onClick={() => game.closeModal()}>
       <div className="tdv-modal" style={{ width: 'min(420px, 92vw)' }} onClick={(e) => e.stopPropagation()}>
-        <h2>🔨 건설</h2>
+        <h2><Ic k="ui_hammer" /> 건설</h2>
         <div className="sub">건설과 농장 확장을 관리해요. 밭의 씨앗은 푯말 근처에서 바꿔요.</div>
         <div className="tdv-tabs">
           <button className={`tdv-tab ${tab === 'build' ? 'on' : ''}`} onClick={() => setTab('build')}>건설</button>
@@ -383,7 +389,7 @@ function BuildModal({ game, ui }: { game: Game; ui: UISnapshot }) {
         {tab === 'build' && (
           <div className="tdv-craftlist">
             <div className="tdv-craft">
-              <div className="tdv-crafticon">🔥</div>
+              <div className="tdv-crafticon"><Ic k="ui_fire" /></div>
               <div className="info">
                 <div className="nm">{ui.cookingFire.built ? `화로대 Lv.${ui.cookingFire.level}` : '화로 제작'}</div>
                 <div className="ds">{ui.cookingFire.built ? `요리 작업칸 ${ui.cookingFire.slots}칸 사용 가능` : '나무 5개로 첫 요리 화로를 만듭니다.'}</div>
@@ -481,7 +487,7 @@ function SeedModal({ game, ui }: { game: Game; ui: UISnapshot }) {
   return (
     <div className="tdv-modal-bg" onClick={() => game.closeModal()}>
       <div className="tdv-modal" style={{ width: 'min(420px, 92vw)' }} onClick={(e) => e.stopPropagation()}>
-        <h2>🌱 씨앗 변경</h2>
+        <h2><Ic k="ui_sprout" /> 씨앗 변경</h2>
         <div className="sub">상점에서 구매한 재배권만 선택할 수 있어요.</div>
         {!selected && <div className="sub">밭 푯말 가까이에서 열어주세요.</div>}
         {selected && (
@@ -520,7 +526,7 @@ function OrderModal({ game, ui }: { game: Game; ui: UISnapshot }) {
   return (
     <div className="tdv-modal-bg" onClick={() => game.closeOrder()}>
       <div className="tdv-modal" style={{ width: 'min(420px, 92vw)' }} onClick={(e) => e.stopPropagation()}>
-        <h2>🧾 오늘의 주문</h2>
+        <h2><Ic k="ui_receipt" /> 오늘의 주문</h2>
         <div className="sub">상점 주인이 매일 하나씩 필요한 요리를 주문합니다.</div>
         {!order && (
           <div className="tdv-order-empty">
@@ -569,7 +575,7 @@ function CookingModal({ game, ui }: { game: Game; ui: UISnapshot }) {
   return (
     <div className="tdv-modal-bg" onClick={() => game.closeModal()}>
       <div className="tdv-modal" style={{ width: 'min(420px, 92vw)' }} onClick={(e) => e.stopPropagation()}>
-        <h2>🍳 요리</h2>
+        <h2><Ic k="ui_pan" /> 요리</h2>
         <div className="sub">같은 음식은 한 칸에서 최대 20개까지 묶어 조리돼요.</div>
         <div className="tdv-cookslots">
           {slots.map(({ index, active, job }) => (
@@ -638,7 +644,7 @@ function SleepConfirm({ game, ui }: { game: Game; ui: UISnapshot }) {
   return (
     <div className="tdv-modal-bg" onClick={() => game.cancelSleep()}>
       <div className="tdv-modal" style={{ width: 'min(360px, 92vw)' }} onClick={(e) => e.stopPropagation()}>
-        <h2>🛏 잠자기</h2>
+        <h2><Ic k="ui_bed" /> 잠자기</h2>
         <div className="sub">자고 일어나면 최대 스태미나가 +1 늘어나요. (현재 {ui.maxStamina} → {ui.maxStamina + 1})</div>
         <div className="tdv-row">
           <button className="tdv-btn gold" onClick={() => game.confirmSleep()}>잘래요</button>
