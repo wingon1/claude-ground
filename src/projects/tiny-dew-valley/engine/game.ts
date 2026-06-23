@@ -232,6 +232,7 @@ export class Game {
     const s = loadGame()
     if (!s) return false
     this.state = s
+    this.applyGroundCleanup()
     this.applyFieldRows()
     this.applyFieldExpansions()
     this.initRuntime()
@@ -1008,6 +1009,18 @@ export class Game {
   }
 
   private applyFieldRows() {
+    for (const t of this.state.tiles) {
+      if (typeof t.metadata.fieldId === 'string' || typeof t.metadata.fieldSign === 'string') {
+        t.terrain = 'grass'
+        t.cropId = null
+        t.growthStage = 0
+        t.metadata.growT = 0
+        t.obstacle = null
+        t.hp = undefined
+        delete t.metadata.fieldId
+        delete t.metadata.fieldSign
+      }
+    }
     for (const plot of FIELD_PLOTS) {
       const rows = this.fieldRows(plot.id)
       for (let row = 0; row < FIELD_SIZE; row++) {
@@ -1024,6 +1037,30 @@ export class Game {
           t.hp = undefined
           t.metadata.fieldId = plot.id
         }
+      }
+      const sign = this.state.tiles[idx(plot.sign.x, plot.sign.y)]
+      sign.terrain = 'grass'
+      sign.cropId = null
+      sign.growthStage = 0
+      sign.obstacle = null
+      sign.hp = undefined
+      sign.metadata.fieldSign = plot.id
+    }
+  }
+
+  private applyGroundCleanup() {
+    for (const t of this.state.tiles) {
+      if (t.terrain === 'path') t.terrain = 'grass'
+      delete t.metadata.shrine
+    }
+    for (let y = 2; y <= 4; y++) {
+      for (let x = 19; x <= 21; x++) {
+        const t = this.state.tiles[idx(x, y)]
+        t.terrain = 'grass'
+        t.cropId = null
+        t.growthStage = 0
+        t.obstacle = null
+        t.hp = undefined
       }
     }
   }
@@ -1184,10 +1221,9 @@ export class Game {
         this.drawGround(this.state.tiles[idx(tx, ty)], wf, S)
       }
     }
-    // buildings — kept as decoration (shrine never restored)
+    // buildings
     this.drawBuilding(this.sprites.farmhouse, 29, 6, S, -16)
     this.drawBuilding(this.sprites.store, 22, 6, S, -14)
-    this.drawBuilding(this.sprites.shrineBroken, 19, 2, S, -8)
     this.drawFieldSigns(S)
     this.drawCookingFire(S)
 

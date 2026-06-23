@@ -12,7 +12,6 @@ export interface WorldLocations {
   storeFront: { x: number; y: number } // where player stands to interact
   buildBoard: { x: number; y: number }
   cookingFire: { x: number; y: number }
-  shrine: { x: number; y: number } // interactive shrine tile
   pond: { x: number; y: number }
   woods: { x: number; y: number; w: number; h: number }
   square: { x: number; y: number } // village square center
@@ -65,7 +64,6 @@ export const LOCATIONS: WorldLocations = {
   storeFront: { x: 24, y: 10 },
   buildBoard: { x: 32, y: 12 },
   cookingFire: { x: 33, y: 11 },
-  shrine: { x: 20, y: 5 },
   pond: { x: 25, y: 15 },
   woods: { x: 1, y: 8, w: 9, h: 20 },
   square: { x: 16, y: 31 },
@@ -73,7 +71,7 @@ export const LOCATIONS: WorldLocations = {
 
 // Pre-tilled farm field. Crops are auto-planted here when the player idles on
 // an empty plot and auto-harvested when ripe — no hoe/watering required.
-export const FARM = { x: 31, y: 13, w: FIELD_SIZE, h: FIELD_SIZE }
+export const FARM = { x: 31, y: 16, w: FIELD_SIZE, h: FIELD_SIZE }
 
 // Stamps the general store's static structure onto a tiles array.
 // The store is an open-front stall: solid back walls, with a walk-in
@@ -90,7 +88,7 @@ export function stampStore(tiles: Tile[]) {
   // Open interior + front. No fence here so the player can walk straight in
   // from the village square and up to the counter where Barnaby stands.
   rect(tiles, 22, 8, 27, 9, (t) => {
-    t.terrain = 'path'
+    t.terrain = 'grass'
     t.obstacle = null
     t.cropId = null
   })
@@ -115,7 +113,7 @@ function stampFields(tiles: Tile[]) {
       }
     }
     const sign = tiles[idx(plot.sign.x, plot.sign.y)]
-    sign.terrain = 'path'
+    sign.terrain = 'grass'
     clearObstacle(sign)
     sign.cropId = null
     sign.metadata.fieldSign = plot.id
@@ -140,29 +138,13 @@ export function generateWorld(): Tile[] {
   // ---- Farmhouse (north-east) ----
   rect(tiles, 29, 6, 33, 8, (t) => (t.terrain = 'blocked'))
   tiles[idx(LOCATIONS.bed.x, LOCATIONS.bed.y)].metadata.bed = true
-  tiles[idx(LOCATIONS.bed.x, LOCATIONS.bed.y)].terrain = 'path'
+  tiles[idx(LOCATIONS.bed.x, LOCATIONS.bed.y)].terrain = 'grass'
 
   // ---- General Store (beside the farmhouse) ----
   stampStore(tiles)
 
-  // ---- Village square paths (south) ----
-  rect(tiles, 12, 30, 24, 33, (t) => {
-    if (t.terrain === 'grass') t.terrain = 'path'
-  })
-  rect(tiles, 24, 10, 31, 12, (t) => {
-    if (t.terrain === 'grass') t.terrain = 'path'
-  })
-  rect(tiles, 16, 11, 16, 30, (t) => {
-    if (t.terrain === 'grass') t.terrain = 'path'
-  })
-  tiles[idx(LOCATIONS.cookingFire.x, LOCATIONS.cookingFire.y)].terrain = 'path'
+  tiles[idx(LOCATIONS.cookingFire.x, LOCATIONS.cookingFire.y)].terrain = 'grass'
   tiles[idx(LOCATIONS.cookingFire.x, LOCATIONS.cookingFire.y)].metadata.cookingFire = true
-
-  // ---- Shrine (north) ----
-  rect(tiles, 19, 2, 21, 4, (t) => (t.terrain = 'blocked'))
-  const s = LOCATIONS.shrine
-  tiles[idx(s.x, s.y)].terrain = 'path'
-  tiles[idx(s.x, s.y)].metadata.shrine = true
 
   // ---- Western woods: trees, stumps, daffodils, weeds ----
   const w = LOCATIONS.woods
@@ -192,7 +174,7 @@ export function generateWorld(): Tile[] {
     t.metadata.renewable = true
   }
 
-  // ---- Farm clutter (east of the path) on tillable grass ----
+  // ---- Farm clutter on tillable grass ----
   for (let y = 4; y < 26; y++) {
     for (let x = 18; x < 38; x++) {
       const t = tiles[idx(x, y)]
