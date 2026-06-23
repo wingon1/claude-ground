@@ -2,8 +2,9 @@ import type { GameState } from '../types'
 
 const KEY = 'tiny-dew-valley-save-v1'
 // v4: cozy-island-style core loop (tap-to-move, auto-work, sleep-to-grow).
+// v5: gated build/cooking menus plus construction-driven field expansion.
 // The state shape changed completely, so older saves are dropped on load.
-export const SAVE_VERSION = 4
+export const SAVE_VERSION = 5
 
 export function hasSave(): boolean {
   try {

@@ -648,6 +648,16 @@
   image-rendering: pixelated;
   flex: 0 0 auto;
 }
+.tdv-crafticon {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  background: #00000018;
+  border-radius: 7px;
+}
 .tdv-craft .info { flex: 1; min-width: 0; }
 .tdv-craft .nm { font-weight: 800; font-size: 13px; }
 .tdv-craft .nm .x { color: var(--good); font-size: 11px; }

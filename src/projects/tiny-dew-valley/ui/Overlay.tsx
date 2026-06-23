@@ -133,8 +133,8 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
 
       {/* Modals */}
       {ui.phase === 'shop' && <ShopModal game={game} ui={ui} />}
-      {ui.phase === 'build' && <BuildModal game={game} />}
-      {ui.phase === 'cook' && <CookingModal game={game} />}
+      {ui.phase === 'build' && <BuildModal game={game} ui={ui} />}
+      {ui.phase === 'cook' && <CookingModal game={game} ui={ui} />}
       {ui.phase === 'sleepConfirm' && <SleepConfirm game={game} ui={ui} />}
       {invOpen && ui.phase === 'playing' && (
         <InventoryModal ui={ui} sel={invSel} setSel={setInvSel} onClose={() => setInvOpen(false)} />
@@ -271,15 +271,43 @@ function InventoryModal({
 }
 
 // ---------------- Build ----------------
-function BuildModal({ game }: { game: Game }) {
+function BuildModal({ game, ui }: { game: Game; ui: UISnapshot }) {
   return (
     <div className="tdv-modal-bg" onClick={() => game.closeModal()}>
       <div className="tdv-modal" style={{ width: 'min(420px, 92vw)' }} onClick={(e) => e.stopPropagation()}>
         <h2>🔨 건설</h2>
-        <div className="sub">건설 게시판 근처에서만 열리는 메뉴예요.</div>
-        <div className="tdv-card">
-          <div className="nm">준비 중</div>
-          <div className="ds">다음 단계에서 밭·창고·동물 시설 건설을 이 메뉴에 연결합니다.</div>
+        <div className="sub">골드와 재료를 써서 자동 농장 구역을 넓혀요.</div>
+        <div className="tdv-craftlist">
+          {ui.buildOptions.map((b) => (
+            <div className={`tdv-craft${b.locked ? ' locked' : ''}`} key={b.id}>
+              <div className="tdv-crafticon">🌱</div>
+              <div className="info">
+                <div className="nm">{b.name}</div>
+                <div className="ds">{b.desc}</div>
+                <div className="mats">
+                  <span className={`mat${ui.gold >= b.costGold ? '' : ' miss'}`}>
+                    골드 {ui.gold}/{b.costGold}
+                  </span>
+                  {b.costItems.map((it) => (
+                    <span className={`mat${it.ok ? '' : ' miss'}`} key={it.itemId}>
+                      {it.name} {it.have}/{it.need}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="act">
+                {b.built ? (
+                  <span className="owned">완료</span>
+                ) : b.locked ? (
+                  <span className="lock">순서 필요</span>
+                ) : (
+                  <button className="tdv-btn gold sm" disabled={!b.canBuild} onClick={() => game.buildField(b.id)}>
+                    건설
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
         <div className="tdv-row">
           <button className="tdv-btn ghost" onClick={() => game.closeModal()}>닫기</button>
@@ -290,15 +318,37 @@ function BuildModal({ game }: { game: Game }) {
 }
 
 // ---------------- Cooking ----------------
-function CookingModal({ game }: { game: Game }) {
+function CookingModal({ game, ui }: { game: Game; ui: UISnapshot }) {
   return (
     <div className="tdv-modal-bg" onClick={() => game.closeModal()}>
       <div className="tdv-modal" style={{ width: 'min(420px, 92vw)' }} onClick={(e) => e.stopPropagation()}>
         <h2>🍳 요리</h2>
-        <div className="sub">요리 화덕 근처에서만 열리는 메뉴예요.</div>
-        <div className="tdv-card">
-          <div className="nm">준비 중</div>
-          <div className="ds">다음 단계에서 레시피와 조리 대기열을 이 메뉴에 연결합니다.</div>
+        <div className="sub">재료를 모아 음식과 가공품을 만들어요.</div>
+        <div className="tdv-craftlist">
+          {ui.cookRecipes.map((r) => (
+            <div className="tdv-craft" key={r.id}>
+              <img src={iconURL(r.outputSprite, r.outputColor)} alt={r.outputName} />
+              <div className="info">
+                <div className="nm">
+                  {r.name}
+                  {r.outputQty > 1 && <span className="x"> ×{r.outputQty}</span>}
+                </div>
+                <div className="ds">{r.desc}</div>
+                <div className="mats">
+                  {r.inputs.map((it) => (
+                    <span className={`mat${it.ok ? '' : ' miss'}`} key={it.itemId}>
+                      {it.name} {it.have}/{it.need}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="act">
+                <button className="tdv-btn gold sm" disabled={!r.canCook} onClick={() => game.cook(r.id)}>
+                  만들기
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
         <div className="tdv-row">
           <button className="tdv-btn ghost" onClick={() => game.closeModal()}>닫기</button>

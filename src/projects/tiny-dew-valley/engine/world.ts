@@ -72,7 +72,7 @@ export const LOCATIONS: WorldLocations = {
 
 // Pre-tilled farm field. Crops are auto-planted here when the player idles on
 // an empty plot and auto-harvested when ripe — no hoe/watering required.
-export const FARM = { x: 19, y: 18, w: 8, h: 6 }
+export const FARM = { x: 19, y: 18, w: 4, h: 3 }
 
 // Stamps the general store's static structure onto a tiles array.
 // The store is an open-front stall: solid back walls, with a walk-in

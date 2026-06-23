@@ -41,6 +41,30 @@ export interface InventorySlot {
   qty: number
 }
 
+export interface CostItem {
+  itemId: string
+  qty: number
+}
+
+export interface BuildOptionDef {
+  id: string
+  name: string
+  description: string
+  costGold: number
+  costItems: CostItem[]
+  /** Build options are applied in order; this is the level after completion. */
+  level: number
+  rect: { x: number; y: number; w: number; h: number }
+}
+
+export interface RecipeDef {
+  id: string
+  name: string
+  description: string
+  inputs: CostItem[]
+  output: { itemId: string; qty: number }
+}
+
 export type ToolId = 'hoe' | 'watering_can' | 'axe' | 'scythe' | 'hand'
 
 export interface ToolDef {

@@ -2,6 +2,8 @@ import type { GameState, InventorySlot, Tile } from '../types'
 import { CROPS, CROP_LIST } from '../data/crops'
 import { cropItemId, getItem } from '../data/items'
 import { SHOP_CATALOG } from '../data/shopCatalog'
+import { BUILD_OPTIONS } from '../data/buildOptions'
+import { RECIPES } from '../data/recipes'
 import { OBSTACLE_DROP, OBSTACLE_HP, OBSTACLE_SOLID, TERRAIN_SOLID } from '../data/tiles'
 import {
   generateWorld,
@@ -56,6 +58,34 @@ export interface ShopBuyView {
   color?: string
   desc: string
 }
+export interface CostItemView {
+  itemId: string
+  name: string
+  have: number
+  need: number
+  ok: boolean
+}
+export interface BuildOptionView {
+  id: string
+  name: string
+  desc: string
+  costGold: number
+  costItems: CostItemView[]
+  canBuild: boolean
+  built: boolean
+  locked: boolean
+}
+export interface CookRecipeView {
+  id: string
+  name: string
+  desc: string
+  outputName: string
+  outputSprite: string
+  outputColor?: string
+  outputQty: number
+  inputs: CostItemView[]
+  canCook: boolean
+}
 export interface UISnapshot {
   phase: UIPhase
   day: number
@@ -68,6 +98,8 @@ export interface UISnapshot {
   inventory: InvSlotView[]
   toasts: ToastMsg[]
   shopBuy: ShopBuyView[]
+  buildOptions: BuildOptionView[]
+  cookRecipes: CookRecipeView[]
   contextAction: string | null
   nearBed: boolean
   nearStore: boolean
@@ -172,6 +204,7 @@ export class Game {
     const s = loadGame()
     if (!s) return false
     this.state = s
+    this.applyFieldExpansions()
     this.initRuntime()
     this.phase = 'playing'
     this.audio.resume()
@@ -207,7 +240,7 @@ export class Game {
       },
       tiles,
       inventory: inv,
-      flags: {},
+      flags: { fieldExpansionLevel: 0 },
     }
   }
 
@@ -624,6 +657,16 @@ export class Game {
     return true
   }
 
+  private canPayCost(gold: number, items: { itemId: string; qty: number }[]): boolean {
+    if (this.state.gold < gold) return false
+    return items.every((it) => this.countItem(it.itemId) >= it.qty)
+  }
+
+  private payCost(gold: number, items: { itemId: string; qty: number }[]) {
+    this.state.gold -= gold
+    for (const it of items) this.removeItem(it.itemId, it.qty)
+  }
+
   private spendStamina(cost: number): boolean {
     const s = this.state
     if (cost <= 0) return true
@@ -698,6 +741,54 @@ export class Game {
       this.phase = 'playing'
       this.emit()
     }
+  }
+
+  buildField(optionId: string) {
+    const option = BUILD_OPTIONS.find((o) => o.id === optionId)
+    if (!option || this.phase !== 'build') return
+    const current = this.fieldExpansionLevel()
+    if (current >= option.level) {
+      this.toast('이미 지어진 확장이에요.', 'info')
+      return
+    }
+    if (option.level !== current + 1) {
+      this.toast('앞 단계 밭부터 먼저 확장하세요.', 'bad')
+      this.audio.sfx('reject')
+      return
+    }
+    if (!this.canPayCost(option.costGold, option.costItems)) {
+      this.toast('건설 재료가 부족해요.', 'bad')
+      this.audio.sfx('reject')
+      return
+    }
+    this.payCost(option.costGold, option.costItems)
+    this.state.flags.fieldExpansionLevel = option.level
+    this.applyBuildRect(option.rect)
+    this.toast(`${option.name} 완료!`, 'good')
+    this.audio.sfx('sparkle')
+    this.autosave()
+    this.emit()
+  }
+
+  cook(recipeId: string) {
+    const recipe = RECIPES.find((r) => r.id === recipeId)
+    if (!recipe || this.phase !== 'cook') return
+    if (!this.canPayCost(0, recipe.inputs)) {
+      this.toast('요리 재료가 부족해요.', 'bad')
+      this.audio.sfx('reject')
+      return
+    }
+    if (!this.canAccept(recipe.output.itemId, recipe.output.qty)) {
+      this.toast('가방이 가득 찼어요!', 'bad')
+      this.audio.sfx('reject')
+      return
+    }
+    this.payCost(0, recipe.inputs)
+    this.giveItem(recipe.output.itemId, recipe.output.qty)
+    this.toast(`${recipe.name} 완성!`, 'good')
+    this.audio.sfx('sparkle')
+    this.autosave()
+    this.emit()
   }
 
   buyItem(itemId: string) {
@@ -804,6 +895,33 @@ export class Game {
       }
     }
     return false
+  }
+
+  private fieldExpansionLevel(): number {
+    const raw = this.state.flags.fieldExpansionLevel
+    return typeof raw === 'number' ? raw : 0
+  }
+
+  private applyFieldExpansions() {
+    const level = this.fieldExpansionLevel()
+    for (const option of BUILD_OPTIONS) {
+      if (option.level <= level) this.applyBuildRect(option.rect)
+    }
+  }
+
+  private applyBuildRect(rect: { x: number; y: number; w: number; h: number }) {
+    for (let y = rect.y; y < rect.y + rect.h; y++) {
+      for (let x = rect.x; x < rect.x + rect.w; x++) {
+        if (!inBounds(x, y)) continue
+        const t = this.state.tiles[idx(x, y)]
+        t.terrain = 'soil'
+        t.obstacle = null
+        t.hp = undefined
+        t.cropId = null
+        t.growthStage = 0
+        t.metadata.growT = 0
+      }
+    }
   }
 
   private toast(text: string, kind: 'info' | 'good' | 'bad') {
@@ -1170,6 +1288,7 @@ export class Game {
       return {
         phase: this.phase, day: 1, clock: '오전 6:00', period: '아침', periodKey: 'morning',
         gold: 0, stamina: 0, maxStamina: 0, inventory: [], toasts: [...this.toasts], shopBuy: [],
+        buildOptions: [], cookRecipes: [],
         contextAction: null, nearBed: false, nearStore: false, nearBuild: false, nearCooking: false, exhausted: false,
         muted: this.audio.muted, musicOn: this.audio.musicOn, hasSave: this.hasSavedGame(),
       }
@@ -1200,6 +1319,54 @@ export class Game {
         desc: def.description,
       }
     })
+    const costViews = (items: { itemId: string; qty: number }[]): CostItemView[] =>
+      items.map((it) => {
+        const have = this.countItem(it.itemId)
+        return {
+          itemId: it.itemId,
+          name: getItem(it.itemId)?.name ?? it.itemId,
+          have,
+          need: it.qty,
+          ok: have >= it.qty,
+        }
+      })
+    const fieldLevel = this.fieldExpansionLevel()
+    const buildOptions: BuildOptionView[] = BUILD_OPTIONS.map((option) => {
+      const costItems = costViews(option.costItems)
+      const built = fieldLevel >= option.level
+      const locked = option.level > fieldLevel + 1
+      return {
+        id: option.id,
+        name: option.name,
+        desc: option.description,
+        costGold: option.costGold,
+        costItems,
+        canBuild:
+          !built &&
+          !locked &&
+          s.gold >= option.costGold &&
+          costItems.every((it) => it.ok),
+        built,
+        locked,
+      }
+    })
+    const cookRecipes: CookRecipeView[] = RECIPES.map((recipe) => {
+      const out = getItem(recipe.output.itemId)
+      const inputs = costViews(recipe.inputs)
+      return {
+        id: recipe.id,
+        name: recipe.name,
+        desc: recipe.description,
+        outputName: out?.name ?? recipe.output.itemId,
+        outputSprite: out?.sprite ?? '',
+        outputColor: out?.cropId ? CROPS[out.cropId].color : undefined,
+        outputQty: recipe.output.qty,
+        inputs,
+        canCook:
+          inputs.every((it) => it.ok) &&
+          this.canAccept(recipe.output.itemId, recipe.output.qty),
+      }
+    })
     let contextAction: string | null = null
     if (this.phase === 'playing') {
       if (this.nearBed()) contextAction = '잠자기'
@@ -1217,6 +1384,8 @@ export class Game {
       inventory,
       toasts: [...this.toasts],
       shopBuy,
+      buildOptions,
+      cookRecipes,
       contextAction,
       nearBed: this.nearBed(),
       nearStore: this.nearStore(),
