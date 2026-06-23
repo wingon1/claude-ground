@@ -1,7 +1,7 @@
 import type { Obstacle, Terrain, Tile } from '../types'
 import { FIELD_PLOTS, FIELD_SIZE } from '../data/fields'
 
-export const WORLD_W = 40
+export const WORLD_W = 58
 export const WORLD_H = 36
 
 export interface WorldLocations {

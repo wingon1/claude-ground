@@ -1,5 +1,5 @@
 import type { RecipeDef } from '../types'
-import { DAIRY_UNLOCK_FLAG } from './unlocks'
+import { CHICKEN_UNLOCK_FLAG, DAIRY_UNLOCK_FLAG, PIG_UNLOCK_FLAG } from './unlocks'
 
 export const RECIPES: RecipeDef[] = [
   {
@@ -19,6 +19,19 @@ export const RECIPES: RecipeDef[] = [
     output: { itemId: 'bread', qty: 1 },
     craftSeconds: 12,
     difficulty: 1,
+  },
+  {
+    id: 'toast',
+    name: '토스트 굽기',
+    description: '빵과 달걀을 구워 든든한 토스트를 만듭니다.',
+    inputs: [
+      { itemId: 'bread', qty: 1 },
+      { itemId: 'egg', qty: 1 },
+    ],
+    output: { itemId: 'toast', qty: 1 },
+    unlockFlag: CHICKEN_UNLOCK_FLAG,
+    craftSeconds: 20,
+    difficulty: 2,
   },
   {
     id: 'butter',
@@ -51,6 +64,19 @@ export const RECIPES: RecipeDef[] = [
     output: { itemId: 'pastry', qty: 1 },
     unlockFlag: DAIRY_UNLOCK_FLAG,
     craftSeconds: 42,
+    difficulty: 4,
+  },
+  {
+    id: 'bacon_toast',
+    name: '베이컨 토스트 굽기',
+    description: '빵과 베이컨을 조합해 고급 토스트를 만듭니다.',
+    inputs: [
+      { itemId: 'bread', qty: 1 },
+      { itemId: 'bacon', qty: 1 },
+    ],
+    output: { itemId: 'bacon_toast', qty: 1 },
+    unlockFlag: PIG_UNLOCK_FLAG,
+    craftSeconds: 36,
     difficulty: 4,
   },
   {

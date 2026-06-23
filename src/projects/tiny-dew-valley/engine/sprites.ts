@@ -444,10 +444,26 @@ export function bakeItemIcon(sprite: string, color?: string): HTMLCanvasElement 
       px(g, 5, 6, 2, 1, '#f2c078')
       px(g, 9, 6, 2, 1, '#f2c078')
       break
+    case 'toast':
+    case 'bacon_toast':
+      px(g, 3, 6, 10, 7, '#c78335')
+      px(g, 4, 7, 8, 4, '#f0c070')
+      px(g, 6, 8, 4, 2, sprite === 'toast' ? '#fff2c0' : '#c86462')
+      break
     case 'milk':
       px(g, 5, 4, 6, 9, '#f4f1df')
       px(g, 5, 4, 6, 2, '#9fd0ff')
       px(g, 6, 7, 4, 3, '#ffffff')
+      break
+    case 'egg':
+      px(g, 5, 5, 6, 8, '#f5efe0')
+      px(g, 6, 4, 4, 2, '#ffffff')
+      px(g, 6, 11, 4, 2, '#d8c8a8')
+      break
+    case 'bacon':
+      px(g, 4, 5, 8, 8, '#c86462')
+      px(g, 5, 5, 2, 8, '#f0b0a0')
+      px(g, 9, 5, 1, 8, '#8f3f42')
       break
     case 'butter':
       px(g, 4, 7, 8, 5, '#f5d35f')
@@ -466,7 +482,9 @@ export function bakeItemIcon(sprite: string, color?: string): HTMLCanvasElement 
       px(g, 5, 8, 6, 1, '#f2d08a')
       px(g, 5, 10, 6, 1, '#9a6428')
       break
+    case 'permit_chicken':
     case 'permit_dairy':
+    case 'permit_pig':
       px(g, 3, 4, 10, 10, '#efe2bc')
       px(g, 4, 5, 8, 1, '#b3824a')
       px(g, 5, 8, 6, 1, '#6e4426')

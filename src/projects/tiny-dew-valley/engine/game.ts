@@ -3,6 +3,7 @@ import { CROPS, CROP_LIST } from '../data/crops'
 import { cropItemId, getItem } from '../data/items'
 import { SHOP_CATALOG } from '../data/shopCatalog'
 import { BUILD_OPTIONS } from '../data/buildOptions'
+import { ANIMAL_FARMS, type AnimalFarmDef } from '../data/animalFarms'
 import {
   DEFAULT_FIELD_CROP,
   FIELD_PLOTS,
@@ -166,6 +167,7 @@ export interface UISnapshot {
   cookQueue: CookJobView[]
   cookingFire: CookingFireView
   contextAction: string | null
+  contextActionId: 'sleep' | 'animal' | null
   nearBed: boolean
   nearStore: boolean
   nearBuild: boolean
@@ -269,10 +271,12 @@ export class Game {
   continueGame(): boolean {
     const s = loadGame()
     if (!s) return false
+    if (s.tiles.length !== WORLD_W * WORLD_H) s.tiles = generateWorld()
     this.state = s
     this.applyInitialUnlocks()
     this.applyGroundCleanup()
     this.applyFieldRows()
+    this.applyAnimalFarms()
     this.applyFieldExpansions()
     this.initRuntime()
     this.phase = 'playing'
@@ -979,6 +983,7 @@ export class Game {
     s.gold -= entry.buyPrice
     if (entry.grantsFlag) {
       s.flags[entry.grantsFlag] = true
+      this.applyAnimalFarms()
       const def = getItem(itemId)
       this.toast(`${def?.name ?? '콘텐츠'} 해금!`, 'good')
     } else {
@@ -1134,6 +1139,53 @@ export class Game {
     return COOKING_FIRE_UPGRADES.find((u) => u.level === this.cookingFireLevel() + 1) ?? null
   }
 
+  private animalFarmOwned(farm: AnimalFarmDef): boolean {
+    return this.flagEnabled(farm.unlockFlag)
+  }
+
+  private animalCollectKey(farmId: string): string {
+    return `animalLastCollect:${farmId}`
+  }
+
+  private selectedAnimalFarm(): AnimalFarmDef | null {
+    const pt = this.playerTile()
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const t = inBounds(pt.x + dx, pt.y + dy)
+          ? this.state.tiles[idx(pt.x + dx, pt.y + dy)]
+          : null
+        const farmId = t?.metadata.animalFarm
+        if (typeof farmId !== 'string') continue
+        const farm = ANIMAL_FARMS.find((f) => f.id === farmId)
+        if (farm && this.animalFarmOwned(farm)) return farm
+      }
+    }
+    return null
+  }
+
+  collectAnimalProduct() {
+    if (this.phase !== 'playing') return
+    const farm = this.selectedAnimalFarm()
+    if (!farm) return
+    const key = this.animalCollectKey(farm.id)
+    if (this.state.flags[key] === this.state.day) {
+      this.toast('오늘은 이미 수확했어요.', 'info')
+      return
+    }
+    if (!this.canAccept(farm.productItemId, farm.productQty)) {
+      this.toast('가방이 가득 찼어요!', 'bad')
+      this.audio.sfx('reject')
+      return
+    }
+    this.giveItem(farm.productItemId, farm.productQty)
+    this.state.flags[key] = this.state.day
+    const product = getItem(farm.productItemId)
+    this.toast(`${farm.name}에서 ${product?.name ?? farm.productItemId} ${farm.productQty}개 수확!`, 'good')
+    this.audio.sfx('harvest')
+    this.autosave()
+    this.emit()
+  }
+
   private nextUnlockFieldId(): string | null {
     for (const plot of FIELD_PLOTS) {
       if (this.fieldRows(plot.id) < FIELD_SIZE) return plot.id
@@ -1201,6 +1253,36 @@ export class Game {
         t.growthStage = 0
         t.obstacle = null
         t.hp = undefined
+      }
+    }
+  }
+
+  private applyAnimalFarms() {
+    for (const farm of ANIMAL_FARMS) {
+      for (let y = farm.y; y < farm.y + farm.h; y++) {
+        for (let x = farm.x; x < farm.x + farm.w; x++) {
+          if (!inBounds(x, y)) continue
+          const t = this.state.tiles[idx(x, y)]
+          t.terrain = 'grass'
+          t.cropId = null
+          t.growthStage = 0
+          t.obstacle = null
+          t.hp = undefined
+          delete t.metadata.animalFarm
+        }
+      }
+      if (!this.animalFarmOwned(farm)) continue
+      const gateX = farm.x + Math.floor(farm.w / 2)
+      const gateY = farm.y + farm.h - 1
+      for (let y = farm.y; y < farm.y + farm.h; y++) {
+        for (let x = farm.x; x < farm.x + farm.w; x++) {
+          if (!inBounds(x, y)) continue
+          const t = this.state.tiles[idx(x, y)]
+          const edge = x === farm.x || x === farm.x + farm.w - 1 || y === farm.y || y === farm.y + farm.h - 1
+          const gate = x === gateX && y === gateY
+          t.terrain = edge && !gate ? 'blocked' : 'grass'
+          t.metadata.animalFarm = farm.id
+        }
       }
     }
   }
@@ -1364,6 +1446,7 @@ export class Game {
     // buildings
     this.drawBuilding(this.sprites.farmhouse, 29, 6, S, -16)
     this.drawBuilding(this.sprites.store, 22, 6, S, -14)
+    this.drawAnimalFarms(S)
     this.drawFieldSigns(S)
     this.drawCookingFire(S)
 
@@ -1423,6 +1506,38 @@ export class Game {
     ctx.fillStyle = '#8f6230'
     ctx.fillRect(x + 4 * S, y + 4 * S, 9 * S, 1 * S)
     ctx.fillRect(x + 4 * S, y + 7 * S, 6 * S, 1 * S)
+  }
+
+  private drawAnimalFarms(S: number) {
+    const ctx = this.ctx
+    for (const farm of ANIMAL_FARMS) {
+      if (!this.animalFarmOwned(farm)) continue
+      const x = this.wx((farm.x + 1) * T)
+      const y = this.wy((farm.y + 1) * T)
+      ctx.fillStyle = '#8a5a32'
+      ctx.fillRect(x + 2 * S, y + 5 * S, 18 * S, 11 * S)
+      ctx.fillStyle = '#b3824a'
+      ctx.fillRect(x + 2 * S, y + 5 * S, 18 * S, 4 * S)
+      ctx.fillStyle = '#6e4426'
+      ctx.fillRect(x + 7 * S, y + 10 * S, 6 * S, 6 * S)
+      ctx.fillStyle = farm.color
+      if (farm.id === 'chicken') {
+        ctx.fillRect(x + 28 * S, y + 15 * S, 7 * S, 5 * S)
+        ctx.fillRect(x + 31 * S, y + 12 * S, 4 * S, 4 * S)
+        ctx.fillStyle = '#e05a36'
+        ctx.fillRect(x + 32 * S, y + 10 * S, 2 * S, 2 * S)
+      } else if (farm.id === 'cow') {
+        ctx.fillRect(x + 26 * S, y + 14 * S, 11 * S, 6 * S)
+        ctx.fillRect(x + 34 * S, y + 11 * S, 5 * S, 5 * S)
+        ctx.fillStyle = '#3a2a24'
+        ctx.fillRect(x + 28 * S, y + 15 * S, 3 * S, 3 * S)
+      } else {
+        ctx.fillRect(x + 26 * S, y + 14 * S, 11 * S, 6 * S)
+        ctx.fillRect(x + 34 * S, y + 12 * S, 5 * S, 5 * S)
+        ctx.fillStyle = '#c96d82'
+        ctx.fillRect(x + 37 * S, y + 14 * S, 2 * S, 2 * S)
+      }
+    }
   }
 
   private drawCookingFire(S: number) {
@@ -1611,7 +1726,7 @@ export class Game {
           costItems: [],
           canUpgrade: false,
         },
-        contextAction: null, nearBed: false, nearStore: false, nearBuild: false, nearCooking: false, exhausted: false,
+        contextAction: null, contextActionId: null, nearBed: false, nearStore: false, nearBuild: false, nearCooking: false, exhausted: false,
         muted: this.audio.muted, musicOn: this.audio.musicOn, hasSave: this.hasSavedGame(),
       }
     }
@@ -1770,9 +1885,19 @@ export class Game {
       }
     })
     let contextAction: string | null = null
+    let contextActionId: UISnapshot['contextActionId'] = null
     if (this.phase === 'playing') {
-      if (this.nearBed()) contextAction = '잠자기'
-      else if (this.nearStore()) contextAction = '상점'
+      const animalFarm = this.selectedAnimalFarm()
+      if (this.nearBed()) {
+        contextAction = '잠자기'
+        contextActionId = 'sleep'
+      } else if (animalFarm) {
+        const product = getItem(animalFarm.productItemId)
+        contextAction = `${product?.name ?? '산물'} 수확`
+        contextActionId = 'animal'
+      } else if (this.nearStore()) {
+        contextAction = '상점'
+      }
     }
     return {
       phase: this.phase,
@@ -1794,6 +1919,7 @@ export class Game {
       cookQueue,
       cookingFire,
       contextAction,
+      contextActionId,
       nearBed: this.nearBed(),
       nearStore: this.nearStore(),
       nearBuild: this.nearBuild(),

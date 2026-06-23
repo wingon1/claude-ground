@@ -15,7 +15,7 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
     ui.phase === 'cook' ||
     ui.phase === 'sleepConfirm' ||
     invOpen
-  const canSleep = ui.contextAction === '잠자기'
+  const hasContextAction = ui.contextActionId != null
 
   return (
     <>
@@ -73,20 +73,21 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
       )}
 
       {/* Help hint */}
-      {!modalOpen && !canSleep && (
+      {!modalOpen && !hasContextAction && (
         <div className="tdv-deskhint">화면을 탭해 이동 · 시설 근처에서 하단 메뉴가 활성화돼요</div>
       )}
 
-      {/* Context action button (sleep only) */}
-      {!modalOpen && canSleep && (
+      {/* Context action button */}
+      {!modalOpen && hasContextAction && (
         <button
           className="tdv-action"
           onPointerDown={(e) => {
             e.preventDefault()
-            game.requestSleep()
+            if (ui.contextActionId === 'sleep') game.requestSleep()
+            else if (ui.contextActionId === 'animal') game.collectAnimalProduct()
           }}
         >
-          잠자기
+          {ui.contextAction}
         </button>
       )}
 
