@@ -1,0 +1,99 @@
+{
+  "buildings": [
+    {
+      "id": "tent", "name": "텐트", "emoji": "⛺", "category": "rest",
+      "prePlaced": true, "position": { "x": 280, "y": 300 }, "footprint": { "w": 72, "h": 60 },
+      "maxLevel": 3,
+      "levels": [
+        { "effects": { "sleepDurationMult": 1.0 } },
+        { "upgradeCost": { "gold": 150, "items": [{ "itemId": "wood", "amount": 20 }] }, "effects": { "sleepDurationMult": 0.8 } },
+        { "upgradeCost": { "gold": 400, "items": [{ "itemId": "wood", "amount": 40 }, { "itemId": "stone", "amount": 20 }] }, "effects": { "sleepDurationMult": 0.6 } }
+      ]
+    },
+    {
+      "id": "shop_stall", "name": "상점", "emoji": "🏪", "category": "shop",
+      "prePlaced": true, "position": { "x": 175, "y": 300 }, "footprint": { "w": 70, "h": 60 },
+      "maxLevel": 1,
+      "levels": [{ "effects": {} }]
+    },
+    {
+      "id": "cooking_fire", "name": "요리 화덕", "emoji": "🔥", "category": "cooking",
+      "position": { "x": 385, "y": 300 }, "footprint": { "w": 60, "h": 56 },
+      "buildCost": { "gold": 60, "items": [{ "itemId": "wood", "amount": 10 }] },
+      "unlockCondition": { "defaultUnlocked": true },
+      "maxLevel": 3,
+      "levels": [
+        { "effects": { "unlock": "cooking", "cookSlots": 1 } },
+        { "upgradeCost": { "gold": 180, "items": [{ "itemId": "stone", "amount": 15 }] }, "effects": { "unlock": "cooking", "cookSlots": 2 } },
+        { "upgradeCost": { "gold": 500, "items": [{ "itemId": "stone", "amount": 35 }, { "itemId": "iron_ore", "amount": 6 }] }, "effects": { "unlock": "cooking", "cookSlots": 3 } }
+      ]
+    },
+    {
+      "id": "chicken_coop", "name": "닭장", "emoji": "🐔", "category": "animal",
+      "position": { "x": 664, "y": 300 }, "footprint": { "w": 72, "h": 60 },
+      "buildCost": { "gold": 120, "items": [{ "itemId": "wood", "amount": 18 }] },
+      "unlockCondition": { "requiredTotalHarvestCount": 6 },
+      "maxLevel": 3,
+      "levels": [
+        { "effects": { "unlock": "chicken", "animalCapacity": 2 } },
+        { "upgradeCost": { "gold": 260, "items": [{ "itemId": "wood", "amount": 30 }] }, "effects": { "unlock": "chicken", "animalCapacity": 4 } },
+        { "upgradeCost": { "gold": 600, "items": [{ "itemId": "wood", "amount": 50 }, { "itemId": "iron_ore", "amount": 8 }] }, "effects": { "unlock": "chicken", "animalCapacity": 6 } }
+      ]
+    },
+    {
+      "id": "barn", "name": "외양간", "emoji": "🐄", "category": "animal",
+      "position": { "x": 570, "y": 190 }, "footprint": { "w": 84, "h": 64 },
+      "buildCost": { "gold": 220, "items": [{ "itemId": "wood", "amount": 28 }] },
+      "unlockCondition": { "requiredTotalHarvestCount": 14 },
+      "maxLevel": 3,
+      "levels": [
+        { "effects": { "unlock": "barn", "animalCapacity": 2 } },
+        { "upgradeCost": { "gold": 400, "items": [{ "itemId": "wood", "amount": 40 }] }, "effects": { "unlock": "barn", "animalCapacity": 3 } },
+        { "upgradeCost": { "gold": 800, "items": [{ "itemId": "stone", "amount": 40 }, { "itemId": "iron_ore", "amount": 10 }] }, "effects": { "unlock": "barn", "animalCapacity": 5 } }
+      ]
+    },
+    {
+      "id": "apiary", "name": "양봉장", "emoji": "🐝", "category": "animal",
+      "position": { "x": 760, "y": 430 }, "footprint": { "w": 60, "h": 56 },
+      "buildCost": { "gold": 180, "items": [{ "itemId": "wood", "amount": 20 }, { "itemId": "fiber", "amount": 15 }] },
+      "unlockCondition": { "requiredTotalHarvestCount": 30 },
+      "maxLevel": 3,
+      "levels": [
+        { "effects": { "unlock": "apiary", "animalCapacity": 2 } },
+        { "upgradeCost": { "gold": 360, "items": [{ "itemId": "wood", "amount": 30 }] }, "effects": { "unlock": "apiary", "animalCapacity": 3 } },
+        { "upgradeCost": { "gold": 700, "items": [{ "itemId": "wood", "amount": 45 }] }, "effects": { "unlock": "apiary", "animalCapacity": 4 } }
+      ]
+    },
+    {
+      "id": "storage", "name": "창고", "emoji": "📦", "category": "storage",
+      "position": { "x": 220, "y": 430 }, "footprint": { "w": 64, "h": 58 },
+      "buildCost": { "gold": 80, "items": [{ "itemId": "wood", "amount": 12 }] },
+      "unlockCondition": { "defaultUnlocked": true },
+      "maxLevel": 3,
+      "levels": [
+        { "effects": { "inventorySlots": 8 } },
+        { "upgradeCost": { "gold": 200, "items": [{ "itemId": "wood", "amount": 20 }] }, "effects": { "inventorySlots": 16 } },
+        { "upgradeCost": { "gold": 480, "items": [{ "itemId": "stone", "amount": 30 }] }, "effects": { "inventorySlots": 28 } }
+      ]
+    },
+    {
+      "id": "farm_sign", "name": "농장 표지판", "emoji": "🪧", "category": "farm",
+      "position": { "x": 280, "y": 608 }, "footprint": { "w": 50, "h": 50 },
+      "buildCost": { "gold": 100, "items": [{ "itemId": "wood", "amount": 15 }] },
+      "unlockCondition": { "requiredTotalHarvestCount": 10 },
+      "maxLevel": 2,
+      "levels": [
+        { "effects": { "plotCapBonus": 4 } },
+        { "upgradeCost": { "gold": 320, "items": [{ "itemId": "wood", "amount": 28 }] }, "effects": { "plotCapBonus": 8 } }
+      ]
+    },
+    {
+      "id": "mine_entrance", "name": "광산 입구", "emoji": "⛏️", "category": "mine",
+      "position": { "x": 392, "y": 172 }, "footprint": { "w": 76, "h": 68 },
+      "buildCost": { "gold": 200, "items": [{ "itemId": "stone", "amount": 25 }] },
+      "unlockCondition": { "requiredMaxStamina": 33 },
+      "maxLevel": 1,
+      "levels": [{ "effects": { "unlock": "mine" } }]
+    }
+  ]
+}

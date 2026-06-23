@@ -1,0 +1,13 @@
+{
+  "tree": { "type": "resource", "staminaCost": 1, "durationMs": 600, "autoTrigger": true, "range": 34, "requiresStamina": true },
+  "rock": { "type": "resource", "staminaCost": 1, "durationMs": 680, "autoTrigger": true, "range": 34, "requiresStamina": true },
+  "bush": { "type": "resource", "staminaCost": 1, "durationMs": 520, "autoTrigger": true, "range": 34, "requiresStamina": true },
+  "beach": { "type": "resource", "staminaCost": 1, "durationMs": 520, "autoTrigger": true, "range": 34, "requiresStamina": true },
+  "cropPlot": { "type": "farm", "staminaCost": 1, "durationMs": 480, "autoTrigger": true, "range": 32, "requiresStamina": true },
+  "animal": { "type": "animal", "staminaCost": 1, "durationMs": 500, "autoTrigger": true, "range": 34, "requiresStamina": true },
+  "oreNode": { "type": "resource", "staminaCost": 1, "durationMs": 700, "autoTrigger": true, "range": 34, "requiresStamina": true },
+  "tent": { "type": "rest", "autoTrigger": false, "range": 44, "canUseOnlyWhenCurrentStaminaIsZero": true },
+  "shop": { "type": "ui", "autoTrigger": false, "range": 44 },
+  "cooking": { "type": "ui", "autoTrigger": false, "range": 44 },
+  "mineEntrance": { "type": "ui", "autoTrigger": false, "range": 44 }
+}

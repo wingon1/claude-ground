@@ -1,0 +1,9 @@
+{
+  "passives": [
+    { "id": "strong_body",  "name": "튼튼한 몸",   "effect": { "maxStaminaBonus": 10 }, "owned": false },
+    { "id": "deep_sleep",   "name": "깊은 잠",     "effect": { "sleepDurationMult": 0.8 }, "owned": false },
+    { "id": "lumberjack",   "name": "벌목 전문가", "effect": { "chopStaminaSaveChance": 0.15 }, "owned": false },
+    { "id": "miners_breath","name": "광부의 호흡", "effect": { "mineStaminaSaveChance": 0.15 }, "owned": false },
+    { "id": "farmers_touch","name": "농부의 손길", "effect": { "cropYieldBonus": 1 }, "owned": false }
+  ]
+}

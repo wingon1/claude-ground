@@ -1,0 +1,26 @@
+{
+  "quests": [
+    { "id": "q_chop1",  "name": "첫 나무 베기", "desc": "나무를 한 번 베어 보세요.", "objective": { "type": "chop", "target": 1 }, "reward": { "gold": 10 } },
+    { "id": "q_wood5",  "name": "장작 모으기", "desc": "나무 5개를 모으세요.", "requires": "q_chop1", "objective": { "type": "collectItem", "itemId": "wood", "target": 5 }, "reward": { "gold": 15 } },
+    { "id": "q_sell",   "name": "첫 판매", "desc": "상점에서 무엇이든 팔아 보세요.", "requires": "q_wood5", "objective": { "type": "sell", "target": 8 }, "reward": { "gold": 12 } },
+    { "id": "q_plot1",  "name": "밭 늘리기", "desc": "농장 밭을 하나 더 구입하세요.", "requires": "q_sell", "objective": { "type": "buyPlot", "target": 1 }, "reward": { "gold": 20 } },
+    { "id": "q_harvest1", "name": "첫 수확", "desc": "다 자란 작물을 수확하세요.", "requires": "q_plot1", "objective": { "type": "harvest", "target": 1 }, "reward": { "gold": 15 } },
+    { "id": "q_mine1",  "name": "돌 캐기", "desc": "바위를 캐 보세요.", "requires": "q_harvest1", "objective": { "type": "mine", "target": 1 }, "reward": { "gold": 10 } },
+    { "id": "q_stone5", "name": "돌 모으기", "desc": "돌 5개를 모으세요.", "requires": "q_mine1", "objective": { "type": "collectItem", "itemId": "stone", "target": 5 }, "reward": { "gold": 15 } },
+    { "id": "q_tired",  "name": "지칠 때까지", "desc": "스태미나를 모두 사용하세요.", "requires": "q_harvest1", "objective": { "type": "staminaEmpty", "target": 1 }, "reward": { "gold": 10 } },
+    { "id": "q_sleep1", "name": "포근한 잠", "desc": "스태미나가 0일 때 텐트에서 잠을 자세요.", "requires": "q_tired", "objective": { "type": "sleep", "target": 1 }, "reward": { "gems": 1 } },
+    { "id": "q_max31",  "name": "조금 더 튼튼하게", "desc": "최대 스태미나를 31까지 올리세요.", "requires": "q_sleep1", "objective": { "type": "maxStamina", "target": 31 }, "reward": { "gold": 30 } },
+    { "id": "q_storage", "name": "창고 짓기", "desc": "창고를 지어 보관함을 늘리세요.", "requires": "q_stone5", "objective": { "type": "build", "buildingId": "storage", "target": 1 }, "reward": { "gold": 20 } },
+    { "id": "q_cook_build", "name": "요리 시작", "desc": "요리 화덕을 지으세요.", "requires": "q_max31", "objective": { "type": "build", "buildingId": "cooking_fire", "target": 1 }, "reward": { "gold": 20 } },
+    { "id": "q_bread", "name": "갓 구운 빵", "desc": "빵을 한 번 만들어 보세요.", "requires": "q_cook_build", "objective": { "type": "craft", "recipeId": "bread", "target": 1 }, "reward": { "gold": 30 } },
+    { "id": "q_coop", "name": "닭장 짓기", "desc": "닭장을 지으세요.", "requires": "q_bread", "objective": { "type": "build", "buildingId": "chicken_coop", "target": 1 }, "reward": { "gold": 25 } },
+    { "id": "q_egg", "name": "달걀 모으기", "desc": "달걀을 3개 모으세요.", "requires": "q_coop", "objective": { "type": "collectAnimal", "target": 3 }, "reward": { "gold": 30 } },
+    { "id": "q_carrot", "name": "주황빛 수확", "desc": "당근을 수확하세요.", "requires": "q_egg", "objective": { "type": "collectItem", "itemId": "carrot", "target": 1 }, "reward": { "gold": 45, "gems": 1 } },
+    { "id": "q_mine_open", "name": "광산을 향해", "desc": "광산 입구를 지으세요.", "requires": "q_carrot", "objective": { "type": "build", "buildingId": "mine_entrance", "target": 1 }, "reward": { "gold": 100, "gems": 3 } },
+    { "id": "q_max40", "name": "튼튼한 일꾼", "desc": "최대 스태미나를 40까지 올리세요.", "requires": "q_max31", "objective": { "type": "maxStamina", "target": 40 }, "reward": { "gems": 5 } },
+    { "id": "q_barn", "name": "외양간 짓기", "desc": "외양간을 지으세요.", "requires": "q_carrot", "objective": { "type": "build", "buildingId": "barn", "target": 1 }, "reward": { "gold": 60 } },
+    { "id": "q_milk", "name": "신선한 우유", "desc": "우유를 모으세요.", "requires": "q_barn", "objective": { "type": "collectItem", "itemId": "milk", "target": 2 }, "reward": { "gold": 50 } },
+    { "id": "q_cheese", "name": "치즈 만들기", "desc": "치즈를 한 번 만들어 보세요.", "requires": "q_milk", "objective": { "type": "craft", "recipeId": "cheese", "target": 1 }, "reward": { "gold": 70, "gems": 1 } },
+    { "id": "q_apiary", "name": "달콤한 양봉", "desc": "양봉장을 짓고 꿀을 모으세요.", "requires": "q_cheese", "objective": { "type": "collectItem", "itemId": "honey", "target": 2 }, "reward": { "gold": 90, "gems": 2 } }
+  ]
+}

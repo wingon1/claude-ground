@@ -1,0 +1,26 @@
+{
+  "floors": [
+    { "floor": 1, "name": "얕은 갱도", "nodeCount": 6, "nodeHp": 3, "staminaCost": 1,
+      "descendRequirement": { "minedNodes": 3 },
+      "drops": [
+        { "itemId": "stone", "min": 1, "max": 3, "weight": 5 },
+        { "itemId": "copper_ore", "min": 1, "max": 2, "weight": 3 },
+        { "itemId": "raw_gem", "min": 1, "max": 1, "weight": 1 }
+      ] },
+    { "floor": 2, "name": "깊은 갱도", "nodeCount": 7, "nodeHp": 3, "staminaCost": 1,
+      "unlockCondition": { "requiredDeepestFloor": 1 },
+      "descendRequirement": { "minedNodes": 4 },
+      "drops": [
+        { "itemId": "copper_ore", "min": 1, "max": 2, "weight": 4 },
+        { "itemId": "iron_ore", "min": 1, "max": 2, "weight": 4 },
+        { "itemId": "raw_gem", "min": 1, "max": 1, "weight": 2 }
+      ] },
+    { "floor": 3, "name": "수정 갱도", "nodeCount": 8, "nodeHp": 4, "staminaCost": 1,
+      "unlockCondition": { "requiredDeepestFloor": 2 },
+      "drops": [
+        { "itemId": "stone", "min": 2, "max": 4, "weight": 2 },
+        { "itemId": "iron_ore", "min": 1, "max": 3, "weight": 5 },
+        { "itemId": "raw_gem", "min": 1, "max": 2, "weight": 3 }
+      ] }
+  ]
+}
