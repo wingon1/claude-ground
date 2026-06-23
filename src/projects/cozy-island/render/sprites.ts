@@ -1,5 +1,6 @@
 // All world objects are square-pixel art (no arcs/curves), drawn from grids.
 import { drawGrid, ICONS } from './art'
+import { drawSprite, preloadSpriteSheet } from './spriteSheet'
 
 const PXR = 3 // pixel unit for resources/characters
 const PXB = 3 // pixel unit for buildings
@@ -360,6 +361,11 @@ export function drawPlayer(
   ctx: CanvasRenderingContext2D, x: number, y: number,
   facing: number, walk: number, action: number, tired: boolean, moving: boolean,
 ) {
+  preloadSpriteSheet()
+  const spriteBob = moving ? Math.round(Math.abs(Math.sin(walk * Math.PI * 2)) * 2) : 0
+  const spriteId = playerSpriteId(walk, action, tired, moving)
+  if (drawSprite(ctx, spriteId, x, y - spriteBob, { flipX: facing < 0 })) return
+
   shadow(ctx, x, y, 22)
   const now = performance.now()
   const a = Math.max(0, Math.min(1, action))
@@ -380,6 +386,13 @@ export function drawPlayer(
 
   if (a > 0) drawTool(ctx, x, y - bob, facing, a)
   if (tired) { r(ctx, x + 9, y - 42, 2, 4, '#9fd8ff'); r(ctx, x + 8, y - 38, 4, 3, '#7fc8f0') }
+}
+
+function playerSpriteId(walk: number, action: number, tired: boolean, moving: boolean): string {
+  if (tired) return 'player.tired.down'
+  if (action > 0) return action < 0.5 ? 'player.action.pickaxe.0' : 'player.action.pickaxe.1'
+  if (moving) return `player.walk.down.${Math.floor(walk * 4) & 3}`
+  return 'player.idle.down'
 }
 
 // Pixel tool: wind-up (raised) then strike (down), blocky — no rotation.
@@ -405,17 +418,20 @@ export function drawChicken(ctx: CanvasRenderingContext2D, x: number, y: number,
 }
 
 export function drawTree(ctx: CanvasRenderingContext2D, x: number, y: number, big: boolean) {
+  if (drawSprite(ctx, big ? 'resource.tree.large' : 'resource.tree.small', x, y)) return
   shadow(ctx, x, y, big ? 28 : 22)
   drawGrid(ctx, big ? TREE_BIG : TREE_SMALL, x, y, PXR, 'foot', TREE_PAL)
 }
 
 export function drawRock(ctx: CanvasRenderingContext2D, x: number, y: number, big: boolean) {
+  if (drawSprite(ctx, big ? 'resource.rock.large' : 'resource.rock.small', x, y)) return
   shadow(ctx, x, y, big ? 30 : 24)
   drawGrid(ctx, big ? ROCK_BIG : ROCK_SMALL, x, y, PXR, 'foot', ROCK_PAL)
 }
 
 export function drawBush(ctx: CanvasRenderingContext2D, x: number, y: number, _berry: boolean) {
   void _berry
+  if (drawSprite(ctx, 'resource.bush.berry', x, y)) return
   shadow(ctx, x, y, 26)
   drawGrid(ctx, BUSH, x, y, PXR, 'foot', BUSH_PAL)
 }
@@ -449,23 +465,27 @@ export function drawCrop(ctx: CanvasRenderingContext2D, x: number, y: number, gr
 }
 
 export function drawOreNode(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  if (drawSprite(ctx, 'resource.ore.node', x, y)) return
   shadow(ctx, x, y, 22)
   drawGrid(ctx, ORE, x, y, PXR, 'foot')
 }
 
 // buildings
 export function drawTent(ctx: CanvasRenderingContext2D, x: number, y: number, level: number) {
+  if (drawSprite(ctx, 'building.tent.lv1', x, y)) return
   shadow(ctx, x, y, 62)
   const pal = level >= 3 ? { ...TENT_PAL, s: '#f0d48c', S: '#dcb866' }
     : level >= 2 ? { ...TENT_PAL, s: '#eccd86' } : TENT_PAL
   drawGrid(ctx, TENT, x, y, 5, 'foot', pal)
 }
 export function drawShop(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  if (drawSprite(ctx, 'building.shop.lv1', x, y)) return
   shadow(ctx, x, y, 58)
   drawGrid(ctx, SHOP, x, y, 4, 'foot', SHOP_PAL)
 }
 export function drawCookingFire(ctx: CanvasRenderingContext2D, x: number, y: number, _level: number) {
   void _level
+  if (drawSprite(ctx, 'building.cooking_fire.lv1', x, y)) return
   shadow(ctx, x, y, 50)
   drawGrid(ctx, COOKFIRE, x, y, 4, 'foot', COOKFIRE_PAL)
 }
@@ -474,6 +494,7 @@ export function drawCoop(ctx: CanvasRenderingContext2D, x: number, y: number) {
   drawGrid(ctx, COOP, x, y, PXB, 'foot')
 }
 export function drawStorage(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  if (drawSprite(ctx, 'building.storage.lv1', x, y)) return
   shadow(ctx, x, y, 44)
   drawGrid(ctx, STORAGE, x, y, PXB, 'foot')
 }
@@ -501,6 +522,7 @@ export function drawFarmSign(ctx: CanvasRenderingContext2D, x: number, y: number
   drawGrid(ctx, FARMSIGN, x, y, PXR, 'foot')
 }
 export function drawMine(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  if (drawSprite(ctx, 'building.mine_entrance.lv1', x, y)) return
   shadow(ctx, x, y, 60)
   drawGrid(ctx, MINE, x, y, PXB, 'foot')
 }

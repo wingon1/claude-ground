@@ -66,7 +66,7 @@
 - [x] `src/projects/cozy-island/assets/spritesheet.json` 생성: sprite id, frame rect, anchor, scale, tags.
 - [x] `render/spriteSheet.ts` 신설: 이미지 로드, manifest 검증, `drawSprite(id, x, y)` API.
 - [x] `docs/spritesheet-inventory.md` 작성: 제작 대상, manifest 규칙, 전환 순서.
-- [ ] 기존 코드 도트 렌더러는 fallback으로 유지하되, 신규 visible object는 먼저 sprite sheet에 추가하는 규칙 적용.
+- [x] 기존 코드 도트 렌더러는 fallback으로 유지하되, 신규 visible object는 먼저 sprite sheet에 추가하는 규칙 적용.
 - [x] 1차 시트 대상 초안: player idle/walk/action/tired, tent, shop, cooking_fire, storage, mine_entrance, tree, rock, bush, ore, wheat plot, UI icons.
 - [ ] 2차 시트 대상: crop growth stages, chicken/cow/bee, coop/barn/apiary, fence/gate, mine floor tiles, item icons.
 - [ ] 3차 시트 대상: dungeon entrance/stage tiles/enemy-or-hazard placeholders, build site variants, upgrade variants, VFX particles.
@@ -87,4 +87,4 @@
 ---
 
 ## 다음 행동
-홈 구역 핵심 오브젝트부터 `drawSprite(id, x, y)`로 전환하고, 기존 코드 도트는 fallback으로 유지한다.
+동물·밭·광산 내부까지 sprite sheet 제작/렌더 전환을 확장한다.

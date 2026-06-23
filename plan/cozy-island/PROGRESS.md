@@ -3,7 +3,7 @@
 > 각 스텝 완료 후: 한 일 / 영향받은 파일 상태 / 다음 스텝 을 갱신한다.
 
 ## 현재 상태
-- **단계**: M6 스프라이트시트 파이프라인 파일 생성 완료, 렌더 전환 전.
+- **단계**: M6 홈 구역 핵심 오브젝트 sprite sheet 렌더 전환 완료.
 - **브랜치**: `codex/cozy-island-spritesheet-plan`
 - **저장 버전**: `SAVE_VERSION = 7`
 
@@ -65,6 +65,14 @@
 - 영향받은 파일: `src/projects/cozy-island/assets/spritesheet.png`, `spritesheet.json`, `render/spriteSheet.ts`, `plan/cozy-island/PLAN.md`, `PROGRESS.md`.
 - 검증: PNG 육안 확인, `npm run lint -- src/projects/cozy-island` 통과, `spriteSheet.ts` 단독 TypeScript 검사 통과(`vite/client` 타입 포함).
 
+### 2026-06-23 — 홈 구역 sprite sheet 렌더 전환
+- 한 일:
+  1. `render/sprites.ts`에서 플레이어, 나무, 바위, 덤불, 광석, 텐트, 상점, 요리불, 창고, 광산 입구를 `drawSprite()` 우선 렌더로 전환.
+  2. 시트 이미지가 아직 로드되지 않았거나 sprite id가 없으면 기존 코드 도트 렌더로 fallback되도록 유지.
+  3. 플레이어 시트 프레임을 더 큰 3px 기준으로 재생성해 화면 내 크기와 발 기준 정렬을 수정.
+- 영향받은 파일: `render/sprites.ts`, `assets/spritesheet.png`, `plan/cozy-island/PLAN.md`, `PROGRESS.md`.
+- 검증: 모바일 headless Chrome 스크린샷 확인, 누락 sprite 콘솔 경고 없음.
+
 ## 다음 스텝
-- [ ] 홈 구역 핵심 오브젝트부터 sprite sheet 렌더로 전환.
+- [ ] 밭/동물/광산 내부 sprite sheet 제작 및 렌더 전환.
 - [ ] 전체 `npm run build` 실패 원인인 `src/projects/shikaku` 기존 타입 오류를 별도 처리.
