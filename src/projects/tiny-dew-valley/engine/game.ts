@@ -2699,18 +2699,18 @@ export class Game {
     // Hand gripping the snath.
     ctx.fillStyle = '#f0c79a'
     ctx.fillRect(-2 * S, -2 * S, 4 * S, 4 * S)
-    // Wooden snath (handle) pointing up from the hand.
+    // Short wooden snath (handle) pointing up from the hand.
     ctx.fillStyle = '#9a6a3a'
-    ctx.fillRect(-1 * S, -15 * S, 2 * S, 15 * S)
+    ctx.fillRect(-1 * S, -10 * S, 2 * S, 10 * S)
     ctx.fillStyle = '#7a5230'
-    ctx.fillRect(-1 * S, -15 * S, 1 * S, 15 * S)
-    // Curved steel blade hooking off the top.
+    ctx.fillRect(-1 * S, -10 * S, 1 * S, 10 * S)
+    // Small curved steel blade hooking off the top.
     ctx.fillStyle = '#cfd3dc'
-    ctx.fillRect(0, -16 * S, 8 * S, 2 * S)
+    ctx.fillRect(0, -11 * S, 4 * S, 2 * S)
     ctx.fillStyle = '#eef0f6'
-    ctx.fillRect(0, -16 * S, 8 * S, 1 * S)
+    ctx.fillRect(0, -11 * S, 4 * S, 1 * S)
     ctx.fillStyle = '#aeb2bc'
-    ctx.fillRect(7 * S, -16 * S, 2 * S, 4 * S)
+    ctx.fillRect(3 * S, -11 * S, 2 * S, 3 * S)
     ctx.restore()
   }
 

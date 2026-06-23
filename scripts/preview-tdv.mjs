@@ -284,11 +284,11 @@ function drawWorkPose(g, sx, sy, dir, t, S) {
   g.scale(mirror, 1)
   g.rotate(mirror * ang)
   g.fillStyle = '#f0c79a'; g.fillRect(-2 * S, -2 * S, 4 * S, 4 * S)
-  g.fillStyle = '#9a6a3a'; g.fillRect(-1 * S, -15 * S, 2 * S, 15 * S)
-  g.fillStyle = '#7a5230'; g.fillRect(-1 * S, -15 * S, 1 * S, 15 * S)
-  g.fillStyle = '#cfd3dc'; g.fillRect(0, -16 * S, 8 * S, 2 * S)
-  g.fillStyle = '#eef0f6'; g.fillRect(0, -16 * S, 8 * S, 1 * S)
-  g.fillStyle = '#aeb2bc'; g.fillRect(7 * S, -16 * S, 2 * S, 4 * S)
+  g.fillStyle = '#9a6a3a'; g.fillRect(-1 * S, -10 * S, 2 * S, 10 * S)
+  g.fillStyle = '#7a5230'; g.fillRect(-1 * S, -10 * S, 1 * S, 10 * S)
+  g.fillStyle = '#cfd3dc'; g.fillRect(0, -11 * S, 4 * S, 2 * S)
+  g.fillStyle = '#eef0f6'; g.fillRect(0, -11 * S, 4 * S, 1 * S)
+  g.fillStyle = '#aeb2bc'; g.fillRect(3 * S, -11 * S, 2 * S, 3 * S)
   g.restore()
 }
 
