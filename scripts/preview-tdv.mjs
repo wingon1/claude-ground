@@ -349,6 +349,59 @@ cell('FENCE (h / v)', SP.fence.width * SCALE * 3 + 12, SP.fence.height * SCALE, 
   blit(sheet, SP.fence, x + SP.fence.width * SCALE + 4, y, SCALE)
   blit(sheet, SP.fence, x + SP.fence.width * SCALE * 2 + 12, y, SCALE, true)
 })
+
+// Quarter-turn (CW) blit for the new animal-pen fence pieces.
+function blitR(sheet, src, dx, dy, scale, rot) {
+  const g = sheet.getContext()
+  const w = src.width, h = src.height
+  for (let sy = 0; sy < h; sy++) {
+    for (let sx = 0; sx < w; sx++) {
+      const i = (sy * w + sx) * 4
+      if (src._d[i + 3] === 0) continue
+      g.fillStyle = `rgba(${src._d[i]},${src._d[i + 1]},${src._d[i + 2]},${src._d[i + 3] / 255})`
+      let ox, oy
+      if (rot === 1) { ox = h - 1 - sy; oy = sx }
+      else if (rot === 2) { ox = w - 1 - sx; oy = h - 1 - sy }
+      else if (rot === 3) { ox = sy; oy = w - 1 - sx }
+      else { ox = sx; oy = sy }
+      g.fillRect(dx + ox * scale, dy + oy * scale, scale, scale)
+    }
+  }
+}
+const FSC = 7
+cell('animal fence: straight ×4 rot', 4 * (16 * FSC + 6), 16 * FSC, (sheet, x, y) => {
+  for (let r = 0; r < 4; r++) {
+    blit(sheet, SP.grass[0], x + r * (16 * FSC + 6), y, FSC)
+    blitR(sheet, SP.fenceSmall, x + r * (16 * FSC + 6), y, FSC, r)
+  }
+})
+cell('animal fence: corner ×4 rot', 4 * (16 * FSC + 6), 16 * FSC, (sheet, x, y) => {
+  for (let r = 0; r < 4; r++) {
+    blit(sheet, SP.grass[0], x + r * (16 * FSC + 6), y, FSC)
+    blitR(sheet, SP.fenceCorner, x + r * (16 * FSC + 6), y, FSC, r)
+  }
+})
+// Assembled pen (6×4) using the real rotation rules, with a bottom-center gate.
+const PW = 6, PH = 4, PSC = 6
+cell('assembled pen (gate at bottom)', PW * 16 * PSC, PH * 16 * PSC, (sheet, x, y) => {
+  for (let ty = 0; ty < PH; ty++) for (let tx = 0; tx < PW; tx++) blit(sheet, SP.grass[(tx + ty) % 3], x + tx * 16 * PSC, y + ty * 16 * PSC, PSC)
+  for (let ty = 0; ty < PH; ty++) {
+    for (let tx = 0; tx < PW; tx++) {
+      const left = tx === 0, right = tx === PW - 1, top = ty === 0, bottom = ty === PH - 1
+      if (!(left || right || top || bottom)) continue
+      if (bottom && tx === Math.floor(PW / 2)) continue // gate
+      let piece, rot
+      if ((left || right) && (top || bottom)) {
+        piece = SP.fenceCorner
+        rot = top && left ? 0 : top && right ? 1 : bottom && right ? 2 : 3
+      } else {
+        piece = SP.fenceSmall
+        rot = top ? 0 : right ? 1 : bottom ? 2 : 3
+      }
+      blitR(sheet, piece, x + tx * 16 * PSC, y + ty * 16 * PSC, PSC, rot)
+    }
+  }
+})
 // crops: show each crop's stages
 for (const id of Object.keys(SP.crops)) {
   const frames = SP.crops[id]

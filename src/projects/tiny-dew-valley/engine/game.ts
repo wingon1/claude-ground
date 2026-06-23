@@ -2202,6 +2202,8 @@ export class Game {
       delete t.metadata.animalFarm
       delete t.metadata.animalFence
       delete t.metadata.animalFenceAxis
+      delete t.metadata.animalFenceKind
+      delete t.metadata.animalFenceRot
     }
     for (const farm of ANIMAL_FARMS) {
       for (let y = farm.y; y < farm.y + farm.h; y++) {
@@ -2216,6 +2218,8 @@ export class Game {
           delete t.metadata.animalFarm
           delete t.metadata.animalFence
           delete t.metadata.animalFenceAxis
+          delete t.metadata.animalFenceKind
+          delete t.metadata.animalFenceRot
         }
       }
       if (!this.animalFarmOwned(farm)) continue
@@ -2230,11 +2234,25 @@ export class Game {
           t.terrain = edge && !gate ? 'blocked' : 'grass'
           t.metadata.animalFarm = farm.id
           if (edge && !gate) {
+            const left = x === farm.x
+            const right = x === farm.x + farm.w - 1
+            const top = y === farm.y
+            const bottom = y === farm.y + farm.h - 1
             t.metadata.animalFence = true
-            t.metadata.animalFenceAxis = x === farm.x || x === farm.x + farm.w - 1 ? 'vertical' : 'horizontal'
+            if ((left || right) && (top || bottom)) {
+              // Corner: rotation by corner (CW from top-left).
+              t.metadata.animalFenceKind = 'corner'
+              t.metadata.animalFenceRot = top && left ? 0 : top && right ? 1 : bottom && right ? 2 : 3
+            } else {
+              // Straight: top=0, right=1, bottom=2, left=3.
+              t.metadata.animalFenceKind = 'straight'
+              t.metadata.animalFenceRot = top ? 0 : right ? 1 : bottom ? 2 : 3
+            }
           } else {
             delete t.metadata.animalFence
             delete t.metadata.animalFenceAxis
+            delete t.metadata.animalFenceKind
+            delete t.metadata.animalFenceRot
           }
         }
       }
@@ -2440,12 +2458,19 @@ export class Game {
     else if (t.terrain === 'path') img = this.sprites.path
     else if (t.terrain === 'blocked') {
       this.ctx.drawImage(this.sprites.grass[(t.x * 7 + t.y * 13) % 3], dx, dy, sz, sz)
-      if (t.metadata.animalFenceAxis === 'vertical') {
-        this.ctx.save()
-        this.ctx.translate(dx + sz / 2, dy + sz / 2)
-        this.ctx.rotate(Math.PI / 2)
-        this.ctx.drawImage(this.sprites.fence, -sz / 2, -sz / 2, sz, sz)
-        this.ctx.restore()
+      if (t.metadata.animalFence === true) {
+        // Small animal-pen fence: pick straight/corner piece and rotate it.
+        const piece = t.metadata.animalFenceKind === 'corner' ? this.sprites.fenceCorner : this.sprites.fenceSmall
+        const rot = typeof t.metadata.animalFenceRot === 'number' ? t.metadata.animalFenceRot : 0
+        if (rot === 0) {
+          this.ctx.drawImage(piece, dx, dy, sz, sz)
+        } else {
+          this.ctx.save()
+          this.ctx.translate(dx + sz / 2, dy + sz / 2)
+          this.ctx.rotate((rot * Math.PI) / 2)
+          this.ctx.drawImage(piece, -sz / 2, -sz / 2, sz, sz)
+          this.ctx.restore()
+        }
         return
       }
       img = this.sprites.fence
