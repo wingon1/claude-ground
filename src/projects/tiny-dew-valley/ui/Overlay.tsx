@@ -318,6 +318,30 @@ function BuildModal({ game, ui }: { game: Game; ui: UISnapshot }) {
                 )}
               </div>
             </div>
+            {ui.buildPermits.map((permit) => (
+              <div className={`tdv-craft${permit.locked ? ' locked' : ''}`} key={permit.itemId}>
+                <img src={iconURL(permit.sprite)} alt={permit.name} />
+                <div className="info">
+                  <div className="nm">{permit.name}</div>
+                  <div className="ds">{permit.desc}</div>
+                  <div className="mats">
+                    <span className={`mat${ui.gold >= permit.price ? '' : ' miss'}`}>골드 {ui.gold}/{permit.price}</span>
+                    {permit.locked && <span className="mat miss">이전 농장 필요</span>}
+                  </div>
+                </div>
+                <div className="act">
+                  {permit.built ? (
+                    <span className="owned">완료</span>
+                  ) : permit.locked ? (
+                    <span className="lock">잠김</span>
+                  ) : (
+                    <button className="tdv-btn gold sm" disabled={!permit.affordable} onClick={() => game.buyBuildPermit(permit.itemId)}>
+                      건설
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         )}
         {tab === 'farm' && (

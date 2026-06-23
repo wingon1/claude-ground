@@ -91,6 +91,16 @@ export interface BuildOptionView {
   built: boolean
   locked: boolean
 }
+export interface BuildPermitView {
+  itemId: string
+  name: string
+  desc: string
+  price: number
+  affordable: boolean
+  sprite: string
+  built: boolean
+  locked: boolean
+}
 export interface CropChoiceView {
   id: string
   name: string
@@ -165,6 +175,7 @@ export interface UISnapshot {
   toasts: ToastMsg[]
   shopBuy: ShopBuyView[]
   buildOptions: BuildOptionView[]
+  buildPermits: BuildPermitView[]
   fieldPlots: FieldPlotView[]
   cropChoices: CropChoiceView[]
   selectedFieldId: string | null
@@ -1025,6 +1036,34 @@ export class Game {
     this.emit()
   }
 
+  buyBuildPermit(itemId: string) {
+    if (this.phase !== 'build') return
+    const entry = SHOP_CATALOG.find((e) => e.itemId === itemId)
+    if (!entry?.grantsFlag || entry.buyPrice == null || !this.isAnimalPermitEntry(entry)) return
+    if (!this.flagEnabled(entry.requiresFlag)) {
+      this.toast('이전 농장부터 건설해야 해요.', 'bad')
+      this.audio.sfx('reject')
+      return
+    }
+    if (this.flagEnabled(entry.grantsFlag)) {
+      this.toast('이미 건설된 농장이에요.', 'info')
+      return
+    }
+    if (this.state.gold < entry.buyPrice) {
+      this.toast('골드가 부족해요.', 'bad')
+      this.audio.sfx('reject')
+      return
+    }
+    this.state.gold -= entry.buyPrice
+    this.state.flags[entry.grantsFlag] = true
+    this.applyAnimalFarms()
+    const def = getItem(itemId)
+    this.toast(`${def?.name ?? '농장'} 건설 완료!`, 'good')
+    this.audio.sfx('sparkle')
+    this.autosave()
+    this.emit()
+  }
+
   buyItem(itemId: string) {
     const entry = SHOP_CATALOG.find((e) => e.itemId === itemId)
     if (!entry || entry.buyPrice == null) return
@@ -1246,6 +1285,10 @@ export class Game {
 
   private animalFarmOwned(farm: AnimalFarmDef): boolean {
     return this.flagEnabled(farm.unlockFlag)
+  }
+
+  private isAnimalPermitEntry(entry: { grantsFlag?: string }): boolean {
+    return !!entry.grantsFlag && ANIMAL_FARMS.some((farm) => farm.unlockFlag === entry.grantsFlag)
   }
 
   private animalCountKey(farmId: string): string {
@@ -1963,7 +2006,7 @@ export class Game {
       return {
         phase: this.phase, day: 1, clock: '오전 6:00', period: '아침', periodKey: 'morning',
         gold: 0, stamina: 0, maxStamina: 0, inventory: [], toasts: [...this.toasts], shopBuy: [],
-        buildOptions: [], fieldPlots: [], cropChoices: [], selectedFieldId: null, cookRecipes: [],
+        buildOptions: [], buildPermits: [], fieldPlots: [], cropChoices: [], selectedFieldId: null, cookRecipes: [],
         cookQueue: [],
         cookingFire: {
           level: 1,
@@ -1995,6 +2038,7 @@ export class Game {
     })
     const shopBuy: ShopBuyView[] = SHOP_CATALOG.filter((e) => {
       if (!this.flagEnabled(e.requiresFlag)) return false
+      if (this.isAnimalPermitEntry(e)) return false
       if (e.grantsFlag && this.flagEnabled(e.grantsFlag)) return false
       return true
     }).map((e) => {
@@ -2013,6 +2057,24 @@ export class Game {
         sprite: def.sprite,
         color: def.cropId ? CROPS[def.cropId].color : undefined,
         desc: `${def.description}${ownedText}`,
+      }
+    })
+    const buildPermits: BuildPermitView[] = SHOP_CATALOG.filter((e) =>
+      this.isAnimalPermitEntry(e),
+    ).map((e) => {
+      const def = getItem(e.itemId)!
+      const built = this.flagEnabled(e.grantsFlag)
+      const locked = !this.flagEnabled(e.requiresFlag)
+      const price = e.buyPrice ?? 0
+      return {
+        itemId: e.itemId,
+        name: def.name,
+        desc: def.description,
+        price,
+        affordable: !built && !locked && s.gold >= price,
+        sprite: def.sprite,
+        built,
+        locked,
       }
     })
     const costViews = (items: { itemId: string; qty: number }[]): CostItemView[] =>
@@ -2177,6 +2239,7 @@ export class Game {
       toasts: [...this.toasts],
       shopBuy,
       buildOptions,
+      buildPermits,
       fieldPlots,
       cropChoices,
       selectedFieldId,
