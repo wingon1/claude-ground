@@ -259,6 +259,10 @@ export interface OrderView {
   completed: boolean
   canComplete: boolean
 }
+export interface ContextActionView {
+  id: 'sleep' | 'animal' | 'seed' | 'shop' | 'cook' | 'order'
+  label: string
+}
 export interface UISnapshot {
   phase: UIPhase
   day: number
@@ -284,6 +288,7 @@ export interface UISnapshot {
   order: OrderView | null
   contextAction: string | null
   contextActionId: 'sleep' | 'animal' | 'seed' | 'shop' | 'cook' | 'order' | null
+  contextActions: ContextActionView[]
   nearBed: boolean
   nearStore: boolean
   nearBuild: boolean
@@ -2492,7 +2497,7 @@ export class Game {
   private drawOrderNpc(S: number) {
     const x = ORDER_NPC.x * T + T / 2
     const y = ORDER_NPC.y * T + T
-    this.drawHuman(this.sprites.barnaby, x, y, 'down', false, false, 0)
+    this.drawHuman(this.sprites.barnaby, x, y, 'down', false, false, 0, false)
     const order = this.currentOrder()
     if (!order || order.completed) return
     const ctx = this.ctx
@@ -2624,17 +2629,18 @@ export class Game {
     moving: boolean,
     exhausted: boolean,
     animTime: number,
+    playerMotion = true,
   ) {
     const S = this.scale
     let frame = 0
     if (moving) frame = Math.floor(animTime * 10) % 2 === 0 ? 1 : 2
     const img = sheet[`${dir}_${frame}`] ?? sheet['down_0']
     const walkBob = moving ? Math.abs(Math.sin(animTime * 18)) * 1.2 : 0
-    const jump = this.jumpT > 0 ? Math.sin((this.jumpT / 0.22) * Math.PI) * 7 : 0
-    const work = this.workAnimT > 0 ? Math.sin((this.workAnimT / 0.28) * Math.PI) : 0
+    const jump = playerMotion && this.jumpT > 0 ? Math.sin((this.jumpT / 0.22) * Math.PI) * 7 : 0
+    const work = playerMotion && this.workAnimT > 0 ? Math.sin((this.workAnimT / 0.28) * Math.PI) : 0
     const drawY = y - 22 + 2 - walkBob - jump - work * 1.5
     this.ctx.drawImage(img, this.wx(x - 8), this.wy(drawY), 16 * S, 22 * S)
-    if (work > 0) this.drawWorkPose(x, drawY, dir, work, S)
+    if (playerMotion && work > 0) this.drawWorkPose(x, drawY, dir, work, S)
     if (exhausted) {
       const t = performance.now() / 300
       this.ctx.fillStyle = '#9fd0ff'
@@ -2811,7 +2817,7 @@ export class Game {
         objective: null,
         objectives: [],
         order: null,
-        contextAction: null, contextActionId: null, nearBed: false, nearStore: false, nearBuild: false, nearCooking: false, exhausted: false,
+        contextAction: null, contextActionId: null, contextActions: [], nearBed: false, nearStore: false, nearBuild: false, nearCooking: false, exhausted: false,
         muted: this.audio.muted, musicOn: this.audio.musicOn, hasSave: this.hasSavedGame(),
       }
     }
@@ -3037,26 +3043,30 @@ export class Game {
     const objective = this.currentObjective()
     let contextAction: string | null = null
     let contextActionId: UISnapshot['contextActionId'] = null
+    const contextActions: ContextActionView[] = []
     if (this.phase === 'playing') {
       const animalFarm = this.selectedAnimalFarm()
       if (this.nearBed()) {
         contextAction = '잠자기'
         contextActionId = 'sleep'
+        contextActions.push({ id: 'sleep', label: '잠자기' })
       } else if (this.selectedFieldId()) {
         contextAction = '씨앗 변경'
         contextActionId = 'seed'
+        contextActions.push({ id: 'seed', label: '씨앗 변경' })
       } else if (animalFarm) {
         contextAction = null
         contextActionId = null
       } else if (this.nearOrderNpc()) {
-        contextAction = '주문'
-        contextActionId = 'order'
-      } else if (this.nearStore()) {
-        contextAction = '상점'
-        contextActionId = 'shop'
-      } else if (this.nearCooking()) {
-        contextAction = '요리'
-        contextActionId = 'cook'
+        contextActions.push({ id: 'order', label: '주문' })
+        if (this.nearStore()) contextActions.push({ id: 'shop', label: '상점' })
+      } else {
+        if (this.nearStore()) contextActions.push({ id: 'shop', label: '상점' })
+        if (this.nearCooking()) contextActions.push({ id: 'cook', label: '요리' })
+      }
+      if (contextActions.length > 0 && contextActionId == null) {
+        contextAction = contextActions[0].label
+        contextActionId = contextActions[0].id
       }
     }
     return {
@@ -3084,6 +3094,7 @@ export class Game {
       order: this.currentOrder(),
       contextAction,
       contextActionId,
+      contextActions,
       nearBed: this.nearBed(),
       nearStore: this.nearStore(),
       nearBuild: this.nearBuild(),

@@ -379,29 +379,37 @@
   top: 33px;
   box-shadow: 0 2px 6px #0005;
 }
-.tdv-action {
+.tdv-actions {
   position: absolute;
-  right: 20px;
-  bottom: 86px;
-  width: 92px;
-  height: 92px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 38% 32%, #ffe6a6, #e0a93f);
-  border: 3px solid #b07a2c;
-  display: grid;
-  place-items: center;
+  right: 16px;
+  bottom: 78px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: auto;
+  z-index: 9;
+}
+.tdv-action {
+  min-width: 108px;
+  height: 42px;
+  border-radius: 8px;
+  background: linear-gradient(#ffe6a6, #e0a93f);
+  border: 2px solid #b07a2c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 900;
   color: #5a3a14;
   text-align: center;
-  line-height: 1.05;
+  line-height: 1;
   cursor: pointer;
-  pointer-events: auto;
-  box-shadow: 0 4px 0 #00000044;
-  padding: 6px;
+  box-shadow: 0 3px 0 #00000044;
+  padding: 0 14px;
+  font-family: inherit;
 }
 .tdv-action:active {
-  transform: translateY(3px);
+  transform: translateY(2px);
   box-shadow: 0 1px 0 #00000044;
 }
 .tdv-minibtns {

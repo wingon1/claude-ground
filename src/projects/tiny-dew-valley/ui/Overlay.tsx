@@ -20,7 +20,7 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
     ui.phase === 'sleepConfirm' ||
     invOpen ||
     objectiveOpen
-  const hasContextAction = ui.contextActionId != null
+  const hasContextAction = ui.contextActions.length > 0
   const objectiveKey = ui.objective ? `${ui.objective.title}:${ui.objective.detail}` : null
   const objectivePinned = !!ui.objective && hiddenObjectiveKey !== objectiveKey
 
@@ -92,22 +92,27 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
         <div className="tdv-deskhint">화면을 탭해 이동 · 시설 근처에서 하단 메뉴가 활성화돼요</div>
       )}
 
-      {/* Context action button */}
+      {/* Context action buttons */}
       {!modalOpen && hasContextAction && (
-        <button
-          className="tdv-action"
-          onPointerDown={(e) => {
-            e.preventDefault()
-            if (ui.contextActionId === 'sleep') game.requestSleep()
-            else if (ui.contextActionId === 'animal') game.collectAnimalProduct()
-            else if (ui.contextActionId === 'seed') game.openSeedSelect()
-            else if (ui.contextActionId === 'shop') game.openShop()
-            else if (ui.contextActionId === 'cook') game.openCooking()
-            else if (ui.contextActionId === 'order') game.openOrder()
-          }}
-        >
-          {ui.contextAction}
-        </button>
+        <div className="tdv-actions">
+          {ui.contextActions.map((action) => (
+            <button
+              className="tdv-action"
+              key={action.id}
+              onPointerDown={(e) => {
+                e.preventDefault()
+                if (action.id === 'sleep') game.requestSleep()
+                else if (action.id === 'animal') game.collectAnimalProduct()
+                else if (action.id === 'seed') game.openSeedSelect()
+                else if (action.id === 'shop') game.openShop()
+                else if (action.id === 'cook') game.openCooking()
+                else if (action.id === 'order') game.openOrder()
+              }}
+            >
+              {action.label}
+            </button>
+          ))}
+        </div>
       )}
 
       <nav className="tdv-bottomnav" aria-label="게임 메뉴">
