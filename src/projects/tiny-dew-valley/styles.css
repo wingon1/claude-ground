@@ -149,6 +149,11 @@
 .tdv-objective-list {
   display: grid;
   gap: 8px;
+  max-height: min(58vh, 420px);
+  overflow-y: auto;
+  padding-right: 3px;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
 }
 .tdv-objective-row {
   display: grid;
@@ -580,11 +585,17 @@
   width: min(520px, 96vw);
   max-height: 90vh;
   overflow: auto;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
   background: var(--panel);
   border: 3px solid var(--panel-edge);
   border-radius: 14px;
   box-shadow: 0 8px 0 #0005;
   padding: 14px;
+}
+.tdv-objective-modal {
+  display: flex;
+  flex-direction: column;
 }
 .tdv-modal h2 {
   margin: 0 0 4px;

@@ -1727,8 +1727,8 @@ export class Game {
       return {
         title: '화로 제작하기',
         detail: '건설탭에서 나무 5개로 화로를 만드세요.',
-        progress: 5,
-        max: 5,
+        progress: 0,
+        max: 1,
       }
     }
     if (!this.itemSeen('crop_wheat_normal')) {

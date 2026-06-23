@@ -203,14 +203,21 @@ function ObjectiveModal({
   onPin: () => void
   onClose: () => void
 }) {
+  const activeObjectives = ui.objectives.filter((objective) => !objective.claimed && !objective.current)
   return (
     <div className="tdv-modal-bg" onClick={onClose}>
-      <div className="tdv-modal" style={{ width: 'min(420px, 92vw)' }} onClick={(e) => e.stopPropagation()}>
+      <div className="tdv-modal tdv-objective-modal" style={{ width: 'min(420px, 92vw)' }} onClick={(e) => e.stopPropagation()}>
         <h2>🎯 목표</h2>
         <div className="sub">현재 목표를 확인하고 상단에 다시 고정할 수 있어요.</div>
-        {ui.objectives.length > 0 ? (
+        {ui.objective && (
+          <button className="tdv-objective-row current" onClick={onPin}>
+            <ObjectiveCard objective={ui.objective} />
+            <span className="pin">상단 고정</span>
+          </button>
+        )}
+        {activeObjectives.length > 0 ? (
           <div className="tdv-objective-list">
-            {ui.objectives.map((objective) => (
+            {activeObjectives.map((objective) => (
               <button
                 className={`tdv-objective-row ${objective.current ? 'current' : ''}`}
                 key={objective.id}
@@ -223,7 +230,7 @@ function ObjectiveModal({
               </button>
             ))}
           </div>
-        ) : (
+        ) : !ui.objective && (
           <div className="sub">진행 중인 목표가 없어요.</div>
         )}
         <div className="tdv-row">
