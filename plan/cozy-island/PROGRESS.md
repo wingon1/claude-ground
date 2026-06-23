@@ -3,8 +3,8 @@
 > 각 스텝 완료 후: 한 일 / 영향받은 파일 상태 / 다음 스텝 을 갱신한다.
 
 ## 현재 상태
-- **단계**: M6 홈 구역 핵심 오브젝트 sprite sheet 렌더 전환 완료.
-- **브랜치**: `codex/cozy-island-spritesheet-plan`
+- **단계**: M6 1차 sprite sheet 파스텔 스타일 재작업 완료.
+- **브랜치**: `codex/cozy-island-pastel-sprites`
 - **저장 버전**: `SAVE_VERSION = 7`
 
 ## 로그
@@ -72,6 +72,16 @@
   3. 플레이어 시트 프레임을 더 큰 3px 기준으로 재생성해 화면 내 크기와 발 기준 정렬을 수정.
 - 영향받은 파일: `render/sprites.ts`, `assets/spritesheet.png`, `plan/cozy-island/PLAN.md`, `PROGRESS.md`.
 - 검증: 모바일 headless Chrome 스크린샷 확인, 누락 sprite 콘솔 경고 없음.
+
+### 2026-06-23 — 1차 sprite sheet 파스텔 스타일 재작업
+- 한 일:
+  1. 사용자 레퍼런스 이미지 기준으로 1차 sprite sheet를 파스텔 저대비 스타일로 재생성.
+  2. 시트 내 무거운 외곽선과 오브젝트 바닥 그림자를 제거하고, 컬러 경계 픽셀과 내부 디테일로 형태를 구분하도록 정리.
+  3. 텐트/상점/창고/광산/자원/밀밭 프레임을 키워 더 많은 픽셀로 세부 묘사를 추가.
+  4. `building.shop.lv1`을 160x96으로 확대해 `building.tent.lv1`(80x88)보다 2배 이상 큰 시각적 면적으로 조정.
+  5. 시트 로딩 중에는 기존 코드 fallback이 잠깐 보이지 않도록 `drawSprite()`의 로딩 반환 경로를 조정.
+- 영향받은 파일: `src/projects/cozy-island/assets/spritesheet.png`, `spritesheet.json`, `render/spriteSheet.ts`, `docs/spritesheet-inventory.md`, `src/projects/cozy-island/AGENTS.md`, `plan/cozy-island/PLAN.md`, `PROGRESS.md`.
+- 검증: 모바일 headless Chrome 스크린샷으로 홈 구역 상점/텐트/플레이어 렌더 확인, sprite 관련 콘솔 경고 없음. `npm run lint -- src/projects/cozy-island` 통과, 단독 TypeScript 검사 통과. 전체 `npm run build`는 기존 `src/projects/shikaku` 타입/의존성 오류로 실패.
 
 ## 다음 스텝
 - [ ] 밭/동물/광산 내부 sprite sheet 제작 및 렌더 전환.

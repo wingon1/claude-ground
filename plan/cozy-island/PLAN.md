@@ -68,6 +68,7 @@
 - [x] `docs/spritesheet-inventory.md` 작성: 제작 대상, manifest 규칙, 전환 순서.
 - [x] 기존 코드 도트 렌더러는 fallback으로 유지하되, 신규 visible object는 먼저 sprite sheet에 추가하는 규칙 적용.
 - [x] 1차 시트 대상 초안: player idle/walk/action/tired, tent, shop, cooking_fire, storage, mine_entrance, tree, rock, bush, ore, wheat plot, UI icons.
+- [x] 1차 시트 스타일 재작업: 무거운 외곽선/바닥 그림자 제거, 파스텔 고밀도 디테일 적용, 상점을 텐트 대비 2배 이상 크게 조정.
 - [ ] 2차 시트 대상: crop growth stages, chicken/cow/bee, coop/barn/apiary, fence/gate, mine floor tiles, item icons.
 - [ ] 3차 시트 대상: dungeon entrance/stage tiles/enemy-or-hazard placeholders, build site variants, upgrade variants, VFX particles.
 - **완료조건**: 홈 구역 핵심 오브젝트가 sprite sheet에서 렌더되고, 없는 스프라이트를 요청하면 명확한 fallback/경고 경로가 동작.
@@ -80,9 +81,11 @@
 2. 데이터 우선: 밸런스/콘텐츠는 `data/*.json`에 두고 로직은 데이터를 읽도록.
 3. 구조 변경으로 구 세이브가 깨지면 `SAVE_VERSION` 상향 + (가능하면) 마이그레이션.
 4. 렌더는 정사각 픽셀 도트 유지 (곡선/그라데이션 금지).
-5. 각 마일스톤 완료 시 `PROGRESS.md` 갱신 + `docs/개발플랜.md` 완료 섹션에 반영.
-6. `npm run build` + lint 통과 확인 후 커밋.
-7. PR은 명시 요청 시에만 생성.
+5. visible object와 UI icon은 sprite sheet 우선. 필요한 대상이 없으면 먼저 `assets/spritesheet.png/json`을 확장한 뒤 코드 작업.
+6. 시트 아트는 파스텔 저대비, 무거운 외곽선 없음, 바닥 그림자 없음, 오브젝트 간 스타일 일관성 유지. 상점은 텐트보다 최소 2배 큰 시각적 면적.
+7. 각 마일스톤 완료 시 `PROGRESS.md` 갱신 + `docs/개발플랜.md` 완료 섹션에 반영.
+8. `npm run build` + lint 통과 확인 후 커밋.
+9. PR은 명시 요청 시에만 생성.
 
 ---
 

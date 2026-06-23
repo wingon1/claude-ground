@@ -60,7 +60,7 @@ export function drawSprite(
     return false
   }
   preloadSpriteSheet()
-  if (!sheet) return false
+  if (!sheet) return loadError ? false : true
 
   const scale = opts.scale ?? frame.scale ?? 1
   const dw = frame.w * scale
