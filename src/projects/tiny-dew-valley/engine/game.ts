@@ -267,6 +267,7 @@ export class Game {
   newGame() {
     this.state = this.freshState()
     this.applyInitialUnlocks()
+    this.applyFieldRows()
     this.initRuntime()
     this.phase = 'playing'
     this.audio.resume()
@@ -321,7 +322,7 @@ export class Game {
       inventory: inv,
       cookQueue: [],
       flags: {
-        'fieldRows:field_1': FIELD_SIZE,
+        'fieldRows:field_1': 1,
         'fieldCrop:field_1': DEFAULT_FIELD_CROP,
         [cropUnlockFlag(DEFAULT_FIELD_CROP)]: true,
       },
@@ -387,6 +388,7 @@ export class Game {
     const s = this.state
     s.timeMinutes += dt * GAME_MIN_PER_SEC // cosmetic clock
     this.movePlayer(dt)
+    this.autoPlantFields()
     this.growCrops(dt)
     this.updateAnimalDrops(dt)
     this.respawnNodes()
@@ -612,6 +614,19 @@ export class Game {
   }
 
   // ---------------- crops ----------------
+  private autoPlantFields() {
+    for (const t of this.state.tiles) {
+      if (t.terrain !== 'soil' || t.cropId || t.obstacle) continue
+      const cropId = this.cropForTile(t)
+      if (!cropId) continue
+      const crop = CROPS[cropId]
+      if (!crop) continue
+      t.cropId = crop.id
+      t.growthStage = 0
+      t.metadata.growT = 0
+    }
+  }
+
   private plantTile(t: Tile) {
     const cropId = this.cropForTile(t)
     if (!cropId) return
@@ -1199,6 +1214,15 @@ export class Game {
 
   private applyInitialUnlocks() {
     this.state.flags[cropUnlockFlag(DEFAULT_FIELD_CROP)] = true
+    const migratedKey = 'migration:initialFieldRows:v2'
+    if (this.state.flags[migratedKey] !== true) {
+      const firstRowsKey = this.fieldRowsKey('field_1')
+      const otherFieldsLocked = FIELD_PLOTS.slice(1).every((plot) => this.fieldRows(plot.id) === 0)
+      if (this.state.flags[firstRowsKey] === FIELD_SIZE && otherFieldsLocked) {
+        this.state.flags[firstRowsKey] = 1
+      }
+      this.state.flags[migratedKey] = true
+    }
   }
 
   private cropUnlocked(cropId: string): boolean {
