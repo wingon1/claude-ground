@@ -3,13 +3,7 @@ import './styles.css'
 import { Game } from './engine/game'
 import { Overlay } from './ui/Overlay'
 
-const MOVE_KEYS = new Set([
-  'arrowup',
-  'arrowdown',
-  'arrowleft',
-  'arrowright',
-  ' ',
-])
+const MOVE_KEYS = new Set(['arrowup', 'arrowdown', 'arrowleft', 'arrowright'])
 
 function GameUI({ game }: { game: Game }) {
   const subscribe = useCallback((cb: () => void) => game.subscribe(cb), [game])
@@ -35,10 +29,15 @@ export default function TinyDewValley() {
     }
     const onKeyUp = (e: KeyboardEvent) => g.onKeyUp(e)
     const onResize = () => g.resize()
+    const onPointerDown = (e: PointerEvent) => {
+      const rect = canvas.getBoundingClientRect()
+      g.tap(e.clientX - rect.left, e.clientY - rect.top)
+    }
 
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup', onKeyUp)
     window.addEventListener('resize', onResize)
+    canvas.addEventListener('pointerdown', onPointerDown)
     const ro = new ResizeObserver(() => g.resize())
     ro.observe(canvas)
 
@@ -47,6 +46,7 @@ export default function TinyDewValley() {
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
       window.removeEventListener('resize', onResize)
+      canvas.removeEventListener('pointerdown', onPointerDown)
       ro.disconnect()
     }
   }, [])

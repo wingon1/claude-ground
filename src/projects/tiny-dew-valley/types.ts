@@ -139,38 +139,17 @@ export type EndingState = 'none' | 'good' | 'bittersweet'
 
 export interface GameState {
   saveVersion: number
+  /** Nights slept. Cosmetic counter; sleeping is the only progression gate. */
   day: number
-  /** minutes elapsed since 06:00 of the current day (0..1200). */
+  /** Cosmetic day/night clock minutes; no gameplay deadline. */
   timeMinutes: number
   gold: number
   stamina: number
   maxStamina: number
-  nextDayStaminaCap: number | null // set when passing out
   player: PlayerState
   tiles: Tile[] // flattened WORLD_W * WORLD_H farm/village grid
-  selectedSlot: number // hotbar index 0..9 (0-4 tools, 5-9 item slots)
-  hotbarItems: (string | null)[] // length 5, item ids for usable item slots
-  water: number
   inventory: InventorySlot[]
-  toolUpgrades: ToolUpgrades
-  npcs: Record<string, NPCState>
-  shrine: ShrineState
-  recipes: { herbalTea: boolean }
-  unlocks: {
-    seedDiscount: boolean
-    backpack: boolean
-    shippingBonus: boolean
-    fayeStaminaBoost: boolean
-    /** Built a workbench (tier 1 crafting). */
-    workbench: boolean
-    /** Expanded to a workshop (tier 2 crafting). */
-    workshop: boolean
-  }
   flags: Record<string, boolean | number>
-  ending: EndingState
-  endless: boolean
-  /** Items shipped (sold via shipping bin) pending the overnight tally. */
-  pendingShip: InventorySlot[]
 }
 
 export interface DialogueLine {

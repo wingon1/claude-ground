@@ -66,6 +66,10 @@ export const LOCATIONS: WorldLocations = {
   square: { x: 16, y: 31 },
 }
 
+// Pre-tilled farm field. Crops are auto-planted here when the player idles on
+// an empty plot and auto-harvested when ripe — no hoe/watering required.
+export const FARM = { x: 19, y: 18, w: 8, h: 6 }
+
 // Stamps the general store's static structure onto a tiles array.
 // The store is an open-front stall: solid back walls, with a walk-in
 // interior the player steps into to trade. Safe to re-apply on load
@@ -179,6 +183,13 @@ export function generateWorld(): Tile[] {
   // Keep the spawn & near-house area clear.
   rect(tiles, 29, 9, 34, 14, (t) => {
     if (t.obstacle) clearObstacle(t)
+  })
+
+  // ---- Pre-tilled farm field ----
+  rect(tiles, FARM.x, FARM.y, FARM.x + FARM.w - 1, FARM.y + FARM.h - 1, (t) => {
+    t.terrain = 'soil'
+    clearObstacle(t)
+    t.cropId = null
   })
 
   return tiles

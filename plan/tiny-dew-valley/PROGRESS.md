@@ -1,20 +1,27 @@
-# PROGRESS — Tiny Dew Valley 게임성 교체
+# PROGRESS — Tiny Dew Valley: 옛 그래픽 유지 + cozy-island 핵심 루프
 
 ## 완료
-- [x] 1. 기존 TDV 게임 코드 제거: engine/ ui/ data/(구) types.ts(구) index.tsx(구) styles.css 삭제
-- [x] 2. Cozy Island 게임 코드 이식(복사): game/ systems/ render/ audio/ utils/ data/ assets/ content.ts types.ts
-- [x] 3. 저장 분리: systems/SaveSystem.ts KEY → 'tiny-dew-valley-save-v1'
-- [x] 4. index.tsx 신규 작성 — Cozy Island UI 와이어링 유지, TDV 양피지 팔레트 + monospace 로 재도색
-       (UI: panel #f6e9c9 / border #b88a52 / accent #7cae4e, 루트 배경 #1c2a1c)
-- [x] 5. registry.ts tiny-dew-valley description 갱신 (마감/신단/NPC 문구 제거, 탭이동·자동작업·취침성장 강조)
-- [x] 6. 검증: `tsc -b` 통과(에러 0), `vite build` 성공 (tiny-dew-valley 청크 107KB)
+- [x] 이전 "통째 클론" 시도 리버트 (옛 그래픽/엔진/렌더 복구)
+- [x] types.ts — GameState 간소화 (tools/npc/shrine/물/시간마감 필드 제거)
+- [x] engine/save.ts — SAVE_VERSION 4, 검증 간소화
+- [x] engine/world.ts — 밭(soil) 구역 FARM 추가
+- [x] data/shopCatalog.ts — 씨앗만 / data의 tools·npcs·shrineBundles·crafting 삭제
+- [x] engine/game.ts — 규칙 전면 재작성, **렌더링/스프라이트/월드/조명은 옛 것 그대로 재사용**
+      · 탭 이동 + 막히면 자동 정지(stuck 처리)
+      · 근접 자동작업(나무/바위/그루터기/잡초/꽃/다 자란 작물) — 도구 없음
+      · 밭 위에서 씨앗 자동 심기 → 실시간 성장 → 자동 수확(재생 작물 포함)
+      · 나무·바위·그루터기 일정 시간 후 리스폰
+      · 스태미나 소모, 침대에서 취침 → 최대치 +1 (시간마감/기절 없음)
+      · 상점: 씨앗 구매 + 즉시 판매
+- [x] ui/Overlay.tsx — 탭 조작용 HUD/상점/가방/취침/타이틀 (TDV CSS 스킨 재사용)
+- [x] index.tsx — 캔버스 탭→이동 핸들러
+- [x] registry.ts — 설명 갱신
+- [x] 검증: tsc -b 0 에러, vite build 성공 (47.9KB JS / 12KB CSS)
 
 ## 현재 상태
-- tiny-dew-valley = Cozy Island 게임 루프(탭 이동 + 근접 자동작업 + 스태미나 취침 성장)를
-  TDV 양피지/monospace UI 스킨으로 입힌 self-contained 프로젝트.
-- 도구·타일경작·물탱크·시간마감(Day28)·고대신단·엔딩·NPC호감도 전부 제거됨.
-- 골드+젬, 작물별 밭 구매, 동물, 요리, 건설, 상점, 퀘스트, 광산, 도감 포함.
+- 그래픽/도트/조명/스프라이트 = 원작 Tiny Dew Valley 그대로.
+- 플레이 = cozy-island 핵심 루프(탭 이동·근접 자동작업·취침 성장).
 
-## 다음 단계 (선택)
-- 실제 플레이 테스트(모바일 탭/핀치 줌) 후 밸런스 미세 조정.
-- 필요 시 월드 스프라이트를 TDV 고유 톤으로 추가 차별화(현재는 Cozy Island 도트 톤 재사용).
+## 남은 일 / 검토 필요
+- 사용자 플레이테스트 후 밸런스(작물 성장 속도, 스태미나, 리스폰 시간) 미세 조정.
+- 머지는 사용자 확인 후 진행(전면 재작성이라 보류).
