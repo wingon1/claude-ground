@@ -59,6 +59,19 @@
 - [x] 1차 홈 구역 아트/HUD 패스: 핵심 스프라이트 실루엣 확대, 잔디/해안/펜 바닥 밀도 개선, 하단 메뉴 과밀 해소, 목표 퀘스트 HUD 추가.
 - [ ] 모바일 UX: 패널 레이아웃 정리, 목표 안내 화살표/마커.
 
+### M6 — 스프라이트시트 파이프라인
+**목표**: 필요한 도트 그래픽을 스프라이트시트로 먼저 제작하고, 코드에서는 manifest 좌표로 잘라 사용.
+
+- [ ] `src/projects/cozy-island/assets/spritesheet.png` 생성.
+- [ ] `src/projects/cozy-island/assets/spritesheet.json` 생성: sprite id, frame rect, anchor, scale, tags.
+- [ ] `render/spriteSheet.ts` 신설: 이미지 로드, manifest 검증, `drawSprite(id, x, y)` API.
+- [x] `docs/spritesheet-inventory.md` 작성: 제작 대상, manifest 규칙, 전환 순서.
+- [ ] 기존 코드 도트 렌더러는 fallback으로 유지하되, 신규 visible object는 먼저 sprite sheet에 추가하는 규칙 적용.
+- [ ] 1차 시트 대상: player idle/walk/action/tired, tent, shop, cooking_fire, storage, mine_entrance, tree, rock, bush, ore, wheat plot, UI icons.
+- [ ] 2차 시트 대상: crop growth stages, chicken/cow/bee, coop/barn/apiary, fence/gate, mine floor tiles, item icons.
+- [ ] 3차 시트 대상: dungeon entrance/stage tiles/enemy-or-hazard placeholders, build site variants, upgrade variants, VFX particles.
+- **완료조건**: 홈 구역 핵심 오브젝트가 sprite sheet에서 렌더되고, 없는 스프라이트를 요청하면 명확한 fallback/경고 경로가 동작.
+
 ---
 
 ## 작업 규칙
@@ -74,4 +87,4 @@
 ---
 
 ## 다음 행동
-UI/아트 패스를 동물·밭·광산 화면까지 확장하거나, M2(던전 플레이 루프) 또는 M4(밸런스 패스) 중 사용자 우선순위에 맞춰 진행한다.
+M6 스프라이트시트 파이프라인을 먼저 구축한 뒤 UI/아트 패스를 동물·밭·광산 화면까지 확장한다.

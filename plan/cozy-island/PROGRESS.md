@@ -3,8 +3,8 @@
 > 각 스텝 완료 후: 한 일 / 영향받은 파일 상태 / 다음 스텝 을 갱신한다.
 
 ## 현재 상태
-- **단계**: UI/아트 1차 패스 진행 중.
-- **브랜치**: `codex/cozy-island-ui-art-pass`
+- **단계**: M6 스프라이트시트 파이프라인 계획 수립.
+- **브랜치**: `codex/cozy-island-spritesheet-plan`
 - **저장 버전**: `SAVE_VERSION = 7`
 
 ## 로그
@@ -49,6 +49,15 @@
 - 영향받은 파일: `render/sprites.ts`, `game/Game.ts`, `index.tsx`, `src/projects/cozy-island/AGENTS.md`, `plan/cozy-island/PLAN.md`, `PROGRESS.md`.
 - 검증: 모바일(390x844)과 데스크톱(900x900) headless Chrome 스크린샷 확인, `npm run lint -- src/projects/cozy-island` 통과, 단독 TypeScript 검사 통과.
 
+### 2026-06-23 — 스프라이트시트 전환 규칙 수립
+- 한 일:
+  1. 신규 visible object 작업 시, 대상 스프라이트가 없으면 먼저 `spritesheet.png/json`에 추가하고 이후 코드에서 사용하도록 프로젝트 규칙을 추가.
+  2. M6 스프라이트시트 파이프라인 마일스톤과 1~3차 제작 대상을 정리.
+  3. `docs/spritesheet-inventory.md`에 manifest 규칙과 제작 대상 목록을 추가.
+- 영향받은 파일: `src/projects/cozy-island/AGENTS.md`, `src/projects/cozy-island/docs/spritesheet-inventory.md`, `plan/cozy-island/PLAN.md`, `plan/cozy-island/PROGRESS.md`.
+- 현재 상태: 아직 실제 sprite sheet 파일/로더는 없음. 다음 단계에서 `assets/`와 `render/spriteSheet.ts`를 만든다.
+
 ## 다음 스텝
-- [ ] UI/아트 패스를 동물·밭·광산 내부까지 확장.
+- [ ] `assets/spritesheet.png`, `assets/spritesheet.json`, `render/spriteSheet.ts` 생성.
+- [ ] 홈 구역 핵심 오브젝트부터 sprite sheet 렌더로 전환.
 - [ ] 전체 `npm run build` 실패 원인인 `src/projects/shikaku` 기존 타입 오류를 별도 처리.
