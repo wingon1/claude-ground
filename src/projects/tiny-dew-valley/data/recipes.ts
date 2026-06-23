@@ -1,10 +1,52 @@
 import type { RecipeDef } from '../types'
+import { DAIRY_UNLOCK_FLAG } from './unlocks'
 
 export const RECIPES: RecipeDef[] = [
   {
+    id: 'flour',
+    name: '밀 갈기',
+    description: '밀 2개를 갈아 밀가루를 만듭니다.',
+    inputs: [{ itemId: 'crop_wheat_normal', qty: 2 }],
+    output: { itemId: 'flour', qty: 1 },
+  },
+  {
+    id: 'bread',
+    name: '빵 굽기',
+    description: '밀가루를 구워 기본 요리인 빵을 만듭니다.',
+    inputs: [{ itemId: 'flour', qty: 1 }],
+    output: { itemId: 'bread', qty: 1 },
+  },
+  {
+    id: 'butter',
+    name: '버터 만들기',
+    description: '우유를 저어 버터를 만듭니다.',
+    inputs: [{ itemId: 'milk', qty: 2 }],
+    output: { itemId: 'butter', qty: 1 },
+    unlockFlag: DAIRY_UNLOCK_FLAG,
+  },
+  {
+    id: 'cheese',
+    name: '치즈 숙성',
+    description: '우유를 숙성해 치즈를 만듭니다.',
+    inputs: [{ itemId: 'milk', qty: 2 }],
+    output: { itemId: 'cheese', qty: 1 },
+    unlockFlag: DAIRY_UNLOCK_FLAG,
+  },
+  {
+    id: 'pastry',
+    name: '페스츄리 굽기',
+    description: '밀가루와 버터를 조합해 고급 요리를 만듭니다.',
+    inputs: [
+      { itemId: 'flour', qty: 1 },
+      { itemId: 'butter', qty: 1 },
+    ],
+    output: { itemId: 'pastry', qty: 1 },
+    unlockFlag: DAIRY_UNLOCK_FLAG,
+  },
+  {
     id: 'herbal_tea',
     name: '허브차',
-    description: '야생 수선화와 섬유를 우려 만든 향긋한 차. 팔거나 이후 퀘스트 재료로 씁니다.',
+    description: '수선화와 섬유를 우려 스태미나 회복용 차를 만듭니다.',
     inputs: [
       { itemId: 'daffodil', qty: 1 },
       { itemId: 'fiber', qty: 2 },

@@ -63,6 +63,7 @@ export interface RecipeDef {
   description: string
   inputs: CostItem[]
   output: { itemId: string; qty: number }
+  unlockFlag?: string
 }
 
 export type ToolId = 'hoe' | 'watering_can' | 'axe' | 'scythe' | 'hand'
@@ -207,5 +208,9 @@ export interface ShopEntry {
   buyPrice?: number
   /** Whether the entry is a one-time tool upgrade. */
   upgrade?: 'copper_can' | 'backpack'
+  /** Entry is visible only after this flag is set. */
+  requiresFlag?: string
+  /** Buying this entry permanently sets this flag instead of adding an item. */
+  grantsFlag?: string
   unlockFlag?: string
 }

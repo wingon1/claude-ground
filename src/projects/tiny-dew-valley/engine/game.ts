@@ -10,6 +10,7 @@ import {
   FIELD_ROW_COST_WOOD,
   FIELD_SIZE,
 } from '../data/fields'
+import { cropUnlockFlag } from '../data/unlocks'
 import { RECIPES } from '../data/recipes'
 import { OBSTACLE_DROP, OBSTACLE_HP, OBSTACLE_SOLID, TERRAIN_SOLID } from '../data/tiles'
 import {
@@ -87,6 +88,8 @@ export interface CropChoiceView {
   name: string
   color: string
   selected: boolean
+  unlocked: boolean
+  lockText: string | null
 }
 export interface FieldPlotView {
   id: string
@@ -110,6 +113,8 @@ export interface CookRecipeView {
   outputQty: number
   inputs: CostItemView[]
   canCook: boolean
+  unlocked: boolean
+  lockText: string | null
 }
 export interface UISnapshot {
   phase: UIPhase
@@ -220,6 +225,7 @@ export class Game {
 
   newGame() {
     this.state = this.freshState()
+    this.applyInitialUnlocks()
     this.initRuntime()
     this.phase = 'playing'
     this.audio.resume()
@@ -232,6 +238,7 @@ export class Game {
     const s = loadGame()
     if (!s) return false
     this.state = s
+    this.applyInitialUnlocks()
     this.applyGroundCleanup()
     this.applyFieldRows()
     this.applyFieldExpansions()
@@ -272,6 +279,7 @@ export class Game {
       flags: {
         'fieldRows:field_1': FIELD_SIZE,
         'fieldCrop:field_1': DEFAULT_FIELD_CROP,
+        [cropUnlockFlag(DEFAULT_FIELD_CROP)]: true,
       },
     }
   }
@@ -821,6 +829,11 @@ export class Game {
     if (this.phase !== 'build') return
     if (this.selectedFieldId() !== fieldId) return
     if (!CROPS[cropId] || this.fieldRows(fieldId) <= 0) return
+    if (!this.cropUnlocked(cropId)) {
+      this.toast('아직 해금되지 않은 작물이에요.', 'bad')
+      this.audio.sfx('reject')
+      return
+    }
     this.state.flags[this.fieldCropKey(fieldId)] = cropId
     for (const t of this.state.tiles) {
       if (t.metadata.fieldId === fieldId && t.terrain === 'soil' && !t.cropId) {
@@ -838,6 +851,11 @@ export class Game {
   cook(recipeId: string) {
     const recipe = RECIPES.find((r) => r.id === recipeId)
     if (!recipe || this.phase !== 'cook') return
+    if (!this.flagEnabled(recipe.unlockFlag)) {
+      this.toast('아직 해금되지 않은 레시피예요.', 'bad')
+      this.audio.sfx('reject')
+      return
+    }
     if (!this.canPayCost(0, recipe.inputs)) {
       this.toast('요리 재료가 부족해요.', 'bad')
       this.audio.sfx('reject')
@@ -859,18 +877,30 @@ export class Game {
   buyItem(itemId: string) {
     const entry = SHOP_CATALOG.find((e) => e.itemId === itemId)
     if (!entry || entry.buyPrice == null) return
+    if (this.phase !== 'shop') return
+    if (!this.flagEnabled(entry.requiresFlag)) return
+    if (entry.grantsFlag && this.flagEnabled(entry.grantsFlag)) {
+      this.toast('이미 해금된 항목이에요.', 'info')
+      return
+    }
     const s = this.state
     if (s.gold < entry.buyPrice) {
       this.toast('골드가 부족해요.', 'bad')
       this.audio.sfx('reject')
       return
     }
-    if (!this.canAccept(itemId, 1)) {
+    if (!entry.grantsFlag && !this.canAccept(itemId, 1)) {
       this.toast('가방이 가득 찼어요!', 'bad')
       return
     }
     s.gold -= entry.buyPrice
-    this.giveItem(itemId, 1)
+    if (entry.grantsFlag) {
+      s.flags[entry.grantsFlag] = true
+      const def = getItem(itemId)
+      this.toast(`${def?.name ?? '콘텐츠'} 해금!`, 'good')
+    } else {
+      this.giveItem(itemId, 1)
+    }
     this.audio.sfx('coin')
     this.autosave()
     this.emit()
@@ -991,7 +1021,19 @@ export class Game {
 
   private fieldCrop(fieldId: string): string | null {
     const raw = this.state.flags[this.fieldCropKey(fieldId)]
-    return typeof raw === 'string' && CROPS[raw] ? raw : null
+    return typeof raw === 'string' && CROPS[raw] && this.cropUnlocked(raw) ? raw : null
+  }
+
+  private flagEnabled(flag: string | undefined): boolean {
+    return !flag || this.state.flags[flag] === true
+  }
+
+  private applyInitialUnlocks() {
+    this.state.flags[cropUnlockFlag(DEFAULT_FIELD_CROP)] = true
+  }
+
+  private cropUnlocked(cropId: string): boolean {
+    return this.flagEnabled(cropUnlockFlag(cropId))
   }
 
   private nextUnlockFieldId(): string | null {
@@ -1478,7 +1520,11 @@ export class Game {
         desc: def?.description ?? '',
       }
     })
-    const shopBuy: ShopBuyView[] = SHOP_CATALOG.map((e) => {
+    const shopBuy: ShopBuyView[] = SHOP_CATALOG.filter((e) => {
+      if (!this.flagEnabled(e.requiresFlag)) return false
+      if (e.grantsFlag && this.flagEnabled(e.grantsFlag)) return false
+      return true
+    }).map((e) => {
       const def = getItem(e.itemId)!
       return {
         itemId: e.itemId,
@@ -1553,10 +1599,13 @@ export class Game {
       name: crop.name,
       color: crop.color,
       selected: crop.id === selectedCropId,
+      unlocked: this.cropUnlocked(crop.id),
+      lockText: this.cropUnlocked(crop.id) ? null : '상점에서 해금',
     }))
     const cookRecipes: CookRecipeView[] = RECIPES.map((recipe) => {
       const out = getItem(recipe.output.itemId)
       const inputs = costViews(recipe.inputs)
+      const unlocked = this.flagEnabled(recipe.unlockFlag)
       return {
         id: recipe.id,
         name: recipe.name,
@@ -1567,8 +1616,11 @@ export class Game {
         outputQty: recipe.output.qty,
         inputs,
         canCook:
+          unlocked &&
           inputs.every((it) => it.ok) &&
           this.canAccept(recipe.output.itemId, recipe.output.qty),
+        unlocked,
+        lockText: unlocked ? null : '목장 허가서 필요',
       }
     })
     let contextAction: string | null = null

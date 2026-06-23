@@ -18,6 +18,6 @@ export const FIELD_PLOTS: FieldPlotDef[] = [
   { id: 'field_6', name: '6번 밭', x: 23, y: 20, sign: { x: 24, y: 19 } },
 ]
 
-export const DEFAULT_FIELD_CROP = 'parsnip'
+export const DEFAULT_FIELD_CROP = 'wheat'
 export const FIELD_ROW_COST_GOLD = 45
 export const FIELD_ROW_COST_WOOD = 6

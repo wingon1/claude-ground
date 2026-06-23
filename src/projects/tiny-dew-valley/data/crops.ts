@@ -1,8 +1,18 @@
 import type { CropDef } from '../types'
 
-// Data-driven crop catalogue. Add a new crop here + its seed item in items.ts
-// and it flows through planting, growth, harvest and selling automatically.
+// Crop catalogue. Only wheat is unlocked at the start; the rest are opened
+// through shop upgrades so the farm grows one production chain at a time.
 export const CROPS: Record<string, CropDef> = {
+  wheat: {
+    id: 'wheat',
+    name: '밀',
+    seedItemId: 'seed_wheat',
+    growDays: 1,
+    stages: 3,
+    baseSell: 12,
+    rollsQuality: false,
+    color: '#d9b34c',
+  },
   parsnip: {
     id: 'parsnip',
     name: '파스닙',

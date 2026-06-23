@@ -338,11 +338,13 @@ function FieldBuildModal({ game, ui }: { game: Game; ui: UISnapshot }) {
                 <button
                   key={crop.id}
                   className={`tdv-cropbtn ${crop.selected ? 'on' : ''}`}
-                  disabled={selected.rows <= 0}
+                  disabled={selected.rows <= 0 || !crop.unlocked}
                   onClick={() => game.setFieldCrop(selected.id, crop.id)}
+                  title={crop.lockText ?? crop.name}
                 >
                   <span style={{ background: crop.color }} />
                   {crop.name}
+                  {!crop.unlocked && <small>잠김</small>}
                 </button>
               ))}
             </div>
@@ -397,7 +399,7 @@ function CookingModal({ game, ui }: { game: Game; ui: UISnapshot }) {
         <div className="sub">재료를 모아 음식과 가공품을 만들어요.</div>
         <div className="tdv-craftlist">
           {ui.cookRecipes.map((r) => (
-            <div className="tdv-craft" key={r.id}>
+            <div className={`tdv-craft${r.unlocked ? '' : ' locked'}`} key={r.id}>
               <img src={iconURL(r.outputSprite, r.outputColor)} alt={r.outputName} />
               <div className="info">
                 <div className="nm">
@@ -405,6 +407,7 @@ function CookingModal({ game, ui }: { game: Game; ui: UISnapshot }) {
                   {r.outputQty > 1 && <span className="x"> ×{r.outputQty}</span>}
                 </div>
                 <div className="ds">{r.desc}</div>
+                {!r.unlocked && <div className="lock">{r.lockText}</div>}
                 <div className="mats">
                   {r.inputs.map((it) => (
                     <span className={`mat${it.ok ? '' : ' miss'}`} key={it.itemId}>

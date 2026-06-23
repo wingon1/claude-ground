@@ -737,6 +737,11 @@
   border-radius: 50%;
   border: 1px solid #0004;
 }
+.tdv-cropbtn small {
+  font-size: 9px;
+  font-weight: 800;
+  opacity: 0.75;
+}
 .tdv-fieldbuy .mats {
   display: flex;
   flex-wrap: wrap;

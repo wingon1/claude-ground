@@ -433,6 +433,45 @@ export function bakeItemIcon(sprite: string, color?: string): HTMLCanvasElement 
       px(g, 11, 8, 2, 3, '#e8e2d0')
       px(g, 6, 4, 1, 2, 'rgba(200,220,200,0.7)')
       break
+    case 'flour':
+      px(g, 4, 5, 8, 8, '#eee2c8')
+      px(g, 4, 5, 8, 2, '#ffffff')
+      px(g, 6, 8, 4, 2, '#d8c79e')
+      break
+    case 'bread':
+      px(g, 3, 7, 10, 5, '#b97832')
+      px(g, 4, 5, 8, 4, '#d99a4a')
+      px(g, 5, 6, 2, 1, '#f2c078')
+      px(g, 9, 6, 2, 1, '#f2c078')
+      break
+    case 'milk':
+      px(g, 5, 4, 6, 9, '#f4f1df')
+      px(g, 5, 4, 6, 2, '#9fd0ff')
+      px(g, 6, 7, 4, 3, '#ffffff')
+      break
+    case 'butter':
+      px(g, 4, 7, 8, 5, '#f5d35f')
+      px(g, 4, 7, 8, 1, '#fff18f')
+      px(g, 6, 5, 4, 2, '#efe6c8')
+      break
+    case 'cheese':
+      px(g, 4, 6, 8, 7, '#f0c34a')
+      px(g, 4, 6, 8, 2, '#ffe07a')
+      dot(g, 6, 9, '#b88428')
+      dot(g, 10, 8, '#b88428')
+      break
+    case 'pastry':
+      px(g, 3, 6, 10, 7, '#c98a3a')
+      px(g, 4, 5, 8, 2, '#e4b25f')
+      px(g, 5, 8, 6, 1, '#f2d08a')
+      px(g, 5, 10, 6, 1, '#9a6428')
+      break
+    case 'permit_dairy':
+      px(g, 3, 4, 10, 10, '#efe2bc')
+      px(g, 4, 5, 8, 1, '#b3824a')
+      px(g, 5, 8, 6, 1, '#6e4426')
+      px(g, 5, 10, 5, 1, '#6e4426')
+      break
     case 'fiber':
       px(g, 5, 4, 1, 9, '#6fae54')
       px(g, 8, 3, 1, 10, '#5aa038')
