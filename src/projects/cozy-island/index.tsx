@@ -86,12 +86,46 @@ export default function CozyIsland() {
     }
     raf = requestAnimationFrame(loop)
 
+    // pointer input: 1 finger = tap-to-move, 2 fingers = pinch zoom
+    const pointers = new Map<number, { x: number; y: number }>()
+    let pinchDist = 0
+    let pinchZoom0 = 1
     const onDown = (ev: PointerEvent) => {
       if (panelRef.current) return
-      const rect = canvas.getBoundingClientRect()
-      game.tap(ev.clientX - rect.left, ev.clientY - rect.top)
+      pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY })
+      if (pointers.size >= 2) {
+        const [a, b] = [...pointers.values()]
+        pinchDist = Math.hypot(a.x - b.x, a.y - b.y)
+        pinchZoom0 = game.getUserZoom()
+        game.cancelMove() // don't walk while pinching
+      } else {
+        const rect = canvas.getBoundingClientRect()
+        game.tap(ev.clientX - rect.left, ev.clientY - rect.top)
+      }
+    }
+    const onMove = (ev: PointerEvent) => {
+      if (!pointers.has(ev.pointerId)) return
+      pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY })
+      if (pointers.size >= 2 && pinchDist > 0) {
+        const [a, b] = [...pointers.values()]
+        const d = Math.hypot(a.x - b.x, a.y - b.y)
+        game.setUserZoom(pinchZoom0 * (d / pinchDist))
+      }
+    }
+    const onUp = (ev: PointerEvent) => {
+      pointers.delete(ev.pointerId)
+      if (pointers.size < 2) pinchDist = 0
+    }
+    const onWheel = (ev: WheelEvent) => {
+      if (panelRef.current) return
+      ev.preventDefault()
+      game.nudgeUserZoom(ev.deltaY < 0 ? 1.12 : 1 / 1.12)
     }
     canvas.addEventListener('pointerdown', onDown)
+    canvas.addEventListener('pointermove', onMove)
+    canvas.addEventListener('pointerup', onUp)
+    canvas.addEventListener('pointercancel', onUp)
+    canvas.addEventListener('wheel', onWheel, { passive: false })
     const onVis = () => { if (document.hidden) game.persist(true) }
     document.addEventListener('visibilitychange', onVis)
 
@@ -99,6 +133,10 @@ export default function CozyIsland() {
       cancelAnimationFrame(raf)
       window.removeEventListener('resize', resize)
       canvas.removeEventListener('pointerdown', onDown)
+      canvas.removeEventListener('pointermove', onMove)
+      canvas.removeEventListener('pointerup', onUp)
+      canvas.removeEventListener('pointercancel', onUp)
+      canvas.removeEventListener('wheel', onWheel)
       document.removeEventListener('visibilitychange', onVis)
       off(); game.persist(true); game.audio.dispose()
     }

@@ -1,10 +1,13 @@
-// Camera zooms so one pen (region) fits the screen, and follows the player.
+// Camera zooms so one pen (region) fits the screen, follows the player, and
+// supports a user pinch/wheel zoom multiplier on top of the fitted base zoom.
 export class Camera {
   x = 0
   y = 0
   viewW = 360
   viewH = 640
   zoom = 1
+  baseZoom = 1
+  userZoom = 1
   worldW = 1000
   worldH = 1000
   penW = 200
@@ -24,10 +27,21 @@ export class Camera {
     this.recomputeZoom()
   }
 
+  /** Pinch/wheel zoom relative to the fitted base (1 = fit one region). */
+  setUserZoom(f: number) {
+    this.userZoom = Math.max(0.4, Math.min(3, f))
+    this.applyZoom()
+  }
+
   private recomputeZoom() {
     // fit one pen + a margin of path around it
-    const z = Math.min(this.viewW / (this.penW + 90), this.viewH / (this.penH + 90))
-    this.zoom = Math.max(0.4, Math.min(2.4, z))
+    this.baseZoom = Math.min(this.viewW / (this.penW + 90), this.viewH / (this.penH + 90))
+    this.applyZoom()
+  }
+
+  private applyZoom() {
+    this.zoom = Math.max(0.2, Math.min(4, this.baseZoom * this.userZoom))
+    this.clamp()
   }
 
   spanW() { return this.viewW / this.zoom }

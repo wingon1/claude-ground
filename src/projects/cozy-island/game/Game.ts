@@ -969,6 +969,12 @@ export class Game {
     }
   }
 
+  // ---------- zoom (pinch / wheel) ----------
+  getUserZoom(): number { return this.cam.userZoom }
+  setUserZoom(f: number) { this.cam.setUserZoom(f); this.followCam(true) }
+  nudgeUserZoom(mult: number) { this.cam.setUserZoom(this.cam.userZoom * mult); this.followCam(true) }
+  cancelMove() { this.movePath = []; this.player.moving = false; this.tapMarker = null }
+
   // ---------- snapshot for UI ----------
   getMode(): Mode { return this.mode }
 }
