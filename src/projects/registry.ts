@@ -70,7 +70,7 @@ export const projects: Project[] = [
     id: 'tiny-dew-valley',
     title: '🌾 Tiny Dew Valley',
     description:
-      'A complete cozy pixel-art farming & life sim: till, plant, water and harvest crops, befriend two townsfolk, and restore the Ancient Shrine before Day 28. Day/night cycle, stamina, shop, save/load, mobile controls — all procedurally drawn & synthesised.',
+      '탭으로 이동하고 나무·바위·작물 곁에 서면 자동으로 일하는 포근한 픽셀 섬 가꾸기. 스태미나를 다 쓰면 텐트에서 자고, 깨어나면 최대 스태미나가 +1. 시간 제한 없이 농사·동물·요리·건설·상점·퀘스트·광산을 느긋하게 즐기는 양피지 도트 감성.',
     emoji: '🌾',
     tags: ['react', 'canvas', 'pixel-art', 'game', 'mobile'],
     kind: 'react',

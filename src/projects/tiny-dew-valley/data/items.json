@@ -1,0 +1,26 @@
+{
+  "items": [
+    { "id": "wood",        "name": "나무",       "emoji": "🪵", "category": "resource", "sellPrice": 2,  "color": "#b07a45" },
+    { "id": "stone",       "name": "돌",         "emoji": "🪨", "category": "resource", "sellPrice": 3,  "color": "#9aa3ad" },
+    { "id": "fiber",       "name": "섬유",       "emoji": "🌿", "category": "resource", "sellPrice": 1,  "color": "#7cbf5a" },
+    { "id": "mushroom",    "name": "버섯",       "emoji": "🍄", "category": "resource", "sellPrice": 6,  "color": "#d98b6a" },
+    { "id": "shell",       "name": "조개껍데기", "emoji": "🐚", "category": "resource", "sellPrice": 7,  "color": "#f1d9c8" },
+    { "id": "wheat",       "name": "밀",         "emoji": "🌾", "category": "crop",     "sellPrice": 4,  "color": "#e3c45a" },
+    { "id": "carrot",      "name": "당근",       "emoji": "🥕", "category": "crop",     "sellPrice": 9,  "color": "#e8893f" },
+    { "id": "strawberry",  "name": "딸기",       "emoji": "🍓", "category": "crop",     "sellPrice": 14, "color": "#e2515b" },
+    { "id": "egg",         "name": "달걀",       "emoji": "🥚", "category": "animal",   "sellPrice": 11, "color": "#f4ead2" },
+    { "id": "tomato",      "name": "토마토",     "emoji": "🍅", "category": "crop",     "sellPrice": 13, "color": "#e25b4a" },
+    { "id": "potato",      "name": "감자",       "emoji": "🥔", "category": "crop",     "sellPrice": 11, "color": "#c9a26a" },
+    { "id": "milk",        "name": "우유",       "emoji": "🥛", "category": "animal",   "sellPrice": 14, "color": "#f3f0e6" },
+    { "id": "honey",       "name": "꿀",         "emoji": "🍯", "category": "animal",   "sellPrice": 20, "color": "#f0a830" },
+    { "id": "cheese",      "name": "치즈",       "emoji": "🧀", "category": "food",     "sellPrice": 32, "color": "#f0c34a" },
+    { "id": "cheese_toast","name": "치즈 토스트","emoji": "🥪", "category": "food",     "sellPrice": 50, "color": "#e0a857" },
+    { "id": "veggie_soup", "name": "야채 스튜",  "emoji": "🍲", "category": "food",     "sellPrice": 44, "color": "#d2603a" },
+    { "id": "bread",       "name": "빵",         "emoji": "🍞", "category": "food",     "sellPrice": 20, "color": "#cf9b54" },
+    { "id": "pancake",     "name": "팬케이크",   "emoji": "🥞", "category": "food",     "sellPrice": 34, "color": "#e0a857" },
+    { "id": "berry_jam",   "name": "딸기잼",     "emoji": "🍯", "category": "food",     "sellPrice": 48, "color": "#d34a55" },
+    { "id": "copper_ore",  "name": "구리 광석",  "emoji": "🟤", "category": "ore",      "sellPrice": 16, "color": "#c07a4a" },
+    { "id": "iron_ore",    "name": "철 광석",    "emoji": "⚙️", "category": "ore",      "sellPrice": 27, "color": "#b8bcc4" },
+    { "id": "raw_gem",     "name": "원석",       "emoji": "💎", "category": "ore",      "sellPrice": 70, "color": "#6fd3e0" }
+  ]
+}

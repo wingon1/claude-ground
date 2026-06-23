@@ -1,0 +1,46 @@
+{
+  "recipes": [
+    {
+      "id": "bread", "name": "빵", "emoji": "🍞",
+      "inputs": [{ "itemId": "wheat", "amount": 3 }],
+      "outputs": [{ "itemId": "bread", "amount": 1 }],
+      "craftSeconds": 8,
+      "unlockCondition": { "defaultUnlocked": true }
+    },
+    {
+      "id": "pancake", "name": "팬케이크", "emoji": "🥞",
+      "inputs": [{ "itemId": "egg", "amount": 1 }, { "itemId": "wheat", "amount": 2 }],
+      "outputs": [{ "itemId": "pancake", "amount": 1 }],
+      "craftSeconds": 16,
+      "unlockCondition": { "requiredRecipeDiscoveredCount": 1 }
+    },
+    {
+      "id": "berry_jam", "name": "딸기잼", "emoji": "🍯",
+      "inputs": [{ "itemId": "strawberry", "amount": 3 }],
+      "outputs": [{ "itemId": "berry_jam", "amount": 1 }],
+      "craftSeconds": 22,
+      "unlockCondition": { "requiredItemSeen": "strawberry" }
+    },
+    {
+      "id": "cheese", "name": "치즈", "emoji": "🧀",
+      "inputs": [{ "itemId": "milk", "amount": 2 }],
+      "outputs": [{ "itemId": "cheese", "amount": 1 }],
+      "craftSeconds": 18,
+      "unlockCondition": { "requiredItemSeen": "milk" }
+    },
+    {
+      "id": "cheese_toast", "name": "치즈 토스트", "emoji": "🥪",
+      "inputs": [{ "itemId": "bread", "amount": 1 }, { "itemId": "cheese", "amount": 1 }],
+      "outputs": [{ "itemId": "cheese_toast", "amount": 1 }],
+      "craftSeconds": 24,
+      "unlockCondition": { "requiredItemSeen": "cheese" }
+    },
+    {
+      "id": "veggie_soup", "name": "야채 스튜", "emoji": "🍲",
+      "inputs": [{ "itemId": "tomato", "amount": 1 }, { "itemId": "potato", "amount": 1 }],
+      "outputs": [{ "itemId": "veggie_soup", "amount": 1 }],
+      "craftSeconds": 20,
+      "unlockCondition": { "requiredItemSeen": "potato" }
+    }
+  ]
+}
