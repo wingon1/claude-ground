@@ -1,6 +1,6 @@
 import type { AnimalInst, GameState, Plot, Vec, WorldNode } from '../types'
 import {
-  AnimalMap, Buildings, BuildingMap, CropMap, FarmPlots, Interactions, ItemMap, MineLevels,
+  AnimalMap, Buildings, BuildingMap, CropMap, FarmPlots, Interactions, ItemMap,
   Player, RecipeMap, ResourceNodes, Stamina, World,
 } from '../content'
 import {
@@ -10,9 +10,10 @@ import {
 import { Camera } from './Camera'
 import { Effects } from '../render/effects'
 import { EventBus } from './EventBus'
-import { chance, dist2, pickWeighted, randInt } from './rng'
+import { chance, dist2, randInt } from './rng'
 import { AudioManager } from '../audio/AudioManager'
 import { checkQuests } from '../systems/QuestSystem'
+import { MineSystem } from '../systems/MineSystem'
 import { clearSave, loadState, saveState } from '../systems/SaveSystem'
 import { buildLayout, layoutWalkable } from './layout'
 import type { Layout } from './layout'
@@ -40,6 +41,7 @@ export class Game {
   cam = new Camera()
   fx = new Effects()
   audio = new AudioManager()
+  private mine = new MineSystem()
 
   mode: Mode = 'island'
   mineFloor = 1
@@ -112,15 +114,9 @@ export class Game {
   }
 
   private buildMineFloor(floor: number) {
-    const conf = MineLevels.floors.find((f) => f.floor === floor) || MineLevels.floors[0]
-    this.mineNodes = []
-    const anchors = this.layout.mineAnchors
-    for (let i = 0; i < conf.nodeCount && i < anchors.length; i++) {
-      this.mineNodes.push({
-        id: this.nodeIdSeq++, type: 'mine_ore', pos: { ...anchors[i] },
-        hp: 3, alive: true, respawnAt: 0, shakeUntil: 0,
-      })
-    }
+    this.state.mineCurrentFloor = floor
+    this.mineFloor = floor
+    this.mineNodes = this.mine.buildFloor(this.state, this.layout.mineAnchors)
   }
 
   resize(w: number, h: number) {
@@ -298,7 +294,7 @@ export class Game {
     const inMine = node.type === 'mine_ore'
     const def = inMine ? null : ResourceNodes[node.type]
     const rule = inMine ? Interactions.oreNode : Interactions[def!.kind === 'beach' ? 'beach' : def!.kind]
-    const cost = (rule?.staminaCost ?? Stamina.defaultActionCost)
+    const cost = inMine ? this.mine.staminaCost(this.state.mineCurrentFloor) : (rule?.staminaCost ?? Stamina.defaultActionCost)
     this.faceTo(node.pos.x)
     // passive: save chance
     let actualCost = cost
@@ -327,13 +323,14 @@ export class Game {
     if (node.hp <= 0) {
       node.alive = false
       if (inMine) {
-        const conf = MineLevels.floors.find((f) => f.floor === this.mineFloor) || MineLevels.floors[0]
-        const drop = pickWeighted(conf.drops)
+        const drop = this.mine.mineNode(this.state, node)
         const amt = randInt(drop.min, drop.max)
         this.gainItems(drop.itemId, amt, node.pos.x, node.pos.y)
         this.state.counters.oreMine += 1
-        this.state.mineDeepestFloor = Math.max(this.state.mineDeepestFloor, this.mineFloor)
-        node.respawnAt = this.state.gameTime + 12
+        node.respawnAt = 0
+        if (this.mine.descendInfo(this.state).can) {
+          this.bus.emit({ t: 'toast', text: '아래층으로 내려갈 길을 찾았어요.', kind: 'good' })
+        }
       } else {
         for (const d of def!.drops) this.gainItems(d.itemId, randInt(d.min, d.max), node.pos.x, node.pos.y)
         for (const rd of def!.rareDrops) if (chance(rd.chance ?? 0)) this.gainItems(rd.itemId, randInt(rd.min, rd.max), node.pos.x, node.pos.y)
@@ -385,6 +382,7 @@ export class Game {
     const done = checkQuests(this.state)
     for (const q of done) { this.bus.emit({ t: 'quest', questId: q.id, name: q.name }); this.audio.sfx('questDone') }
     if (this.state.stamina <= 0) this.onStaminaEmpty()
+    this.persist(false)
     this.bus.emit({ t: 'state' })
   }
 
@@ -410,8 +408,9 @@ export class Game {
     for (const n of this.currentNodes()) {
       if (!n.alive && n.respawnAt > 0 && this.state.gameTime >= n.respawnAt) {
         const def = n.type === 'mine_ore' ? null : ResourceNodes[n.type]
+        if (!def) continue
         n.alive = true
-        n.hp = def ? def.durability : 3
+        n.hp = def.durability
         n.respawnAt = 0
       }
     }
@@ -733,8 +732,8 @@ export class Game {
   enterMine() {
     if (!hasUnlock(this.state, 'mine')) { this.bus.emit({ t: 'toast', text: '광산 입구가 필요해요.', kind: 'bad' }); return }
     this.mode = 'mine'
-    this.mineFloor = 1
-    this.buildMineFloor(this.mineFloor)
+    this.mine.resetRun(this.state)
+    this.buildMineFloor(this.state.mineCurrentFloor)
     this.player.x = this.layout.worldW / 2
     this.player.y = this.layout.worldH - 120
     this.movePath = []
@@ -756,19 +755,31 @@ export class Game {
   }
 
   mineFloorMax(): number {
-    return MineLevels.floors.length
+    return this.mine.maxFloor()
+  }
+
+  canDescend(): boolean {
+    return this.mine.descendInfo(this.state).can
+  }
+
+  mineDescendReason(): string {
+    return this.mine.descendInfo(this.state).reason || ''
   }
 
   descend(): boolean {
-    const next = this.mineFloor + 1
-    const conf = MineLevels.floors.find((f) => f.floor === next)
-    if (!conf) return false
-    this.mineFloor = next
-    this.buildMineFloor(next)
+    const info = this.mine.descendInfo(this.state)
+    if (!info.can) {
+      this.bus.emit({ t: 'toast', text: info.reason || '아직 내려갈 수 없어요.', kind: 'bad' })
+      this.audio.sfx('error')
+      return false
+    }
+    this.mine.descend(this.state)
+    this.buildMineFloor(this.state.mineCurrentFloor)
     this.player.x = this.layout.worldW / 2
     this.player.y = this.layout.worldH - 120
     this.followCam(true)
     this.audio.sfx('uiOpen')
+    this.persist(false)
     this.bus.emit({ t: 'state' })
     return true
   }

@@ -3,7 +3,7 @@ import {
   Buildings, BuildingMap, Economy, ItemMap, Player, Sound, Stamina, Zones,
 } from '../content'
 
-export const SAVE_VERSION = 6
+export const SAVE_VERSION = 7
 
 export function newGameState(): GameState {
   const buildings: GameState['buildings'] = {}
@@ -35,7 +35,9 @@ export function newGameState(): GameState {
     recipesDiscovered: [],
     quests: {},
     unlockedZones,
+    mineCurrentFloor: 1,
     mineDeepestFloor: 0,
+    mineMinedNodes: {},
     gameTime: 0,
     lastSaved: Date.now(),
     audio: { ...Sound.defaults },

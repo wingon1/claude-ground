@@ -193,7 +193,15 @@ export default function CozyIsland() {
           <div style={{ position: 'absolute', left: 0, right: 0, bottom: 16, display: 'flex', justifyContent: 'center', gap: 8, zIndex: 18 }}>
             <button onClick={() => game.exitMine()} style={mineBtn}>나가기</button>
             <div style={{ ...mineBtn, background: '#3a3340', color: '#fff' }}>지하 {game.mineFloor}층</div>
-            {game.mineFloor < game.mineFloorMax() && <button onClick={() => game.descend()} style={mineBtn}>더 깊이 ▾</button>}
+            {game.mineFloor < game.mineFloorMax() && (
+              <button
+                onClick={() => game.descend()}
+                title={game.mineDescendReason()}
+                style={{ ...mineBtn, opacity: game.canDescend() ? 1 : 0.65 }}
+              >
+                더 깊이 ▾
+              </button>
+            )}
           </div>
         )}
 
@@ -206,6 +214,7 @@ export default function CozyIsland() {
             <MenuBtn icon="shop" label="상점" onClick={() => openPanel('shop')} />
             <MenuBtn icon="hammer" label="건설" onClick={() => openPanel('build')} />
             <MenuBtn icon="pot" label="요리" onClick={() => openPanel('cooking')} />
+            <MenuBtn icon="pickaxe" label="광산" onClick={() => game.enterMine()} />
             <MenuBtn icon="scroll" label="퀘스트" onClick={() => openPanel('quests')} />
             <MenuBtn icon="book" label="도감" onClick={() => openPanel('collection')} />
             <MenuBtn icon="gear" label="설정" onClick={() => openPanel('settings')} />

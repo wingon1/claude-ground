@@ -20,7 +20,7 @@ import soundJson from './data/sound.json'
 import worldJson from './data/worldLayout.json'
 
 import type {
-  AnimalDef, BuildingDef, CropDef, ItemDef, QuestDef, RecipeDef, ResourceNodeDef, Vec,
+  AnimalDef, BuildingDef, CropDef, ItemDef, MineLevelDef, QuestDef, RecipeDef, ResourceNodeDef, Vec,
 } from './types'
 
 export const Player = playerJson as {
@@ -69,7 +69,7 @@ export const Shops = shopsJson as {
 export const Quests = (questsJson as { quests: QuestDef[] }).quests
 
 export const MineLevels = mineJson as {
-  floors: { floor: number; name: string; nodeCount: number; staminaCost: number; unlockCondition?: unknown; drops: { itemId: string; min: number; max: number; weight: number }[] }[]
+  floors: MineLevelDef[]
 }
 export const DungeonLevels = dungeonJson as { enabled: boolean; comingSoon: boolean; stages: unknown[] }
 export const Zones = (zonesJson as { zones: { id: string; name: string; defaultUnlocked?: boolean; unlockCondition?: unknown }[] }).zones

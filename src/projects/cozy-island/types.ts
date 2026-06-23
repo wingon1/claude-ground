@@ -15,6 +15,19 @@ export type ItemDef = {
 
 export type DropDef = { itemId: string; min: number; max: number; chance?: number; weight?: number }
 
+export type MineDropDef = { itemId: string; min: number; max: number; weight: number }
+
+export type MineLevelDef = {
+  floor: number
+  name: string
+  nodeCount: number
+  nodeHp: number
+  staminaCost: number
+  unlockCondition?: UnlockCondition
+  descendRequirement?: { minedNodes: number }
+  drops: MineDropDef[]
+}
+
 export type ResourceNodeDef = {
   name: string
   kind: 'tree' | 'rock' | 'bush' | 'beach'
@@ -173,7 +186,9 @@ export type GameState = {
   recipesDiscovered: string[]
   quests: Record<string, { done: boolean; claimed: boolean }>
   unlockedZones: string[]
+  mineCurrentFloor: number
   mineDeepestFloor: number
+  mineMinedNodes: Record<string, number[]>
   // timekeeping
   gameTime: number // accumulated game seconds
   lastSaved: number // wallclock ms
