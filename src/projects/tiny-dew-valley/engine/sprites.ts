@@ -311,7 +311,98 @@ function bakeFlower(): HTMLCanvasElement {
 }
 
 // ---------------- Crops ----------------
-function bakeCrop(color: string, stages: number): HTMLCanvasElement[] {
+// An octagonal "round" fruit (cut corners) with highlight, shade and a small
+// green calyx — used for tomatoes.
+function roundFruit(g: CanvasRenderingContext2D, x: number, y: number, col: string) {
+  px(g, x + 1, y, 2, 4, col)
+  px(g, x, y + 1, 4, 2, col)
+  px(g, x + 1, y, 1, 1, lighten(col))
+  dot(g, x, y + 1, lighten(col))
+  px(g, x + 1, y + 3, 2, 1, darken(col))
+  px(g, x + 1, y - 1, 2, 1, '#2f7d3a') // calyx
+}
+
+function drawWheat(g: CanvasRenderingContext2D, color: string, ripe: boolean) {
+  const head = ripe ? color : '#9bbf5a'
+  const stalk = ripe ? '#caa24a' : '#6fb04a'
+  const ears: [number, number][] = [
+    [4, 3],
+    [8, 1],
+    [12, 3],
+  ]
+  for (const [x, hy] of ears) {
+    px(g, x, hy + 4, 1, 14 - (hy + 4), stalk) // stem to ground
+    px(g, x - 1, hy, 3, 5, head) // grain head
+    px(g, x - 1, hy, 1, 5, darken(head)) // left shade
+    px(g, x + 1, hy, 1, 5, darken(head)) // right shade
+    dot(g, x, hy + 1, lighten(head))
+    dot(g, x, hy + 3, lighten(head))
+    px(g, x, hy - 2, 1, 2, ripe ? '#e8d27a' : '#8abf5a') // awn
+  }
+  px(g, 4, 13, 9, 1, 'rgba(0,0,0,0.12)')
+}
+
+function drawTomato(g: CanvasRenderingContext2D, color: string, ripe: boolean) {
+  const fruit = ripe ? color : '#6fae54'
+  // foliage bush + stake
+  px(g, 4, 6, 8, 7, '#2f7d3a')
+  px(g, 4, 6, 8, 2, '#3a9148')
+  px(g, 3, 8, 1, 3, '#2f7d3a')
+  px(g, 12, 8, 1, 3, '#2f7d3a')
+  px(g, 11, 3, 1, 10, '#9a6a3a') // stake
+  roundFruit(g, 4, 8, fruit)
+  roundFruit(g, 8, 9, fruit)
+}
+
+function drawStrawberry(g: CanvasRenderingContext2D, color: string, ripe: boolean) {
+  // trefoil leaves
+  px(g, 3, 5, 4, 3, '#3a8a3a')
+  px(g, 9, 5, 4, 3, '#3a8a3a')
+  px(g, 6, 4, 4, 3, '#3a8a3a')
+  px(g, 3, 5, 4, 1, '#6fc25a')
+  px(g, 9, 5, 4, 1, '#6fc25a')
+  px(g, 5, 7, 6, 2, '#2f7d3a')
+  if (ripe) {
+    // hanging red berry with seeds + calyx
+    px(g, 6, 8, 4, 3, color)
+    px(g, 7, 8, 2, 5, color) // teardrop tip
+    px(g, 6, 8, 4, 1, lighten(color))
+    px(g, 6, 7, 4, 1, '#3a8a3a')
+    dot(g, 7, 9, '#fff0a0')
+    dot(g, 9, 10, '#fff0a0')
+    dot(g, 7, 11, '#fff0a0')
+  } else {
+    // white blossoms
+    px(g, 5, 8, 3, 3, '#f4f0e0')
+    dot(g, 6, 9, '#ffe14d')
+    px(g, 9, 9, 2, 2, '#f4f0e0')
+    dot(g, 9, 9, '#ffe14d')
+  }
+}
+
+function drawCorn(g: CanvasRenderingContext2D, color: string, ripe: boolean) {
+  // tall stalk + angled leaves
+  px(g, 7, 1, 2, 13, '#3a8a3a')
+  px(g, 7, 1, 1, 13, '#4a9d4a')
+  px(g, 3, 5, 4, 2, '#3a8a3a')
+  px(g, 2, 6, 2, 1, '#56a84a')
+  px(g, 9, 8, 4, 2, '#3a8a3a')
+  px(g, 12, 9, 2, 1, '#56a84a')
+  if (ripe) {
+    // husked cob with kernel rows + tassel
+    px(g, 9, 5, 4, 8, '#caa040') // husk
+    px(g, 9, 5, 3, 8, color) // cob
+    px(g, 9, 5, 3, 1, lighten(color))
+    px(g, 11, 5, 1, 8, darken(color))
+    for (let ky = 6; ky <= 11; ky += 2) dot(g, 10, ky, '#b9892f') // kernels
+    px(g, 8, 6, 1, 6, '#6fb04a') // husk leaf
+    px(g, 7, 0, 2, 2, '#e8d27a') // tassel
+  } else {
+    px(g, 7, 0, 2, 2, '#9bbf5a') // young tassel
+  }
+}
+
+function bakeCrop(id: string, color: string, stages: number): HTMLCanvasElement[] {
   const out: HTMLCanvasElement[] = []
   for (let s = 0; s < stages; s++) {
     const c = cv(T, T)
@@ -323,7 +414,7 @@ function bakeCrop(color: string, stages: number): HTMLCanvasElement[] {
       px(g, 5, 11, 6, 1, '#8a5a32')
       px(g, 7, 9, 1, 2, '#3a8a3a')
       dot(g, 8, 9, '#56a84a')
-    } else if (t < 0.7) {
+    } else if (t < 0.55) {
       // leafy sprout with highlighted blades
       const h = Math.round(3 + t * 7)
       px(g, 7, 13 - h, 2, h, '#3a8a3a')
@@ -334,21 +425,19 @@ function bakeCrop(color: string, stages: number): HTMLCanvasElement[] {
       px(g, 10, 13 - h + 2, 2, 1, '#6fc25a')
       px(g, 6, 12, 4, 1, 'rgba(0,0,0,0.12)')
     } else {
-      // mature bush with shaded fruit + leaves
-      px(g, 7, 4, 2, 9, '#2f7d3a')
-      px(g, 3, 5, 4, 2, '#3a8a3a') // leaf cluster L
-      px(g, 3, 5, 2, 1, '#6fc25a')
-      px(g, 9, 6, 4, 2, '#3a8a3a') // leaf cluster R
-      px(g, 11, 6, 2, 1, '#6fc25a')
-      // two fruit
-      px(g, 4, 8, 5, 5, color)
-      px(g, 4, 8, 5, 2, lighten(color))
-      px(g, 5, 12, 3, 1, darken(color))
-      dot(g, 5, 9, '#ffffff')
-      px(g, 9, 9, 4, 4, color)
-      px(g, 9, 9, 4, 1, lighten(color))
-      px(g, 9, 12, 3, 1, darken(color))
-      dot(g, 10, 10, '#ffffff')
+      // crop-specific shape; final stage is ripe, earlier mature frames green
+      const ripe = s === stages - 1
+      if (id === 'wheat') drawWheat(g, color, ripe)
+      else if (id === 'tomato') drawTomato(g, color, ripe)
+      else if (id === 'strawberry') drawStrawberry(g, color, ripe)
+      else if (id === 'corn') drawCorn(g, color, ripe)
+      else {
+        // generic bush fallback
+        px(g, 7, 4, 2, 9, '#2f7d3a')
+        px(g, 4, 8, 5, 5, ripe ? color : '#6fae54')
+        px(g, 4, 8, 5, 2, lighten(ripe ? color : '#6fae54'))
+        dot(g, 5, 9, '#ffffff')
+      }
     }
     out.push(c)
   }
@@ -785,7 +874,7 @@ export function buildSprites(
   }
 
   const crops: Record<string, HTMLCanvasElement[]> = {}
-  for (const cd of cropDefs) crops[cd.id] = bakeCrop(cd.color, cd.stages)
+  for (const cd of cropDefs) crops[cd.id] = bakeCrop(cd.id, cd.color, cd.stages)
 
   cached = {
     grass: [bakeGrass(0), bakeGrass(1), bakeGrass(2)],
