@@ -500,30 +500,32 @@ export function bakeItemIcon(sprite: string, color?: string): HTMLCanvasElement 
       px(g, 5, 8, 6, 3, '#d93f5f')
       px(g, 6, 7, 4, 1, '#f5d35f')
       break
-    case 'parsnip_soup':
+    case 'tomato_sauce':
       px(g, 3, 7, 10, 6, '#d8e2f0')
       px(g, 4, 6, 8, 2, '#ffffff')
-      px(g, 5, 8, 6, 3, '#efd77a')
-      dot(g, 7, 9, '#7bbf6a')
+      px(g, 5, 8, 6, 3, '#d8443d')
+      dot(g, 8, 8, '#ffb0a0')
       break
-    case 'cream_stew':
-      px(g, 3, 7, 10, 6, '#d8e2f0')
-      px(g, 4, 6, 8, 2, '#ffffff')
-      px(g, 5, 8, 6, 3, '#f1e0ad')
-      dot(g, 6, 9, '#efd77a')
+    case 'pizza':
+      px(g, 3, 6, 10, 7, '#c78335')
+      px(g, 4, 7, 8, 4, '#f0c070')
+      px(g, 5, 8, 6, 2, '#d8443d')
+      dot(g, 7, 9, '#f0c34a')
       dot(g, 10, 9, '#f0c34a')
       break
-    case 'pumpkin_soup':
+    case 'butter_corn':
       px(g, 3, 7, 10, 6, '#d8e2f0')
       px(g, 4, 6, 8, 2, '#ffffff')
-      px(g, 5, 8, 6, 3, '#e8912f')
-      dot(g, 8, 8, '#fff0a6')
+      px(g, 5, 8, 6, 3, '#f0c84b')
+      px(g, 6, 7, 4, 1, '#f5d35f')
+      dot(g, 7, 9, '#7bbf6a')
       break
-    case 'pumpkin_pie':
+    case 'corn_pizza':
       px(g, 3, 6, 10, 7, '#b97832')
       px(g, 4, 5, 8, 2, '#e4b25f')
-      px(g, 5, 7, 6, 4, '#e8912f')
-      px(g, 6, 8, 4, 1, '#fff0a6')
+      px(g, 5, 7, 6, 3, '#d8443d')
+      dot(g, 6, 9, '#f0c84b')
+      dot(g, 9, 8, '#f0c84b')
       break
     case 'permit_chicken':
     case 'permit_dairy':
@@ -599,9 +601,9 @@ export function bakeItemIcon(sprite: string, color?: string): HTMLCanvasElement 
       px(g, 9, 5, 1, 4, '#9a6a3a') // hammer handle
       px(g, 8, 4, 3, 2, '#8b8f99') // hammer head
       break
-    case 'seed_parsnip':
+    case 'seed_tomato':
     case 'seed_strawberry':
-    case 'seed_golden_pumpkin':
+    case 'seed_corn':
       px(g, 4, 5, 8, 7, '#d8b888')
       px(g, 4, 5, 8, 2, '#e8cda0')
       px(g, 6, 8, 4, 3, color ?? '#7a5a3a')

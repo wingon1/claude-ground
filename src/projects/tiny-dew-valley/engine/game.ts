@@ -43,6 +43,22 @@ const RESPAWN_SECS = 80 // trees/rocks/stumps regrow after this
 const STAGE_SECS_PER_DAY = 22 // real seconds per crop "grow day"
 const COOK_BATCH_MAX = 20
 
+const LEGACY_ID_MAP: Record<string, string> = {
+  parsnip: 'tomato',
+  golden_pumpkin: 'corn',
+  seed_parsnip: 'seed_tomato',
+  seed_golden_pumpkin: 'seed_corn',
+  crop_parsnip_normal: 'crop_tomato_normal',
+  crop_golden_pumpkin_normal: 'crop_corn_normal',
+  crop_golden_pumpkin_silver: 'crop_corn_normal',
+  crop_golden_pumpkin_gold: 'crop_corn_normal',
+  crop_golden_pumpkin_perfect: 'crop_corn_normal',
+  parsnip_soup: 'tomato_sauce',
+  cream_stew: 'pizza',
+  pumpkin_soup: 'butter_corn',
+  pumpkin_pie: 'corn_pizza',
+}
+
 // Stamina costs per auto-work hit.
 const COST = { chop: 1, harvest: 1, plant: 1 }
 const START_MAX_STAMINA = 40
@@ -1278,6 +1294,7 @@ export class Game {
   }
 
   private applyInitialUnlocks() {
+    this.migrateCropContentIds()
     this.state.flags[cropUnlockFlag(DEFAULT_FIELD_CROP)] = true
     const migratedKey = 'migration:initialFieldRows:v2'
     if (this.state.flags[migratedKey] !== true) {
@@ -1287,6 +1304,30 @@ export class Game {
         this.state.flags[firstRowsKey] = 1
       }
       this.state.flags[migratedKey] = true
+    }
+  }
+
+  private migrateCropContentIds() {
+    const flags = this.state.flags
+    if (flags[cropUnlockFlag('parsnip')] === true) flags[cropUnlockFlag('tomato')] = true
+    if (flags[cropUnlockFlag('golden_pumpkin')] === true) flags[cropUnlockFlag('corn')] = true
+    for (const plot of FIELD_PLOTS) {
+      const key = this.fieldCropKey(plot.id)
+      const raw = flags[key]
+      if (typeof raw === 'string' && LEGACY_ID_MAP[raw]) flags[key] = LEGACY_ID_MAP[raw]
+    }
+    for (const t of this.state.tiles) {
+      if (t.cropId && LEGACY_ID_MAP[t.cropId]) t.cropId = LEGACY_ID_MAP[t.cropId]
+      const groundItemId = t.metadata.groundItemId
+      if (typeof groundItemId === 'string' && LEGACY_ID_MAP[groundItemId]) {
+        t.metadata.groundItemId = LEGACY_ID_MAP[groundItemId]
+      }
+    }
+    for (const slot of this.state.inventory) {
+      if (slot.itemId && LEGACY_ID_MAP[slot.itemId]) slot.itemId = LEGACY_ID_MAP[slot.itemId]
+    }
+    for (const job of this.state.cookQueue) {
+      if (LEGACY_ID_MAP[job.recipeId]) job.recipeId = LEGACY_ID_MAP[job.recipeId]
     }
   }
 

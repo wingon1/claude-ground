@@ -97,7 +97,7 @@ export interface CropDef {
   baseSell: number
   /** If set, crop regrows after harvest; days between regrows. */
   regrowDays?: number
-  /** Whether this crop rolls quality (golden pumpkin). */
+  /** Whether this crop rolls quality. */
   rollsQuality: boolean
   /** Season flavour / colour seed. */
   color: string
@@ -160,7 +160,7 @@ export interface NPCState {
 
 export interface ShrineState {
   gold: number
-  pumpkins: number
+  offerings: number
   logs: number
   restored: boolean
 }

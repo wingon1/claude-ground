@@ -13,15 +13,15 @@ export const CROPS: Record<string, CropDef> = {
     rollsQuality: false,
     color: '#d9b34c',
   },
-  parsnip: {
-    id: 'parsnip',
-    name: '파스닙',
-    seedItemId: 'seed_parsnip',
+  tomato: {
+    id: 'tomato',
+    name: '토마토',
+    seedItemId: 'seed_tomato',
     growDays: 2,
     stages: 4,
-    baseSell: 35,
+    baseSell: 45,
     rollsQuality: false,
-    color: '#e8d27a',
+    color: '#e64b42',
   },
   strawberry: {
     id: 'strawberry',
@@ -34,15 +34,16 @@ export const CROPS: Record<string, CropDef> = {
     rollsQuality: false,
     color: '#e8506e',
   },
-  golden_pumpkin: {
-    id: 'golden_pumpkin',
-    name: '황금 호박',
-    seedItemId: 'seed_golden_pumpkin',
-    growDays: 6,
+  corn: {
+    id: 'corn',
+    name: '옥수수',
+    seedItemId: 'seed_corn',
+    growDays: 5,
     stages: 6,
-    baseSell: 400,
-    rollsQuality: true,
-    color: '#f2a93b',
+    baseSell: 120,
+    regrowDays: 3,
+    rollsQuality: false,
+    color: '#f0c84b',
   },
 }
 
