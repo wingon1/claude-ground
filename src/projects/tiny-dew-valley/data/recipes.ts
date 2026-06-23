@@ -8,6 +8,8 @@ export const RECIPES: RecipeDef[] = [
     description: '밀 2개를 갈아 밀가루를 만듭니다.',
     inputs: [{ itemId: 'crop_wheat_normal', qty: 2 }],
     output: { itemId: 'flour', qty: 1 },
+    craftSeconds: 6,
+    difficulty: 1,
   },
   {
     id: 'bread',
@@ -15,6 +17,8 @@ export const RECIPES: RecipeDef[] = [
     description: '밀가루를 구워 기본 요리인 빵을 만듭니다.',
     inputs: [{ itemId: 'flour', qty: 1 }],
     output: { itemId: 'bread', qty: 1 },
+    craftSeconds: 12,
+    difficulty: 1,
   },
   {
     id: 'butter',
@@ -23,6 +27,8 @@ export const RECIPES: RecipeDef[] = [
     inputs: [{ itemId: 'milk', qty: 2 }],
     output: { itemId: 'butter', qty: 1 },
     unlockFlag: DAIRY_UNLOCK_FLAG,
+    craftSeconds: 18,
+    difficulty: 2,
   },
   {
     id: 'cheese',
@@ -31,6 +37,8 @@ export const RECIPES: RecipeDef[] = [
     inputs: [{ itemId: 'milk', qty: 2 }],
     output: { itemId: 'cheese', qty: 1 },
     unlockFlag: DAIRY_UNLOCK_FLAG,
+    craftSeconds: 24,
+    difficulty: 2,
   },
   {
     id: 'pastry',
@@ -42,6 +50,8 @@ export const RECIPES: RecipeDef[] = [
     ],
     output: { itemId: 'pastry', qty: 1 },
     unlockFlag: DAIRY_UNLOCK_FLAG,
+    craftSeconds: 42,
+    difficulty: 4,
   },
   {
     id: 'herbal_tea',
@@ -52,5 +62,7 @@ export const RECIPES: RecipeDef[] = [
       { itemId: 'fiber', qty: 2 },
     ],
     output: { itemId: 'herbal_tea', qty: 1 },
+    craftSeconds: 20,
+    difficulty: 2,
   },
 ]

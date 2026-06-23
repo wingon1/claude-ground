@@ -392,11 +392,56 @@ function FieldBuildModal({ game, ui }: { game: Game; ui: UISnapshot }) {
 
 // ---------------- Cooking ----------------
 function CookingModal({ game, ui }: { game: Game; ui: UISnapshot }) {
+  const fmtTime = (seconds: number) => {
+    const s = Math.max(0, Math.ceil(seconds))
+    const m = Math.floor(s / 60)
+    const r = s % 60
+    return m > 0 ? `${m}:${String(r).padStart(2, '0')}` : `${r}s`
+  }
   return (
     <div className="tdv-modal-bg" onClick={() => game.closeModal()}>
       <div className="tdv-modal" style={{ width: 'min(420px, 92vw)' }} onClick={(e) => e.stopPropagation()}>
         <h2>🍳 요리</h2>
-        <div className="sub">재료를 모아 음식과 가공품을 만들어요.</div>
+        <div className="sub">재료를 넣으면 시간이 지나 완성돼요. 고급 요리는 더 오래 걸립니다.</div>
+        <div className="tdv-fieldpanel">
+          <div className="tdv-fieldhead">
+            <strong>화로대 Lv.{ui.cookingFire.level}</strong>
+            <span>{ui.cookingFire.usedSlots}/{ui.cookingFire.slots}칸 사용</span>
+          </div>
+          {ui.cookingFire.nextSlots ? (
+            <div className="tdv-fieldbuy">
+              <div>
+                <strong>업그레이드</strong>
+                <div className="mats">
+                  <span className={ui.gold >= ui.cookingFire.costGold ? '' : 'miss'}>골드 {ui.gold}/{ui.cookingFire.costGold}</span>
+                  {ui.cookingFire.costItems.map((it) => (
+                    <span className={it.ok ? '' : 'miss'} key={it.itemId}>{it.name} {it.have}/{it.need}</span>
+                  ))}
+                </div>
+                <div className="ds">조리 칸 {ui.cookingFire.slots} → {ui.cookingFire.nextSlots}</div>
+              </div>
+              <button className="tdv-btn gold sm" disabled={!ui.cookingFire.canUpgrade} onClick={() => game.upgradeCookingFire()}>
+                업그레이드
+              </button>
+            </div>
+          ) : (
+            <div className="sub">화로대가 최대 레벨이에요.</div>
+          )}
+        </div>
+        {ui.cookQueue.length > 0 && (
+          <div className="tdv-cookqueue">
+            {ui.cookQueue.map((job) => (
+              <div className="tdv-cookjob" key={job.id}>
+                <img src={iconURL(job.outputSprite, job.outputColor)} alt={job.outputName} />
+                <div className="info">
+                  <div className="nm">{job.recipeName}</div>
+                  <div className="bar"><span style={{ width: `${Math.round(job.progress * 100)}%` }} /></div>
+                </div>
+                <div className="time">{job.ready ? '완료 대기' : fmtTime(job.remainingSecs)}</div>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="tdv-craftlist">
           {ui.cookRecipes.map((r) => (
             <div className={`tdv-craft${r.unlocked ? '' : ' locked'}`} key={r.id}>
@@ -409,6 +454,9 @@ function CookingModal({ game, ui }: { game: Game; ui: UISnapshot }) {
                 <div className="ds">{r.desc}</div>
                 {!r.unlocked && <div className="lock">{r.lockText}</div>}
                 <div className="mats">
+                  <span className="mat">난이도 {r.difficulty}</span>
+                  <span className="mat">시간 {fmtTime(r.craftSeconds)}</span>
+                  <span className="mat">판매 {r.sellPrice}G</span>
                   {r.inputs.map((it) => (
                     <span className={`mat${it.ok ? '' : ' miss'}`} key={it.itemId}>
                       {it.name} {it.have}/{it.need}

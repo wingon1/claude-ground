@@ -1,4 +1,4 @@
-import type { GameState, InventorySlot, Tile } from '../types'
+import type { CookJob, GameState, InventorySlot, Tile } from '../types'
 import { CROPS, CROP_LIST } from '../data/crops'
 import { cropItemId, getItem } from '../data/items'
 import { SHOP_CATALOG } from '../data/shopCatalog'
@@ -10,6 +10,12 @@ import {
   FIELD_ROW_COST_WOOD,
   FIELD_SIZE,
 } from '../data/fields'
+import {
+  COOKING_FIRE_BASE_SLOTS,
+  COOKING_FIRE_MAX_LEVEL,
+  COOKING_FIRE_SLOTS_PER_LEVEL,
+  COOKING_FIRE_UPGRADES,
+} from '../data/cookingFire'
 import { cropUnlockFlag } from '../data/unlocks'
 import { RECIPES } from '../data/recipes'
 import { OBSTACLE_DROP, OBSTACLE_HP, OBSTACLE_SOLID, TERRAIN_SOLID } from '../data/tiles'
@@ -115,6 +121,30 @@ export interface CookRecipeView {
   canCook: boolean
   unlocked: boolean
   lockText: string | null
+  craftSeconds: number
+  difficulty: number
+  sellPrice: number
+}
+export interface CookJobView {
+  id: string
+  recipeName: string
+  outputName: string
+  outputSprite: string
+  outputColor?: string
+  remainingSecs: number
+  totalSecs: number
+  progress: number
+  ready: boolean
+}
+export interface CookingFireView {
+  level: number
+  maxLevel: number
+  slots: number
+  usedSlots: number
+  nextSlots: number | null
+  costGold: number
+  costItems: CostItemView[]
+  canUpgrade: boolean
 }
 export interface UISnapshot {
   phase: UIPhase
@@ -133,6 +163,8 @@ export interface UISnapshot {
   cropChoices: CropChoiceView[]
   selectedFieldId: string | null
   cookRecipes: CookRecipeView[]
+  cookQueue: CookJobView[]
+  cookingFire: CookingFireView
   contextAction: string | null
   nearBed: boolean
   nearStore: boolean
@@ -276,6 +308,7 @@ export class Game {
       },
       tiles,
       inventory: inv,
+      cookQueue: [],
       flags: {
         'fieldRows:field_1': FIELD_SIZE,
         'fieldCrop:field_1': DEFAULT_FIELD_CROP,
@@ -285,6 +318,7 @@ export class Game {
   }
 
   private initRuntime() {
+    if (!Array.isArray(this.state.cookQueue)) this.state.cookQueue = []
     this.particles = []
     this.fireflies = []
     for (let i = 0; i < 36; i++) {
@@ -306,6 +340,7 @@ export class Game {
     if (!this.running) return
     const dt = Math.min(0.05, (now - this.last) / 1000)
     this.last = now
+    if (this.phase === 'playing' || this.phase === 'cook') this.updateCooking(dt)
     if (this.phase === 'playing') this.update(dt)
     this.updateTransitions(dt)
     this.updateParticles(dt)
@@ -733,6 +768,30 @@ export class Game {
     }
   }
 
+  private updateCooking(dt: number) {
+    if (!this.state?.cookQueue?.length) return
+    let completed = false
+    const remaining: CookJob[] = []
+    for (const job of this.state.cookQueue) {
+      const recipe = RECIPES.find((r) => r.id === job.recipeId)
+      if (!recipe) {
+        completed = true
+        continue
+      }
+      const nextRemaining = Math.max(0, job.remainingSecs - dt)
+      if (nextRemaining <= 0 && this.canAccept(recipe.output.itemId, recipe.output.qty)) {
+        this.giveItem(recipe.output.itemId, recipe.output.qty)
+        this.toast(`${recipe.name} 완성!`, 'good')
+        this.audio.sfx('sparkle')
+        completed = true
+      } else {
+        remaining.push({ ...job, remainingSecs: nextRemaining })
+      }
+    }
+    this.state.cookQueue = remaining
+    if (completed) this.autosave()
+  }
+
   openBuild() {
     if (this.phase !== 'playing') return
     if (!this.selectedFieldId()) {
@@ -861,14 +920,38 @@ export class Game {
       this.audio.sfx('reject')
       return
     }
-    if (!this.canAccept(recipe.output.itemId, recipe.output.qty)) {
-      this.toast('가방이 가득 찼어요!', 'bad')
+    if (this.state.cookQueue.length >= this.cookingSlots()) {
+      this.toast('화로대 조리 칸이 모두 찼어요.', 'bad')
       this.audio.sfx('reject')
       return
     }
     this.payCost(0, recipe.inputs)
-    this.giveItem(recipe.output.itemId, recipe.output.qty)
-    this.toast(`${recipe.name} 완성!`, 'good')
+    this.state.cookQueue.push({
+      id: `${recipe.id}:${Date.now()}:${Math.random().toString(36).slice(2)}`,
+      recipeId: recipe.id,
+      remainingSecs: recipe.craftSeconds,
+    })
+    this.toast(`${recipe.name} 조리 시작!`, 'good')
+    this.audio.sfx('select')
+    this.autosave()
+    this.emit()
+  }
+
+  upgradeCookingFire() {
+    if (this.phase !== 'cook') return
+    const upgrade = this.nextCookingFireUpgrade()
+    if (!upgrade) {
+      this.toast('화로대가 최대 레벨이에요.', 'info')
+      return
+    }
+    if (!this.canPayCost(upgrade.costGold, upgrade.costItems)) {
+      this.toast('화로대 업그레이드 재료가 부족해요.', 'bad')
+      this.audio.sfx('reject')
+      return
+    }
+    this.payCost(upgrade.costGold, upgrade.costItems)
+    this.state.flags.cookingFireLevel = upgrade.level
+    this.toast(`화로대 Lv.${upgrade.level}! 조리 칸 ${this.cookingSlots()}개`, 'good')
     this.audio.sfx('sparkle')
     this.autosave()
     this.emit()
@@ -1034,6 +1117,21 @@ export class Game {
 
   private cropUnlocked(cropId: string): boolean {
     return this.flagEnabled(cropUnlockFlag(cropId))
+  }
+
+  private cookingFireLevel(): number {
+    const raw = this.state.flags.cookingFireLevel
+    return typeof raw === 'number'
+      ? Math.max(1, Math.min(COOKING_FIRE_MAX_LEVEL, raw))
+      : 1
+  }
+
+  private cookingSlots(level = this.cookingFireLevel()): number {
+    return COOKING_FIRE_BASE_SLOTS + (level - 1) * COOKING_FIRE_SLOTS_PER_LEVEL
+  }
+
+  private nextCookingFireUpgrade() {
+    return COOKING_FIRE_UPGRADES.find((u) => u.level === this.cookingFireLevel() + 1) ?? null
   }
 
   private nextUnlockFieldId(): string | null {
@@ -1502,6 +1600,17 @@ export class Game {
         phase: this.phase, day: 1, clock: '오전 6:00', period: '아침', periodKey: 'morning',
         gold: 0, stamina: 0, maxStamina: 0, inventory: [], toasts: [...this.toasts], shopBuy: [],
         buildOptions: [], fieldPlots: [], cropChoices: [], selectedFieldId: null, cookRecipes: [],
+        cookQueue: [],
+        cookingFire: {
+          level: 1,
+          maxLevel: COOKING_FIRE_MAX_LEVEL,
+          slots: COOKING_FIRE_BASE_SLOTS,
+          usedSlots: 0,
+          nextSlots: COOKING_FIRE_BASE_SLOTS + COOKING_FIRE_SLOTS_PER_LEVEL,
+          costGold: 0,
+          costItems: [],
+          canUpgrade: false,
+        },
         contextAction: null, nearBed: false, nearStore: false, nearBuild: false, nearCooking: false, exhausted: false,
         muted: this.audio.muted, musicOn: this.audio.musicOn, hasSave: this.hasSavedGame(),
       }
@@ -1602,6 +1711,40 @@ export class Game {
       unlocked: this.cropUnlocked(crop.id),
       lockText: this.cropUnlocked(crop.id) ? null : '상점에서 해금',
     }))
+    const cookingFireLevel = this.cookingFireLevel()
+    const cookingSlots = this.cookingSlots(cookingFireLevel)
+    const nextCookingUpgrade = this.nextCookingFireUpgrade()
+    const cookingUpgradeItems = costViews(nextCookingUpgrade?.costItems ?? [])
+    const cookingFire: CookingFireView = {
+      level: cookingFireLevel,
+      maxLevel: COOKING_FIRE_MAX_LEVEL,
+      slots: cookingSlots,
+      usedSlots: s.cookQueue.length,
+      nextSlots: nextCookingUpgrade ? this.cookingSlots(nextCookingUpgrade.level) : null,
+      costGold: nextCookingUpgrade?.costGold ?? 0,
+      costItems: cookingUpgradeItems,
+      canUpgrade:
+        !!nextCookingUpgrade &&
+        s.gold >= nextCookingUpgrade.costGold &&
+        cookingUpgradeItems.every((it) => it.ok),
+    }
+    const cookQueue: CookJobView[] = s.cookQueue.map((job) => {
+      const recipe = RECIPES.find((r) => r.id === job.recipeId)
+      const out = recipe ? getItem(recipe.output.itemId) : undefined
+      const totalSecs = Math.max(1, recipe?.craftSeconds ?? job.remainingSecs)
+      const remainingSecs = Math.max(0, job.remainingSecs)
+      return {
+        id: job.id,
+        recipeName: recipe?.name ?? job.recipeId,
+        outputName: out?.name ?? recipe?.output.itemId ?? job.recipeId,
+        outputSprite: out?.sprite ?? '',
+        outputColor: out?.cropId ? CROPS[out.cropId].color : undefined,
+        remainingSecs,
+        totalSecs,
+        progress: Math.max(0, Math.min(1, 1 - remainingSecs / totalSecs)),
+        ready: remainingSecs <= 0,
+      }
+    })
     const cookRecipes: CookRecipeView[] = RECIPES.map((recipe) => {
       const out = getItem(recipe.output.itemId)
       const inputs = costViews(recipe.inputs)
@@ -1617,10 +1760,13 @@ export class Game {
         inputs,
         canCook:
           unlocked &&
-          inputs.every((it) => it.ok) &&
-          this.canAccept(recipe.output.itemId, recipe.output.qty),
+          s.cookQueue.length < cookingSlots &&
+          inputs.every((it) => it.ok),
         unlocked,
         lockText: unlocked ? null : '목장 허가서 필요',
+        craftSeconds: recipe.craftSeconds,
+        difficulty: recipe.difficulty,
+        sellPrice: out?.sellPrice ?? 0,
       }
     })
     let contextAction: string | null = null
@@ -1645,6 +1791,8 @@ export class Game {
       cropChoices,
       selectedFieldId,
       cookRecipes,
+      cookQueue,
+      cookingFire,
       contextAction,
       nearBed: this.nearBed(),
       nearStore: this.nearStore(),

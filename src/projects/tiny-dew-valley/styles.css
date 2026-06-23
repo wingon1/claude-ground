@@ -758,6 +758,51 @@
 .tdv-fieldbuy .mats .miss {
   color: var(--bad);
 }
+.tdv-cookqueue {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.tdv-cookjob {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--panel-dark);
+  border: 2px solid var(--panel-edge);
+  border-radius: 8px;
+  padding: 7px;
+}
+.tdv-cookjob img {
+  width: 28px;
+  height: 28px;
+  image-rendering: pixelated;
+}
+.tdv-cookjob .info {
+  flex: 1;
+  min-width: 0;
+}
+.tdv-cookjob .nm {
+  font-size: 12px;
+  font-weight: 800;
+}
+.tdv-cookjob .bar {
+  height: 7px;
+  background: #00000022;
+  border-radius: 99px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+.tdv-cookjob .bar span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+.tdv-cookjob .time {
+  min-width: 54px;
+  text-align: right;
+  font-size: 10px;
+  font-weight: 800;
+}
 
 /* ---------------- Tally ---------------- */
 .tdv-tally {

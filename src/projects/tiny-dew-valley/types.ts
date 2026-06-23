@@ -63,7 +63,15 @@ export interface RecipeDef {
   description: string
   inputs: CostItem[]
   output: { itemId: string; qty: number }
+  craftSeconds: number
+  difficulty: number
   unlockFlag?: string
+}
+
+export interface CookJob {
+  id: string
+  recipeId: string
+  remainingSecs: number
 }
 
 export type ToolId = 'hoe' | 'watering_can' | 'axe' | 'scythe' | 'hand'
@@ -174,6 +182,7 @@ export interface GameState {
   player: PlayerState
   tiles: Tile[] // flattened WORLD_W * WORLD_H farm/village grid
   inventory: InventorySlot[]
+  cookQueue: CookJob[]
   flags: Record<string, boolean | number | string>
 }
 
