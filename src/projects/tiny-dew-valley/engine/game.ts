@@ -29,7 +29,7 @@ import {
   WORLD_H,
   WORLD_W,
 } from './world'
-import { buildSprites, T, type Sprites } from './sprites'
+import { bakeItemIcon, buildSprites, T, type Sprites } from './sprites'
 import { AudioEngine } from './audio'
 import { deleteSave, loadGame, saveGame, SAVE_VERSION } from './save'
 
@@ -197,6 +197,7 @@ interface Firefly {
   speed: number
 }
 type Period = 'morning' | 'afternoon' | 'golden' | 'night'
+type WorkKind = 'pickup' | 'harvest' | 'chop' | 'plant'
 
 export class Game {
   private canvas: HTMLCanvasElement
@@ -225,6 +226,7 @@ export class Game {
   private stuckT = 0
   private keys = new Set<string>()
   private workTile: { x: number; y: number } | null = null
+  private itemIconCache = new Map<string, HTMLCanvasElement>()
 
   private listeners = new Set<() => void>()
   private snap: UISnapshot
@@ -495,19 +497,20 @@ export class Game {
   }
 
   // Find the best workable tile adjacent to the player (incl. own tile).
-  private findWork(): { t: Tile; kind: 'harvest' | 'chop' | 'plant' } | null {
+  private findWork(): { t: Tile; kind: WorkKind } | null {
     const p = this.state.player
     const pt = this.playerTile()
-    let best: { t: Tile; kind: 'harvest' | 'chop' | 'plant'; d: number; pri: number } | null = null
+    let best: { t: Tile; kind: WorkKind; d: number; pri: number } | null = null
     for (let dy = -1; dy <= 1; dy++) {
       for (let dx = -1; dx <= 1; dx++) {
         const tx = pt.x + dx
         const ty = pt.y + dy
         if (!inBounds(tx, ty)) continue
         const t = this.state.tiles[idx(tx, ty)]
-        let kind: 'harvest' | 'chop' | 'plant' | null = null
+        let kind: WorkKind | null = null
         let pri = 0
-        if (t.cropId && t.growthStage >= CROPS[t.cropId].stages - 1) { kind = 'harvest'; pri = 3 }
+        if (this.groundItemId(t)) { kind = 'pickup'; pri = 4 }
+        else if (t.cropId && t.growthStage >= CROPS[t.cropId].stages - 1) { kind = 'harvest'; pri = 3 }
         else if (t.obstacle) { kind = 'chop'; pri = 2 }
         else if (t.terrain === 'soil' && !t.cropId && this.cropForTile(t)) { kind = 'plant'; pri = 1 }
         if (!kind) continue
@@ -537,7 +540,8 @@ export class Game {
     else if (Math.abs(cy - p.y) > 2) p.dir = cy > p.y ? 'down' : 'up'
     if (this.workCooldown > 0) return
     this.workCooldown = WORK_INTERVAL
-    if (work.kind === 'harvest') this.harvestCrop(work.t)
+    if (work.kind === 'pickup') this.pickupGroundItem(work.t)
+    else if (work.kind === 'harvest') this.harvestCrop(work.t)
     else if (work.kind === 'chop') this.chopObstacle(work.t)
     else if (work.kind === 'plant') this.plantTile(work.t)
   }
@@ -1188,8 +1192,58 @@ export class Game {
     return farm.animalBasePrice + this.animalCount(farm) * farm.animalPriceStep
   }
 
-  private animalCollectKey(farmId: string): string {
-    return `animalLastCollect:${farmId}`
+  private groundItemId(t: Tile): string | null {
+    const itemId = t.metadata.groundItemId
+    return typeof itemId === 'string' && getItem(itemId) ? itemId : null
+  }
+
+  private groundItemQty(t: Tile): number {
+    const qty = t.metadata.groundItemQty
+    return typeof qty === 'number' ? Math.max(1, Math.floor(qty)) : 1
+  }
+
+  private farmHasGroundDrop(farm: AnimalFarmDef): boolean {
+    return this.state.tiles.some((t) =>
+      t.metadata.animalDropFarm === farm.id && this.groundItemId(t),
+    )
+  }
+
+  private placeAnimalDrop(farm: AnimalFarmDef, qty: number): boolean {
+    const candidates: Tile[] = []
+    for (let y = farm.y + 1; y < farm.y + farm.h - 1; y++) {
+      for (let x = farm.x + 1; x < farm.x + farm.w - 1; x++) {
+        if (!inBounds(x, y)) continue
+        const t = this.state.tiles[idx(x, y)]
+        if (this.groundItemId(t) || t.obstacle || t.cropId) continue
+        candidates.push(t)
+      }
+    }
+    if (!candidates.length) return false
+    const t = candidates[Math.floor(Math.random() * candidates.length)]
+    t.metadata.groundItemId = farm.productItemId
+    t.metadata.groundItemQty = qty
+    t.metadata.animalDropFarm = farm.id
+    return true
+  }
+
+  private pickupGroundItem(t: Tile) {
+    const itemId = this.groundItemId(t)
+    if (!itemId) return
+    const qty = this.groundItemQty(t)
+    if (!this.canAccept(itemId, qty)) {
+      this.toast('가방이 가득 찼어요!', 'bad')
+      this.audio.sfx('reject')
+      return
+    }
+    this.giveItem(itemId, qty)
+    delete t.metadata.groundItemId
+    delete t.metadata.groundItemQty
+    delete t.metadata.animalDropFarm
+    const item = getItem(itemId)
+    this.toast(`${item?.name ?? itemId} +${qty}`, 'good')
+    this.audio.sfx('harvest')
+    this.autosave()
+    this.emit()
   }
 
   private updateAnimalDrops(dt: number) {
@@ -1198,24 +1252,18 @@ export class Game {
       if (!this.animalFarmOwned(farm)) continue
       const count = this.animalCount(farm)
       if (count <= 0) continue
+      if (this.farmHasGroundDrop(farm)) continue
       const key = this.animalDropKey(farm.id)
       const elapsed = (typeof this.state.flags[key] === 'number' ? this.state.flags[key] : 0) + dt
       if (elapsed < farm.dropSeconds) {
         this.state.flags[key] = elapsed
         continue
       }
-      const cycles = Math.min(3, Math.floor(elapsed / farm.dropSeconds))
-      const qty = cycles * count * farm.productQty
-      if (!this.canAccept(farm.productItemId, qty)) {
-        this.state.flags[key] = farm.dropSeconds
-        continue
+      const qty = count * farm.productQty
+      if (this.placeAnimalDrop(farm, qty)) {
+        this.state.flags[key] = 0
+        dropped = true
       }
-      this.giveItem(farm.productItemId, qty)
-      this.state.flags[key] = elapsed % farm.dropSeconds
-      const product = getItem(farm.productItemId)
-      this.toast(`${product?.name ?? farm.productItemId} +${qty}`, 'good')
-      this.audio.sfx('harvest')
-      dropped = true
     }
     if (dropped) this.autosave()
   }
@@ -1238,25 +1286,17 @@ export class Game {
 
   collectAnimalProduct() {
     if (this.phase !== 'playing') return
-    const farm = this.selectedAnimalFarm()
-    if (!farm) return
-    const key = this.animalCollectKey(farm.id)
-    if (this.state.flags[key] === this.state.day) {
-      this.toast('오늘은 이미 수확했어요.', 'info')
-      return
+    const pt = this.playerTile()
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (!inBounds(pt.x + dx, pt.y + dy)) continue
+        const t = this.state.tiles[idx(pt.x + dx, pt.y + dy)]
+        if (this.groundItemId(t)) {
+          this.pickupGroundItem(t)
+          return
+        }
+      }
     }
-    if (!this.canAccept(farm.productItemId, farm.productQty)) {
-      this.toast('가방이 가득 찼어요!', 'bad')
-      this.audio.sfx('reject')
-      return
-    }
-    this.giveItem(farm.productItemId, farm.productQty)
-    this.state.flags[key] = this.state.day
-    const product = getItem(farm.productItemId)
-    this.toast(`${farm.name}에서 ${product?.name ?? farm.productItemId} ${farm.productQty}개 수확!`, 'good')
-    this.audio.sfx('harvest')
-    this.autosave()
-    this.emit()
   }
 
   private nextUnlockFieldId(): string | null {
@@ -1540,6 +1580,7 @@ export class Game {
         const t = this.state.tiles[idx(tx, ty)]
         if (t.obstacle) draws.push({ y: ty * T + T, fn: () => this.drawObstacle(t, S) })
         if (t.cropId) draws.push({ y: ty * T + T, fn: () => this.drawCrop(t, S) })
+        if (this.groundItemId(t)) draws.push({ y: ty * T + T, fn: () => this.drawGroundItem(t, S) })
       }
     }
     draws.push({ y: p.y, fn: () => this.drawHuman(this.sprites.farmer, p.x, p.y, p.dir, p.moving, p.exhausted) })
@@ -1566,6 +1607,27 @@ export class Game {
     else if (t.terrain === 'soil' || t.terrain === 'tilled') img = this.sprites.soil
     else img = this.sprites.grass[(t.x * 7 + t.y * 13) % 3]
     this.ctx.drawImage(img, dx, dy, sz, sz)
+  }
+
+  private itemIcon(itemId: string): HTMLCanvasElement {
+    const hit = this.itemIconCache.get(itemId)
+    if (hit) return hit
+    const item = getItem(itemId)
+    const icon = bakeItemIcon(item?.sprite ?? itemId)
+    this.itemIconCache.set(itemId, icon)
+    return icon
+  }
+
+  private drawGroundItem(t: Tile, S: number) {
+    const itemId = this.groundItemId(t)
+    if (!itemId) return
+    const ctx = this.ctx
+    const x = this.wx(t.x * T)
+    const y = this.wy(t.y * T)
+    const bounce = Math.sin(performance.now() / 220 + t.x * 0.7 + t.y) * S
+    ctx.fillStyle = 'rgba(40,32,24,0.25)'
+    ctx.fillRect(x + 5 * S, y + 12 * S, 6 * S, 2 * S)
+    ctx.drawImage(this.itemIcon(itemId), x + 3 * S, y + 2 * S + bounce, 10 * S, 10 * S)
   }
 
   private drawBuilding(img: HTMLCanvasElement, tx: number, ty: number, S: number, yOff: number) {
