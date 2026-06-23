@@ -381,6 +381,7 @@ export class Game {
     s.timeMinutes += dt * GAME_MIN_PER_SEC // cosmetic clock
     this.movePlayer(dt)
     this.growCrops(dt)
+    this.updateAnimalDrops(dt)
     this.respawnNodes()
     this.updateFireflies(dt)
     if (!s.player.moving) this.tryAutoWork()
@@ -966,6 +967,10 @@ export class Game {
     if (!entry || entry.buyPrice == null) return
     if (this.phase !== 'shop') return
     if (!this.flagEnabled(entry.requiresFlag)) return
+    if (entry.animalFarmId) {
+      this.buyAnimal(entry.animalFarmId)
+      return
+    }
     if (entry.grantsFlag && this.flagEnabled(entry.grantsFlag)) {
       this.toast('이미 해금된 항목이에요.', 'info')
       return
@@ -989,6 +994,29 @@ export class Game {
     } else {
       this.giveItem(itemId, 1)
     }
+    this.audio.sfx('coin')
+    this.autosave()
+    this.emit()
+  }
+
+  private buyAnimal(farmId: string) {
+    const farm = ANIMAL_FARMS.find((f) => f.id === farmId)
+    if (!farm || !this.animalFarmOwned(farm)) return
+    const price = this.animalBuyPrice(farm)
+    const s = this.state
+    if (s.gold < price) {
+      this.toast('골드가 부족해요.', 'bad')
+      this.audio.sfx('reject')
+      return
+    }
+    s.gold -= price
+    const nextCount = this.animalCount(farm) + 1
+    s.flags[this.animalCountKey(farm.id)] = nextCount
+    if (typeof s.flags[this.animalDropKey(farm.id)] !== 'number') {
+      s.flags[this.animalDropKey(farm.id)] = 0
+    }
+    const def = getItem(farm.animalItemId)
+    this.toast(`${def?.name ?? farm.name} ${nextCount}마리째 입양!`, 'good')
     this.audio.sfx('coin')
     this.autosave()
     this.emit()
@@ -1143,8 +1171,53 @@ export class Game {
     return this.flagEnabled(farm.unlockFlag)
   }
 
+  private animalCountKey(farmId: string): string {
+    return `animalCount:${farmId}`
+  }
+
+  private animalDropKey(farmId: string): string {
+    return `animalDropT:${farmId}`
+  }
+
+  private animalCount(farm: AnimalFarmDef): number {
+    const raw = this.state.flags[this.animalCountKey(farm.id)]
+    return typeof raw === 'number' ? Math.max(0, Math.floor(raw)) : 0
+  }
+
+  private animalBuyPrice(farm: AnimalFarmDef): number {
+    return farm.animalBasePrice + this.animalCount(farm) * farm.animalPriceStep
+  }
+
   private animalCollectKey(farmId: string): string {
     return `animalLastCollect:${farmId}`
+  }
+
+  private updateAnimalDrops(dt: number) {
+    let dropped = false
+    for (const farm of ANIMAL_FARMS) {
+      if (!this.animalFarmOwned(farm)) continue
+      const count = this.animalCount(farm)
+      if (count <= 0) continue
+      const key = this.animalDropKey(farm.id)
+      const elapsed = (typeof this.state.flags[key] === 'number' ? this.state.flags[key] : 0) + dt
+      if (elapsed < farm.dropSeconds) {
+        this.state.flags[key] = elapsed
+        continue
+      }
+      const cycles = Math.min(3, Math.floor(elapsed / farm.dropSeconds))
+      const qty = cycles * count * farm.productQty
+      if (!this.canAccept(farm.productItemId, qty)) {
+        this.state.flags[key] = farm.dropSeconds
+        continue
+      }
+      this.giveItem(farm.productItemId, qty)
+      this.state.flags[key] = elapsed % farm.dropSeconds
+      const product = getItem(farm.productItemId)
+      this.toast(`${product?.name ?? farm.productItemId} +${qty}`, 'good')
+      this.audio.sfx('harvest')
+      dropped = true
+    }
+    if (dropped) this.autosave()
   }
 
   private selectedAnimalFarm(): AnimalFarmDef | null {
@@ -1258,6 +1331,15 @@ export class Game {
   }
 
   private applyAnimalFarms() {
+    for (const t of this.state.tiles) {
+      if (typeof t.metadata.animalFarm !== 'string') continue
+      t.terrain = 'grass'
+      t.cropId = null
+      t.growthStage = 0
+      t.obstacle = null
+      t.hp = undefined
+      delete t.metadata.animalFarm
+    }
     for (const farm of ANIMAL_FARMS) {
       for (let y = farm.y; y < farm.y + farm.h; y++) {
         for (let x = farm.x; x < farm.x + farm.w; x++) {
@@ -1520,23 +1602,46 @@ export class Game {
       ctx.fillRect(x + 2 * S, y + 5 * S, 18 * S, 4 * S)
       ctx.fillStyle = '#6e4426'
       ctx.fillRect(x + 7 * S, y + 10 * S, 6 * S, 6 * S)
-      ctx.fillStyle = farm.color
-      if (farm.id === 'chicken') {
-        ctx.fillRect(x + 28 * S, y + 15 * S, 7 * S, 5 * S)
-        ctx.fillRect(x + 31 * S, y + 12 * S, 4 * S, 4 * S)
-        ctx.fillStyle = '#e05a36'
-        ctx.fillRect(x + 32 * S, y + 10 * S, 2 * S, 2 * S)
-      } else if (farm.id === 'cow') {
-        ctx.fillRect(x + 26 * S, y + 14 * S, 11 * S, 6 * S)
-        ctx.fillRect(x + 34 * S, y + 11 * S, 5 * S, 5 * S)
-        ctx.fillStyle = '#3a2a24'
-        ctx.fillRect(x + 28 * S, y + 15 * S, 3 * S, 3 * S)
-      } else {
-        ctx.fillRect(x + 26 * S, y + 14 * S, 11 * S, 6 * S)
-        ctx.fillRect(x + 34 * S, y + 12 * S, 5 * S, 5 * S)
-        ctx.fillStyle = '#c96d82'
-        ctx.fillRect(x + 37 * S, y + 14 * S, 2 * S, 2 * S)
+      const count = Math.min(8, this.animalCount(farm))
+      const now = performance.now() / 1000
+      for (let i = 0; i < count; i++) {
+        const seed = (farm.id.charCodeAt(0) * 17 + i * 37) / 10
+        const innerW = Math.max(1, (farm.w - 2) * T - 16)
+        const innerH = Math.max(1, (farm.h - 2) * T - 16)
+        const px = (farm.x + 1) * T + 8 + ((Math.sin(now * 0.9 + seed) + 1) / 2) * innerW
+        const py = (farm.y + 1) * T + 8 + ((Math.cos(now * 0.65 + seed * 1.7) + 1) / 2) * innerH
+        this.drawAnimal(farm, px, py, S)
       }
+    }
+  }
+
+  private drawAnimal(farm: AnimalFarmDef, x: number, y: number, S: number) {
+    const ctx = this.ctx
+    const sx = this.wx(x)
+    const sy = this.wy(y)
+    ctx.fillStyle = farm.color
+    if (farm.id === 'chicken') {
+      ctx.fillRect(sx - 4 * S, sy - 1 * S, 7 * S, 5 * S)
+      ctx.fillRect(sx - 1 * S, sy - 4 * S, 4 * S, 4 * S)
+      ctx.fillStyle = '#e05a36'
+      ctx.fillRect(sx, sy - 6 * S, 2 * S, 2 * S)
+      ctx.fillStyle = '#d9872a'
+      ctx.fillRect(sx - 3 * S, sy + 4 * S, 1 * S, 2 * S)
+      ctx.fillRect(sx + 1 * S, sy + 4 * S, 1 * S, 2 * S)
+    } else if (farm.id === 'cow') {
+      ctx.fillRect(sx - 6 * S, sy - 1 * S, 11 * S, 6 * S)
+      ctx.fillRect(sx + 2 * S, sy - 4 * S, 5 * S, 5 * S)
+      ctx.fillStyle = '#3a2a24'
+      ctx.fillRect(sx - 4 * S, sy, 3 * S, 3 * S)
+      ctx.fillRect(sx - 5 * S, sy + 5 * S, 1 * S, 3 * S)
+      ctx.fillRect(sx + 2 * S, sy + 5 * S, 1 * S, 3 * S)
+    } else {
+      ctx.fillRect(sx - 6 * S, sy - 1 * S, 11 * S, 6 * S)
+      ctx.fillRect(sx + 2 * S, sy - 3 * S, 5 * S, 5 * S)
+      ctx.fillStyle = '#c96d82'
+      ctx.fillRect(sx + 5 * S, sy - 1 * S, 2 * S, 2 * S)
+      ctx.fillRect(sx - 5 * S, sy + 5 * S, 1 * S, 3 * S)
+      ctx.fillRect(sx + 2 * S, sy + 5 * S, 1 * S, 3 * S)
     }
   }
 
@@ -1750,14 +1855,17 @@ export class Game {
       return true
     }).map((e) => {
       const def = getItem(e.itemId)!
+      const farm = e.animalFarmId ? ANIMAL_FARMS.find((f) => f.id === e.animalFarmId) : null
+      const price = farm ? this.animalBuyPrice(farm) : (e.buyPrice ?? 0)
+      const ownedText = farm ? ` 보유 ${this.animalCount(farm)}마리 · ${farm.dropSeconds}초마다 생산` : ''
       return {
         itemId: e.itemId,
         name: def.name,
-        price: e.buyPrice ?? 0,
-        affordable: s.gold >= (e.buyPrice ?? 0),
+        price,
+        affordable: s.gold >= price,
         sprite: def.sprite,
         color: def.cropId ? CROPS[def.cropId].color : undefined,
-        desc: def.description,
+        desc: `${def.description}${ownedText}`,
       }
     })
     const costViews = (items: { itemId: string; qty: number }[]): CostItemView[] =>
@@ -1892,9 +2000,8 @@ export class Game {
         contextAction = '잠자기'
         contextActionId = 'sleep'
       } else if (animalFarm) {
-        const product = getItem(animalFarm.productItemId)
-        contextAction = `${product?.name ?? '산물'} 수확`
-        contextActionId = 'animal'
+        contextAction = null
+        contextActionId = null
       } else if (this.nearStore()) {
         contextAction = '상점'
       }

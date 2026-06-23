@@ -490,6 +490,27 @@ export function bakeItemIcon(sprite: string, color?: string): HTMLCanvasElement 
       px(g, 5, 8, 6, 1, '#6e4426')
       px(g, 5, 10, 5, 1, '#6e4426')
       break
+    case 'animal_chicken':
+      px(g, 4, 7, 7, 5, '#f0c85a')
+      px(g, 8, 4, 4, 4, '#f0c85a')
+      px(g, 9, 3, 2, 2, '#e05a36')
+      px(g, 5, 12, 1, 2, '#d9872a')
+      px(g, 9, 12, 1, 2, '#d9872a')
+      break
+    case 'animal_cow':
+      px(g, 3, 7, 10, 6, '#e9e2d2')
+      px(g, 10, 4, 4, 5, '#e9e2d2')
+      px(g, 5, 8, 3, 3, '#3a2a24')
+      px(g, 4, 13, 1, 2, '#3a2a24')
+      px(g, 10, 13, 1, 2, '#3a2a24')
+      break
+    case 'animal_pig':
+      px(g, 3, 7, 10, 6, '#e89aa8')
+      px(g, 10, 5, 4, 4, '#e89aa8')
+      px(g, 12, 7, 2, 2, '#c96d82')
+      px(g, 4, 13, 1, 2, '#c96d82')
+      px(g, 10, 13, 1, 2, '#c96d82')
+      break
     case 'fiber':
       px(g, 5, 4, 1, 9, '#6fae54')
       px(g, 8, 3, 1, 10, '#5aa038')

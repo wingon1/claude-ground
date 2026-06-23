@@ -215,6 +215,8 @@ export interface ShopEntry {
   itemId: string
   /** Buy price; if omitted not buyable. */
   buyPrice?: number
+  /** Buys one animal for an unlocked animal farm. Price may scale by count. */
+  animalFarmId?: string
   /** Whether the entry is a one-time tool upgrade. */
   upgrade?: 'copper_can' | 'backpack'
   /** Entry is visible only after this flag is set. */
