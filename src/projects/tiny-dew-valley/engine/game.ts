@@ -40,13 +40,14 @@ const WORK_INTERVAL = 0.42 // seconds between auto-work hits
 const WORK_RANGE = T * 1.5 // how close to a node before auto-working
 const RESPAWN_SECS = 80 // trees/rocks/stumps regrow after this
 const STAGE_SECS_PER_DAY = 22 // real seconds per crop "grow day"
+const COOK_BATCH_MAX = 20
 
 // Stamina costs per auto-work hit.
 const COST = { chop: 1, harvest: 1, plant: 1 }
 const START_MAX_STAMINA = 40
 
 // ---------- UI snapshot ----------
-export type UIPhase = 'title' | 'playing' | 'shop' | 'build' | 'cook' | 'sleepConfirm'
+export type UIPhase = 'title' | 'playing' | 'shop' | 'build' | 'cook' | 'seed' | 'sleepConfirm'
 
 export interface ToastMsg {
   id: number
@@ -120,6 +121,7 @@ export interface CookRecipeView {
   outputQty: number
   inputs: CostItemView[]
   canCook: boolean
+  maxCookQty: number
   unlocked: boolean
   lockText: string | null
   craftSeconds: number
@@ -133,6 +135,9 @@ export interface CookJobView {
   outputSprite: string
   outputColor?: string
   remainingSecs: number
+  remainingQty: number
+  totalQty: number
+  totalRemainingSecs: number
   totalSecs: number
   progress: number
   ready: boolean
@@ -167,7 +172,7 @@ export interface UISnapshot {
   cookQueue: CookJobView[]
   cookingFire: CookingFireView
   contextAction: string | null
-  contextActionId: 'sleep' | 'animal' | null
+  contextActionId: 'sleep' | 'animal' | 'seed' | null
   nearBed: boolean
   nearStore: boolean
   nearBuild: boolean
@@ -787,14 +792,29 @@ export class Game {
         completed = true
         continue
       }
+      const remainingQty = Math.max(1, Math.floor(job.remainingQty ?? job.totalQty ?? 1))
       const nextRemaining = Math.max(0, job.remainingSecs - dt)
       if (nextRemaining <= 0 && this.canAccept(recipe.output.itemId, recipe.output.qty)) {
         this.giveItem(recipe.output.itemId, recipe.output.qty)
+        const nextQty = remainingQty - 1
         this.toast(`${recipe.name} 완성!`, 'good')
         this.audio.sfx('sparkle')
         completed = true
+        if (nextQty > 0) {
+          remaining.push({
+            ...job,
+            totalQty: Math.max(1, Math.floor(job.totalQty ?? remainingQty)),
+            remainingQty: nextQty,
+            remainingSecs: recipe.craftSeconds,
+          })
+        }
       } else {
-        remaining.push({ ...job, remainingSecs: nextRemaining })
+        remaining.push({
+          ...job,
+          totalQty: Math.max(1, Math.floor(job.totalQty ?? remainingQty)),
+          remainingQty,
+          remainingSecs: nextRemaining,
+        })
       }
     }
     this.state.cookQueue = remaining
@@ -803,12 +823,21 @@ export class Game {
 
   openBuild() {
     if (this.phase !== 'playing') return
+    this.phase = 'build'
+    this.target = null
+    this.audio.resume()
+    this.audio.sfx('select')
+    this.emit()
+  }
+
+  openSeedSelect() {
+    if (this.phase !== 'playing') return
     if (!this.selectedFieldId()) {
-      this.toast('건설 게시판 가까이에서만 열 수 있어요.', 'bad')
+      this.toast('밭 푯말 가까이에서 바꿀 수 있어요.', 'bad')
       this.audio.sfx('reject')
       return
     }
-    this.phase = 'build'
+    this.phase = 'seed'
     this.target = null
     this.audio.resume()
     this.audio.sfx('select')
@@ -830,7 +859,7 @@ export class Game {
   }
 
   closeModal() {
-    if (this.phase === 'shop' || this.phase === 'build' || this.phase === 'cook') {
+    if (this.phase === 'shop' || this.phase === 'build' || this.phase === 'cook' || this.phase === 'seed') {
       this.phase = 'playing'
       this.emit()
     }
@@ -866,7 +895,7 @@ export class Game {
   buyFieldRow(fieldId: string) {
     if (this.phase !== 'build') return
     const plot = FIELD_PLOTS.find((p) => p.id === fieldId)
-    if (!plot || this.selectedFieldId() !== fieldId) return
+    if (!plot) return
     const rows = this.fieldRows(fieldId)
     if (rows >= FIELD_SIZE) {
       this.toast('이미 모두 해금된 밭이에요.', 'info')
@@ -894,7 +923,7 @@ export class Game {
   }
 
   setFieldCrop(fieldId: string, cropId: string) {
-    if (this.phase !== 'build') return
+    if (this.phase !== 'seed') return
     if (this.selectedFieldId() !== fieldId) return
     if (!CROPS[cropId] || this.fieldRows(fieldId) <= 0) return
     if (!this.cropUnlocked(cropId)) {
@@ -916,15 +945,28 @@ export class Game {
     this.emit()
   }
 
-  cook(recipeId: string) {
+  private recipeMaxCookQty(recipe: typeof RECIPES[number]): number {
+    let max = COOK_BATCH_MAX
+    for (const input of recipe.inputs) {
+      max = Math.min(max, Math.floor(this.countItem(input.itemId) / input.qty))
+    }
+    return Math.max(0, max)
+  }
+
+  private recipeInputQty(recipe: typeof RECIPES[number], qty: number) {
+    return recipe.inputs.map((input) => ({ itemId: input.itemId, qty: input.qty * qty }))
+  }
+
+  cook(recipeId: string, qty = 1) {
     const recipe = RECIPES.find((r) => r.id === recipeId)
     if (!recipe || this.phase !== 'cook') return
+    const cookQty = Math.max(1, Math.min(COOK_BATCH_MAX, Math.floor(qty)))
     if (!this.flagEnabled(recipe.unlockFlag)) {
       this.toast('아직 해금되지 않은 레시피예요.', 'bad')
       this.audio.sfx('reject')
       return
     }
-    if (!this.canPayCost(0, recipe.inputs)) {
+    if (!this.canPayCost(0, this.recipeInputQty(recipe, cookQty))) {
       this.toast('요리 재료가 부족해요.', 'bad')
       this.audio.sfx('reject')
       return
@@ -934,10 +976,12 @@ export class Game {
       this.audio.sfx('reject')
       return
     }
-    this.payCost(0, recipe.inputs)
+    this.payCost(0, this.recipeInputQty(recipe, cookQty))
     this.state.cookQueue.push({
       id: `${recipe.id}:${Date.now()}:${Math.random().toString(36).slice(2)}`,
       recipeId: recipe.id,
+      totalQty: cookQty,
+      remainingQty: cookQty,
       remainingSecs: recipe.craftSeconds,
     })
     this.toast(`${recipe.name} 조리 시작!`, 'good')
@@ -947,7 +991,7 @@ export class Game {
   }
 
   upgradeCookingFire() {
-    if (this.phase !== 'cook') return
+    if (this.phase !== 'build') return
     const upgrade = this.nextCookingFireUpgrade()
     if (!upgrade) {
       this.toast('화로대가 최대 레벨이에요.', 'info')
@@ -1097,7 +1141,7 @@ export class Game {
   }
 
   private nearBuild(): boolean {
-    return this.selectedFieldId() != null
+    return true
   }
 
   private nearCooking(): boolean {
@@ -1995,7 +2039,6 @@ export class Game {
         selected: selectedFieldId === plot.id,
         nextToUnlock,
         canBuyRow:
-          selectedFieldId === plot.id &&
           rows < FIELD_SIZE &&
           nextToUnlock &&
           s.gold >= FIELD_ROW_COST_GOLD &&
@@ -2033,8 +2076,12 @@ export class Game {
     const cookQueue: CookJobView[] = s.cookQueue.map((job) => {
       const recipe = RECIPES.find((r) => r.id === job.recipeId)
       const out = recipe ? getItem(recipe.output.itemId) : undefined
-      const totalSecs = Math.max(1, recipe?.craftSeconds ?? job.remainingSecs)
+      const perItemSecs = Math.max(1, recipe?.craftSeconds ?? job.remainingSecs)
+      const remainingQty = Math.max(1, Math.floor(job.remainingQty ?? job.totalQty ?? 1))
+      const totalQty = Math.max(1, Math.floor(job.totalQty ?? remainingQty))
       const remainingSecs = Math.max(0, job.remainingSecs)
+      const totalSecs = totalQty * perItemSecs
+      const totalRemainingSecs = (remainingQty - 1) * perItemSecs + remainingSecs
       return {
         id: job.id,
         recipeName: recipe?.name ?? job.recipeId,
@@ -2042,15 +2089,19 @@ export class Game {
         outputSprite: out?.sprite ?? '',
         outputColor: out?.cropId ? CROPS[out.cropId].color : undefined,
         remainingSecs,
+        remainingQty,
+        totalQty,
+        totalRemainingSecs,
         totalSecs,
-        progress: Math.max(0, Math.min(1, 1 - remainingSecs / totalSecs)),
-        ready: remainingSecs <= 0,
+        progress: Math.max(0, Math.min(1, 1 - totalRemainingSecs / totalSecs)),
+        ready: totalRemainingSecs <= 0,
       }
     })
     const cookRecipes: CookRecipeView[] = RECIPES.map((recipe) => {
       const out = getItem(recipe.output.itemId)
       const inputs = costViews(recipe.inputs)
       const unlocked = this.flagEnabled(recipe.unlockFlag)
+      const maxCookQty = this.recipeMaxCookQty(recipe)
       return {
         id: recipe.id,
         name: recipe.name,
@@ -2063,7 +2114,8 @@ export class Game {
         canCook:
           unlocked &&
           s.cookQueue.length < cookingSlots &&
-          inputs.every((it) => it.ok),
+          maxCookQty > 0,
+        maxCookQty,
         unlocked,
         lockText: unlocked ? null : '목장 허가서 필요',
         craftSeconds: recipe.craftSeconds,
@@ -2078,6 +2130,9 @@ export class Game {
       if (this.nearBed()) {
         contextAction = '잠자기'
         contextActionId = 'sleep'
+      } else if (this.selectedFieldId()) {
+        contextAction = '씨앗 변경'
+        contextActionId = 'seed'
       } else if (animalFarm) {
         contextAction = null
         contextActionId = null

@@ -71,6 +71,8 @@ export interface RecipeDef {
 export interface CookJob {
   id: string
   recipeId: string
+  totalQty?: number
+  remainingQty?: number
   remainingSecs: number
 }
 

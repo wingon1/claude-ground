@@ -680,6 +680,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  gap: 4px;
   min-width: 64px;
 }
 .tdv-craft .owned { font-weight: 800; font-size: 11px; color: var(--good); }
@@ -762,6 +763,68 @@
   display: grid;
   gap: 6px;
   margin-bottom: 10px;
+}
+.tdv-cookslots {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.tdv-cookslot {
+  position: relative;
+  aspect-ratio: 1;
+  min-width: 0;
+  background: var(--panel-dark);
+  border: 2px solid var(--panel-edge);
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: 5px;
+}
+.tdv-cookslot.locked {
+  opacity: 0.45;
+  background: #8f846b;
+  filter: grayscale(0.55);
+}
+.tdv-cookslot img {
+  width: 30px;
+  height: 30px;
+  image-rendering: pixelated;
+}
+.tdv-cookslot .qty {
+  position: absolute;
+  right: 4px;
+  top: 3px;
+  font-size: 10px;
+  font-weight: 800;
+  text-shadow: 0 1px 0 #fff;
+}
+.tdv-cookslot .bar {
+  position: absolute;
+  left: 5px;
+  right: 5px;
+  bottom: 17px;
+  height: 5px;
+  background: #00000022;
+  border-radius: 99px;
+  overflow: hidden;
+}
+.tdv-cookslot .bar span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+.tdv-cookslot small,
+.tdv-cookslot .empty,
+.tdv-cookslot .lock {
+  position: absolute;
+  bottom: 3px;
+  left: 2px;
+  right: 2px;
+  text-align: center;
+  font-size: 9px;
+  font-weight: 800;
 }
 .tdv-cookjob {
   display: flex;
