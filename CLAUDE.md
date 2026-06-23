@@ -71,3 +71,11 @@ plan/<id>/PROGRESS.md     ← plan progress
   - Current state of affected files
   - Next step
 - If context is reset, always read PLAN.md and PROGRESS.md first before doing anything
+
+### Merge Workflow (작업 완료 시마다)
+- 작업을 완료할 때마다 다음을 자동으로 수행한다(별도 요청 불필요):
+  1. 지정/작업 브랜치에 커밋·푸시
+  2. `main` 대상 PR 생성
+  3. 검증(빌드/타입체크) 통과 시 `main`에 머지(squash)
+- 단, 빌드/타입체크가 깨지면 머지하지 말고 먼저 보고한다.
+- 되돌리기 어렵거나 위험 소지가 있는 변경은 머지 전에 한 번 확인받는다.
