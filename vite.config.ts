@@ -7,4 +7,8 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   base: '/claude-ground/',
   plugins: [react(), tailwindcss()],
+  server: {
+    port: 3000,
+    strictPort: true,
+  },
 })
