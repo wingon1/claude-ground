@@ -32,6 +32,8 @@ class Ctx {
     this.textAlign = 'left'
     this.lineWidth = 1
     this.imageSmoothingEnabled = false
+    this.m = [1, 0, 0, 1, 0, 0] // affine: [a,b,c,d,e,f]
+    this._stack = []
   }
   _blend(x, y, rgba) {
     const { width: w, height: h, _d: d } = this.canvas
@@ -47,10 +49,44 @@ class Ctx {
       d[i + 3] = Math.max(d[i + 3], rgba[3])
     }
   }
+  _pt(x, y) {
+    const [a, b, c, d, e, f] = this.m
+    return [a * x + c * y + e, b * x + d * y + f]
+  }
   fillRect(x, y, w, h) {
-    const c = parseColor(this.fillStyle)
-    x = Math.round(x); y = Math.round(y); w = Math.round(w); h = Math.round(h)
-    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) this._blend(x + i, y + j, c)
+    const col = parseColor(this.fillStyle)
+    const [a, b, c, d] = this.m
+    // Fast axis-aligned path keeps sprite blitting crisp.
+    if (b === 0 && c === 0) {
+      const [px, py] = this._pt(x, y)
+      const rx = Math.round(px), ry = Math.round(py)
+      const rw = Math.round(w * a), rh = Math.round(h * d)
+      for (let j = 0; j < rh; j++) for (let i = 0; i < rw; i++) this._blend(rx + i, ry + j, col)
+      return
+    }
+    // Rotated/sheared: fill the transformed quad via point-in-triangle.
+    const p = [this._pt(x, y), this._pt(x + w, y), this._pt(x + w, y + h), this._pt(x, y + h)]
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+    for (const [px, py] of p) {
+      minX = Math.min(minX, px); maxX = Math.max(maxX, px)
+      minY = Math.min(minY, py); maxY = Math.max(maxY, py)
+    }
+    const tri = (ax, ay, bx, by, cx, cy, qx, qy) => {
+      const dnm = (by - cy) * (ax - cx) + (cx - bx) * (ay - cy)
+      const wa = ((by - cy) * (qx - cx) + (cx - bx) * (qy - cy)) / dnm
+      const wb = ((cy - ay) * (qx - cx) + (ax - cx) * (qy - cy)) / dnm
+      const wc = 1 - wa - wb
+      return wa >= -0.001 && wb >= -0.001 && wc >= -0.001
+    }
+    for (let yy = Math.floor(minY); yy <= Math.ceil(maxY); yy++) {
+      for (let xx = Math.floor(minX); xx <= Math.ceil(maxX); xx++) {
+        const qx = xx + 0.5, qy = yy + 0.5
+        if (tri(p[0][0], p[0][1], p[1][0], p[1][1], p[2][0], p[2][1], qx, qy) ||
+            tri(p[0][0], p[0][1], p[2][0], p[2][1], p[3][0], p[3][1], qx, qy)) {
+          this._blend(xx, yy, col)
+        }
+      }
+    }
   }
   // stubs — bake code only paints the STORE label with these; skip glyphs.
   fillText() {}
@@ -58,10 +94,21 @@ class Ctx {
   arc() {}
   fill() {}
   stroke() {}
-  save() {}
-  restore() {}
-  translate() {}
-  rotate() {}
+  save() { this._stack.push(this.m.slice()) }
+  restore() { if (this._stack.length) this.m = this._stack.pop() }
+  translate(x, y) {
+    const [a, b, c, d, e, f] = this.m
+    this.m = [a, b, c, d, a * x + c * y + e, b * x + d * y + f]
+  }
+  scale(sx, sy) {
+    const [a, b, c, d, e, f] = this.m
+    this.m = [a * sx, b * sx, c * sy, d * sy, e, f]
+  }
+  rotate(r) {
+    const cs = Math.cos(r), sn = Math.sin(r)
+    const [a, b, c, d, e, f] = this.m
+    this.m = [a * cs + c * sn, b * cs + d * sn, a * -sn + c * cs, b * -sn + d * cs, e, f]
+  }
 }
 
 function createCanvas(w, h) {
@@ -226,6 +273,24 @@ function drawBarn(g, x, y, S) {
   g.fillStyle = '#6e4426'; g.fillRect(x + 8 * S, y + 11 * S, 6 * S, 6 * S) // door
   g.fillStyle = '#8a5a32'; g.fillRect(x + 8 * S, y + 11 * S, 6 * S, 1 * S)
 }
+// Mirrors Game.drawWorkPose — one-handed scythe swing. sx/sy = sprite center-x / top-y.
+function drawWorkPose(g, sx, sy, dir, t, S) {
+  const mirror = dir === 'left' ? -1 : 1
+  const hx = sx + mirror * 4 * S
+  const hy = sy + 14 * S
+  const ang = mirror * (-0.5 + t * 2.0)
+  g.save()
+  g.translate(hx, hy)
+  g.scale(mirror, 1)
+  g.rotate(mirror * ang)
+  g.fillStyle = '#f0c79a'; g.fillRect(-2 * S, -2 * S, 4 * S, 4 * S)
+  g.fillStyle = '#9a6a3a'; g.fillRect(-1 * S, -10 * S, 2 * S, 10 * S)
+  g.fillStyle = '#7a5230'; g.fillRect(-1 * S, -10 * S, 1 * S, 10 * S)
+  g.fillStyle = '#cfd3dc'; g.fillRect(0, -11 * S, 4 * S, 2 * S)
+  g.fillStyle = '#eef0f6'; g.fillRect(0, -11 * S, 4 * S, 1 * S)
+  g.fillStyle = '#aeb2bc'; g.fillRect(3 * S, -11 * S, 2 * S, 3 * S)
+  g.restore()
+}
 
 // ---------------- Compose contact sheet ----------------
 const cells = []
@@ -255,6 +320,26 @@ cell('UI dot icons (emoji 대체)', uiCellW, uiCellH, (sheet, x, y) => {
     const cxp = x + (i % UICOLS) * (16 * UISC + 8)
     const cyp = y + Math.floor(i / UICOLS) * (16 * UISC + 8)
     blit(sheet, bakeUIIcon(k), cxp, cyp, UISC)
+  })
+})
+// Scythe swing motion (one-handed): swing arc + per-facing.
+const FSW = 6
+cell('scythe swing (down): t=0 → 1', 4 * (16 * FSW + 10), 30 * FSW, (sheet, x, y) => {
+  const g = sheet.getContext()
+  ;[0, 0.4, 0.75, 1].forEach((tt, i) => {
+    const px = x + i * (16 * FSW + 10)
+    const py = y + 8 * FSW
+    blit(sheet, SP.farmer['down_0'], px, py, FSW)
+    drawWorkPose(g, px + 8 * FSW, py, 'down', tt, FSW)
+  })
+})
+cell('scythe by facing (d/l/r/u)', 4 * (16 * FSW + 10), 30 * FSW, (sheet, x, y) => {
+  const g = sheet.getContext()
+  ;[['down', 'down_0'], ['left', 'left_0'], ['right', 'right_0'], ['up', 'up_0']].forEach(([d, key], i) => {
+    const px = x + i * (16 * FSW + 10)
+    const py = y + 8 * FSW
+    blit(sheet, SP.farmer[key], px, py, FSW)
+    drawWorkPose(g, px + 8 * FSW, py, d, 0.85, FSW)
   })
 })
 cell('TENT (house)', SP.farmhouse.width * SCALE, SP.farmhouse.height * SCALE, (sheet, x, y) => blit(sheet, SP.farmhouse, x, y, SCALE))
