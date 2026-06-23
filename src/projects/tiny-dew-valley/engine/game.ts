@@ -28,6 +28,7 @@ import {
   LOCATIONS,
   setObstacle,
   stampCookingFire,
+  stampFarmhouse,
   WORLD_H,
   WORLD_W,
 } from './world'
@@ -405,6 +406,7 @@ export class Game {
     this.applyFieldRows()
     this.applyAnimalFarms()
     this.applyFieldExpansions()
+    stampFarmhouse(this.state.tiles)
     stampCookingFire(this.state.tiles, this.cookingFireBuilt())
     this.initRuntime()
     this.phase = 'playing'
@@ -2396,7 +2398,9 @@ export class Game {
       }
     }
     // buildings
-    this.drawBuilding(this.sprites.farmhouse, 29, 6, S, -16)
+    // Tent (player home): 48×48 canvas over the 30–32 × 7–8 footprint,
+    // base resting on the front (row 9) where the bed/spawn sits.
+    this.drawBuilding(this.sprites.farmhouse, 30, 7, S, -16)
     this.drawBuilding(this.sprites.store, 22, 6, S, -14)
     this.drawAnimalFarms(S)
     this.drawFieldSigns(S)
@@ -2523,12 +2527,16 @@ export class Game {
       if (!this.animalFarmOwned(farm)) continue
       const x = this.wx((farm.x + 1) * T)
       const y = this.wy((farm.y + 1) * T)
-      ctx.fillStyle = '#8a5a32'
-      ctx.fillRect(x + 2 * S, y + 5 * S, 18 * S, 11 * S)
-      ctx.fillStyle = '#b3824a'
-      ctx.fillRect(x + 2 * S, y + 5 * S, 18 * S, 4 * S)
-      ctx.fillStyle = '#6e4426'
-      ctx.fillRect(x + 7 * S, y + 10 * S, 6 * S, 6 * S)
+      // Small barn/coop: pitched roof, plank wall, door.
+      ctx.fillStyle = 'rgba(0,0,0,0.16)'; ctx.fillRect(x + 1 * S, y + 16 * S, 20 * S, 3 * S)
+      ctx.fillStyle = '#c4763f'; ctx.fillRect(x + 2 * S, y + 8 * S, 18 * S, 9 * S) // wall
+      ctx.fillStyle = '#d98a4e'; ctx.fillRect(x + 2 * S, y + 8 * S, 18 * S, 2 * S)
+      ctx.fillStyle = 'rgba(120,70,40,0.25)'
+      for (let i = 4; i < 20; i += 4) ctx.fillRect(x + i * S, y + 8 * S, 1 * S, 9 * S) // planks
+      ctx.fillStyle = '#8a3f30'; ctx.fillRect(x + 0 * S, y + 4 * S, 22 * S, 5 * S) // roof
+      ctx.fillStyle = '#a04c3a'; ctx.fillRect(x + 0 * S, y + 4 * S, 22 * S, 2 * S)
+      ctx.fillStyle = '#6e4426'; ctx.fillRect(x + 8 * S, y + 11 * S, 6 * S, 6 * S) // door
+      ctx.fillStyle = '#8a5a32'; ctx.fillRect(x + 8 * S, y + 11 * S, 6 * S, 1 * S)
       const count = Math.min(ANIMAL_FARM_MAX_ANIMALS, this.animalCount(farm))
       const now = performance.now() / 1000
       for (let i = 0; i < count; i++) {
@@ -2544,31 +2552,43 @@ export class Game {
 
   private drawAnimal(farm: AnimalFarmDef, x: number, y: number, S: number) {
     const ctx = this.ctx
+    const bob = Math.round(Math.sin(performance.now() / 360 + x) * 0.5) * S
     const sx = this.wx(x)
-    const sy = this.wy(y)
-    ctx.fillStyle = farm.color
+    const sy = this.wy(y) + bob
+    // Soft contact shadow.
+    ctx.fillStyle = 'rgba(0,0,0,0.16)'
+    ctx.fillRect(sx - 5 * S, sy + 6 * S, 11 * S, 2 * S)
     if (farm.id === 'chicken') {
-      ctx.fillRect(sx - 4 * S, sy - 1 * S, 7 * S, 5 * S)
-      ctx.fillRect(sx - 1 * S, sy - 4 * S, 4 * S, 4 * S)
-      ctx.fillStyle = '#e05a36'
-      ctx.fillRect(sx, sy - 6 * S, 2 * S, 2 * S)
-      ctx.fillStyle = '#d9872a'
-      ctx.fillRect(sx - 3 * S, sy + 4 * S, 1 * S, 2 * S)
-      ctx.fillRect(sx + 1 * S, sy + 4 * S, 1 * S, 2 * S)
-    } else if (farm.id === 'cow') {
-      ctx.fillRect(sx - 6 * S, sy - 1 * S, 11 * S, 6 * S)
-      ctx.fillRect(sx + 2 * S, sy - 4 * S, 5 * S, 5 * S)
       ctx.fillStyle = '#3a2a24'
-      ctx.fillRect(sx - 4 * S, sy, 3 * S, 3 * S)
-      ctx.fillRect(sx - 5 * S, sy + 5 * S, 1 * S, 3 * S)
-      ctx.fillRect(sx + 2 * S, sy + 5 * S, 1 * S, 3 * S)
+      ctx.fillRect(sx - 3 * S, sy + 4 * S, 1 * S, 2 * S); ctx.fillRect(sx + 1 * S, sy + 4 * S, 1 * S, 2 * S)
+      ctx.fillStyle = farm.color; ctx.fillRect(sx - 4 * S, sy - 1 * S, 7 * S, 5 * S)
+      ctx.fillStyle = '#fff4cf'; ctx.fillRect(sx - 4 * S, sy - 1 * S, 7 * S, 2 * S)
+      ctx.fillStyle = farm.color; ctx.fillRect(sx - 1 * S, sy - 5 * S, 4 * S, 4 * S)
+      ctx.fillStyle = '#e05a36'; ctx.fillRect(sx, sy - 7 * S, 2 * S, 2 * S)
+      ctx.fillStyle = '#e7a32f'; ctx.fillRect(sx + 3 * S, sy - 3 * S, 2 * S, 1 * S)
+      ctx.fillStyle = '#2a2230'; ctx.fillRect(sx + 1 * S, sy - 4 * S, 1 * S, 1 * S)
+    } else if (farm.id === 'cow') {
+      ctx.fillStyle = '#3a2a24'
+      ctx.fillRect(sx - 5 * S, sy + 5 * S, 1 * S, 3 * S); ctx.fillRect(sx + 2 * S, sy + 5 * S, 1 * S, 3 * S)
+      ctx.fillStyle = farm.color; ctx.fillRect(sx - 6 * S, sy - 1 * S, 11 * S, 6 * S)
+      ctx.fillStyle = '#fffaf0'; ctx.fillRect(sx - 6 * S, sy - 1 * S, 11 * S, 2 * S)
+      ctx.fillStyle = '#cfc6b6'; ctx.fillRect(sx - 6 * S, sy + 4 * S, 11 * S, 1 * S)
+      ctx.fillStyle = '#3a2a24'; ctx.fillRect(sx - 4 * S, sy, 3 * S, 3 * S)
+      ctx.fillStyle = farm.color; ctx.fillRect(sx + 2 * S, sy - 4 * S, 5 * S, 5 * S)
+      ctx.fillStyle = '#e8a0a8'; ctx.fillRect(sx + 6 * S, sy - 1 * S, 2 * S, 2 * S)
+      ctx.fillStyle = '#fffaf0'; ctx.fillRect(sx + 1 * S, sy - 5 * S, 1 * S, 2 * S)
+      ctx.fillStyle = '#2a2230'; ctx.fillRect(sx + 4 * S, sy - 3 * S, 1 * S, 1 * S)
     } else {
-      ctx.fillRect(sx - 6 * S, sy - 1 * S, 11 * S, 6 * S)
-      ctx.fillRect(sx + 2 * S, sy - 3 * S, 5 * S, 5 * S)
-      ctx.fillStyle = '#c96d82'
-      ctx.fillRect(sx + 5 * S, sy - 1 * S, 2 * S, 2 * S)
-      ctx.fillRect(sx - 5 * S, sy + 5 * S, 1 * S, 3 * S)
-      ctx.fillRect(sx + 2 * S, sy + 5 * S, 1 * S, 3 * S)
+      ctx.fillStyle = '#3a2a24'
+      ctx.fillRect(sx - 5 * S, sy + 5 * S, 1 * S, 3 * S); ctx.fillRect(sx + 2 * S, sy + 5 * S, 1 * S, 3 * S)
+      ctx.fillStyle = farm.color; ctx.fillRect(sx - 6 * S, sy - 1 * S, 11 * S, 6 * S)
+      ctx.fillStyle = '#f6c0cb'; ctx.fillRect(sx - 6 * S, sy - 1 * S, 11 * S, 2 * S)
+      ctx.fillStyle = '#c96d82'; ctx.fillRect(sx - 6 * S, sy + 4 * S, 11 * S, 1 * S)
+      ctx.fillStyle = farm.color; ctx.fillRect(sx + 2 * S, sy - 3 * S, 5 * S, 5 * S)
+      ctx.fillStyle = '#d98699'; ctx.fillRect(sx + 2 * S, sy - 4 * S, 2 * S, 2 * S)
+      ctx.fillStyle = '#c96d82'; ctx.fillRect(sx + 6 * S, sy - 1 * S, 2 * S, 3 * S)
+      ctx.fillStyle = '#8f3f52'; ctx.fillRect(sx + 6 * S, sy, 1 * S, 1 * S); ctx.fillRect(sx + 7 * S, sy, 1 * S, 1 * S)
+      ctx.fillStyle = '#2a2230'; ctx.fillRect(sx + 4 * S, sy - 2 * S, 1 * S, 1 * S)
     }
   }
 
@@ -2577,25 +2597,37 @@ export class Game {
     const ctx = this.ctx
     const x = this.wx(LOCATIONS.cookingFire.x * T)
     const y = this.wy(LOCATIONS.cookingFire.y * T)
+    const now = performance.now() / 1000
+    // Ground shadow + warm glow.
     ctx.fillStyle = 'rgba(0,0,0,0.16)'
     ctx.fillRect(x + 4 * S, y + 26 * S, 24 * S, 4 * S)
-    ctx.fillStyle = '#5c5145'
-    ctx.fillRect(x + 4 * S, y + 14 * S, 24 * S, 13 * S)
-    ctx.fillStyle = '#817263'
-    ctx.fillRect(x + 2 * S, y + 12 * S, 28 * S, 4 * S)
-    ctx.fillRect(x + 5 * S, y + 24 * S, 22 * S, 4 * S)
-    ctx.fillStyle = '#3e352f'
-    ctx.fillRect(x + 8 * S, y + 16 * S, 16 * S, 8 * S)
-    ctx.fillStyle = '#f0b23b'
-    ctx.fillRect(x + 12 * S, y + 14 * S, 8 * S, 10 * S)
-    ctx.fillStyle = '#e05a36'
-    ctx.fillRect(x + 10 * S, y + 17 * S, 12 * S, 7 * S)
-    ctx.fillStyle = '#fff0a6'
-    ctx.fillRect(x + 15 * S, y + 15 * S, 3 * S, 6 * S)
-    ctx.fillStyle = '#49362b'
-    ctx.fillRect(x + 6 * S, y + 5 * S, 20 * S, 3 * S)
-    ctx.fillRect(x + 8 * S, y + 7 * S, 3 * S, 6 * S)
-    ctx.fillRect(x + 21 * S, y + 7 * S, 3 * S, 6 * S)
+    ctx.fillStyle = 'rgba(240,150,60,0.10)'
+    ctx.fillRect(x + 2 * S, y + 10 * S, 28 * S, 18 * S)
+    // Stone ring.
+    const stones: [number, number][] = [
+      [3, 22], [7, 25], [13, 26], [19, 25], [24, 22], [25, 16], [3, 16],
+    ]
+    for (const [sx, sy] of stones) {
+      ctx.fillStyle = '#8b8f99'; ctx.fillRect(x + sx * S, y + sy * S, 6 * S, 5 * S)
+      ctx.fillStyle = '#a7abb5'; ctx.fillRect(x + sx * S, y + sy * S, 6 * S, 2 * S)
+      ctx.fillStyle = '#6e727c'; ctx.fillRect(x + sx * S, y + (sy + 4) * S, 6 * S, 1 * S)
+    }
+    // Crossed logs.
+    ctx.fillStyle = '#6e4426'; ctx.fillRect(x + 8 * S, y + 20 * S, 16 * S, 3 * S)
+    ctx.fillStyle = '#8a5a32'; ctx.fillRect(x + 9 * S, y + 18 * S, 14 * S, 3 * S)
+    ctx.fillStyle = '#a8743f'; ctx.fillRect(x + 10 * S, y + 18 * S, 3 * S, 1 * S)
+    // Flickering flames.
+    const f = Math.sin(now * 9) * 1.2
+    ctx.fillStyle = '#e0532f'; ctx.fillRect(x + 10 * S, y + 12 * S, 12 * S, 9 * S)
+    ctx.fillStyle = '#f0902f'; ctx.fillRect(x + (12 - f) * S, y + 9 * S, 8 * S, 11 * S)
+    ctx.fillStyle = '#f7c63b'; ctx.fillRect(x + 14 * S, y + (8 + f) * S, 4 * S, 11 * S)
+    ctx.fillStyle = '#fff0a6'; ctx.fillRect(x + 15 * S, y + 10 * S, 2 * S, 6 * S)
+    // Rising embers.
+    ctx.fillStyle = '#ffd27a'
+    for (let i = 0; i < 3; i++) {
+      const ey = (now * 20 + i * 7) % 16
+      ctx.fillRect(x + (12 + i * 4) * S, y + (14 - ey) * S, 1 * S, 1 * S)
+    }
   }
 
   private drawObstacle(t: Tile, S: number) {

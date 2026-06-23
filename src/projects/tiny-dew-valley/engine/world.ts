@@ -100,6 +100,27 @@ export function stampStore(tiles: Tile[]) {
   }
 }
 
+// Player home. The home is now a small TENT, so its collision footprint is
+// smaller than the old farmhouse. Re-applied on load so existing saves shed
+// the old 5×3 block. The bed tile (in front, row 9) is left untouched.
+export function stampFarmhouse(tiles: Tile[]) {
+  // Free the old farmhouse footprint (29–33 × 6–8).
+  rect(tiles, 29, 6, 33, 8, (t) => {
+    t.terrain = 'grass'
+    t.obstacle = null
+    t.cropId = null
+  })
+  // Block the tent footprint (30–32 × 7–8).
+  rect(tiles, 30, 7, 32, 8, (t) => {
+    t.terrain = 'blocked'
+    t.obstacle = null
+    t.cropId = null
+  })
+  const bed = tiles[idx(LOCATIONS.bed.x, LOCATIONS.bed.y)]
+  bed.metadata.bed = true
+  bed.terrain = 'grass'
+}
+
 export function stampCookingFire(tiles: Tile[], built = true) {
   for (const t of tiles) {
     if (t.metadata.cookingFire === true || t.metadata.cookingFireBlock === true) {
@@ -163,10 +184,8 @@ export function generateWorld(): Tile[] {
   rect(tiles, 0, 0, 0, WORLD_H - 1, (t) => (t.terrain = 'blocked'))
   rect(tiles, WORLD_W - 1, 0, WORLD_W - 1, WORLD_H - 1, (t) => (t.terrain = 'blocked'))
 
-  // ---- Farmhouse (north-east) ----
-  rect(tiles, 29, 6, 33, 8, (t) => (t.terrain = 'blocked'))
-  tiles[idx(LOCATIONS.bed.x, LOCATIONS.bed.y)].metadata.bed = true
-  tiles[idx(LOCATIONS.bed.x, LOCATIONS.bed.y)].terrain = 'grass'
+  // ---- Player tent (north-east) ----
+  stampFarmhouse(tiles)
 
   // ---- General Store (beside the farmhouse) ----
   stampStore(tiles)
