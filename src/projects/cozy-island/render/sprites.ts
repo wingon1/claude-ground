@@ -69,45 +69,40 @@ const CHICKEN = [
   '.k....k..',
 ]
 
-// leaves: o outline, h highlight, l light, g mid, G deep, d shadow · trunk t/T/b
+// outlined egg-shaped tree (ref): black outline, dark green body, lighter
+// highlights upper-left, brown trunk with a small fork.
 const TREE_PAL: Record<string, string> = {
-  o: '#274a1c', h: '#bff08a', l: '#9be069', g: '#6cc04a', G: '#46933a', d: '#327029',
-  t: '#9a6536', T: '#5f3c22', b: '#b27a44',
+  K: '#1b1b1b', d: '#3f7d39', D: '#2e5e2b', l: '#62a347', t: '#9c6b3f', T: '#6e4626',
 }
 const TREE_SMALL = [
-  '...olllo...',
-  '..olllllo..',
-  '.olllllllo.',
-  '.ohhllllgo.',
-  'ohhllgggglo',
-  'olggggGGGGo',
-  '.oggGGGGGo.',
-  '..oGGdddo..',
-  '....tbt....',
-  '....tTt....',
-  '...ttbtt...',
-  '...tTTtt...',
-  '..tttttt...',
+  '...KdK...',
+  '..KdddK..',
+  '.KldddDK.',
+  'KldddddDK',
+  'KdddtddDK',
+  '.KdtttdK.',
+  '..KtttK..',
+  '..KtTtK..',
+  '..KtTtK..',
+  '..KKKKK..',
 ]
 const TREE_BIG = [
-  '.....olllo.....',
-  '...ollllllo....',
-  '..ollllllllo...',
-  '.ohhlllllllgo..',
-  '.ohhllggggglgo.',
-  'ohhllgggggggglo',
-  'ohllgggggggGGlo',
-  'ollgggggGGGGGGo',
-  'olgggGGGGGGGGdo',
-  '.ogGGGGGGGGdo..',
-  '.ogGGGGGdddgo..',
-  '..ogGddddddo...',
-  '...oGdddddo....',
-  '......tbt......',
-  '.....ttTtt.....',
-  '.....tbTtt.....',
-  '....tttTttt....',
-  '...tttttttt....',
+  '.....KdK.....',
+  '....KdddK....',
+  '...KldddK....',
+  '..KldddddK...',
+  '..KldddddDK..',
+  '.KldddddddDK.',
+  '.KldddddddDK.',
+  '.KddddddddDK.',
+  '..KdddtddDK..',
+  '..KddtttdDK..',
+  '...KdtttdK...',
+  '....KtttK....',
+  '....KtTtK....',
+  '....KtTtK....',
+  '....KtTtK....',
+  '...KKKKKK....',
 ]
 
 // rock: o outline, w highlight, r light, R mid, d shadow · m/M moss
@@ -165,31 +160,68 @@ const SHELL = [
 ]
 
 // buildings
+// teepee tent (ref): crossed poles on top, tan body, red band, dark doorway.
+const TENT_PAL: Record<string, string> = {
+  K: '#1c1c1c', s: '#e8c47a', S: '#d2a857', r: '#d2603f', R: '#b0492f', d: '#3a2a1e', b: '#8f7d68',
+}
 const TENT = [
-  '......t......',
-  '......tyy....',
-  '......t......',
-  '.....ddd.....',
-  '....ddddd....',
-  '...ddddddd...',
-  '..ddddddddd..',
-  '.dddoooooddd.',
-  'dddoooooooddd',
-  'dddoooooooddd',
-  'dddoooooooddd',
-  'DDDDDDDDDDDDD',
+  '....b.....b..',
+  '.....b...b...',
+  '......b.b....',
+  '......bbb....',
+  '.....KrK.....',
+  '.....KsK.....',
+  '....KsKsK....',
+  '....KrKrK....',
+  '...KrrKrrK...',
+  '...KrrKrrK...',
+  '..KsssKsssK..',
+  '..KsssKsssK..',
+  '.KsssKdKsssK.',
+  '.KsssdddsssK.',
+  'KssssdddssssK',
 ]
 
+// campfire (ref): orange/yellow flame, crossed logs, gray stone ring, light rim.
+const COOKFIRE_PAL: Record<string, string> = {
+  W: '#f2f2ec', o: '#e8731f', O: '#c2531a', y: '#f6b833', Y: '#f8e06a',
+  t: '#8a5a32', r: '#a23a26', g: '#c4c8cc', G: '#969ca2', D: '#646a70',
+}
 const COOKFIRE = [
-  '.....i.......',
-  '....iIi......',
-  '...iIIIi.....',
-  '..iIIIIIi....',
-  '..iIWIIIi....',
-  '...iiiii.....',
-  '.rrTTTTTrr...',
-  'rrTtTtTtTrr..',
-  '.rr.....rr...',
+  '......o......',
+  '......oo.....',
+  '.....ooo.....',
+  '.....oyo.....',
+  '....ooyoo....',
+  '....oyYyo....',
+  '...ooyYyoo...',
+  '...trtttrt...',
+  '..WgGggGGgGW.',
+  '.WgGGGGGGGGW.',
+  '.WGGGDGGGDGW.',
+  '..WWWWWWWWW..',
+]
+
+// market stall (ref): red/white striped awning, wooden posts, SHOP sign.
+const SHOP_PAL: Record<string, string> = {
+  K: '#1c1c1c', j: '#ef9a6a', r: '#d6533f', R: '#b23a2c', W: '#f4ede0', w: '#d6ccbb',
+  t: '#a9712f', T: '#7a4e22', y: '#f2c33a',
+}
+const SHOP = [
+  '....KjjjjjjjK....',
+  '..KjjjjjjjjjjjK..',
+  '.KrrWWrrWWrrWWrK.',
+  '.KrrWWrrWWrrWWrK.',
+  '.KRRwwRRwwRRwwRK.',
+  '.KKKKKKKKKKKKKKK.',
+  '...tt.......tt...',
+  '...tt.......tt...',
+  '..KKKKKKKKKKKKK..',
+  '..KtttttttttttK..',
+  '..KtttttttttttK..',
+  '..KtyTyTyTyTytK..',
+  '..KtttttttttttK..',
+  '..KKKKKKKKKKKKK..',
 ]
 
 const COOP = [
@@ -405,18 +437,19 @@ export function drawOreNode(ctx: CanvasRenderingContext2D, x: number, y: number)
 
 // buildings
 export function drawTent(ctx: CanvasRenderingContext2D, x: number, y: number, level: number) {
-  shadow(ctx, x, y, 66)
-  const pal = level >= 3 ? { d: '#e6a35a', D: '#c8823c' } : level >= 2 ? { d: '#e4b06a', D: '#c2864a' } : undefined
+  shadow(ctx, x, y, 62)
+  const pal = level >= 3 ? { ...TENT_PAL, s: '#f0d48c', S: '#dcb866' }
+    : level >= 2 ? { ...TENT_PAL, s: '#eccd86' } : TENT_PAL
   drawGrid(ctx, TENT, x, y, 5, 'foot', pal)
 }
 export function drawShop(ctx: CanvasRenderingContext2D, x: number, y: number) {
   shadow(ctx, x, y, 58)
-  drawGrid(ctx, ICONS.shop, x, y, 7, 'foot')
+  drawGrid(ctx, SHOP, x, y, 4, 'foot', SHOP_PAL)
 }
 export function drawCookingFire(ctx: CanvasRenderingContext2D, x: number, y: number, _level: number) {
   void _level
-  shadow(ctx, x, y, 54)
-  drawGrid(ctx, COOKFIRE, x, y, 5, 'foot')
+  shadow(ctx, x, y, 50)
+  drawGrid(ctx, COOKFIRE, x, y, 4, 'foot', COOKFIRE_PAL)
 }
 export function drawCoop(ctx: CanvasRenderingContext2D, x: number, y: number) {
   shadow(ctx, x, y, 58)
