@@ -1,7 +1,0 @@
-{
-  "enabled": false,
-  "comingSoon": true,
-  "stages": [
-    { "id": "d1", "name": "이끼 동굴", "staminaCost": 1, "rewards": [{ "itemId": "raw_gem", "min": 1, "max": 2 }] }
-  ]
-}

@@ -1,197 +1,208 @@
-// Shared types for Cozy Island. No enums (erasableSyntaxOnly) — string unions only.
+// Central type definitions for Tiny Dew Valley.
+// Kept data-driven: gameplay rules live in /data, this only describes shapes.
 
-export type Vec = { x: number; y: number }
+export type ItemType =
+  | 'seed'
+  | 'crop'
+  | 'wood'
+  | 'hardwood'
+  | 'stone'
+  | 'forage'
+  | 'food'
+  | 'offering'
+  | 'material'
+  | 'placeable'
+  | 'misc'
 
-export type ItemCategory = 'resource' | 'crop' | 'animal' | 'food' | 'ore'
+export type CropQuality = 'normal' | 'silver' | 'gold' | 'perfect'
 
-export type ItemDef = {
+export interface ItemDef {
   id: string
   name: string
-  emoji: string
-  category: ItemCategory
+  type: ItemType
+  stackable: boolean
+  maxStack: number
   sellPrice: number
+  description: string
+  usable: boolean
+  /** Stamina restored when eaten (food/crop). */
+  staminaRestore?: number
+  /** Gift affinity bucket lookups are per-NPC; this is a default. */
+  giftValue: number
+  /** For crop items, which crop + quality they came from. */
+  cropId?: string
+  quality?: CropQuality
+  /** Emoji-ish glyph fallback / sprite key. */
+  sprite: string
+}
+
+export interface InventorySlot {
+  itemId: string
+  qty: number
+}
+
+export type ToolId = 'hoe' | 'watering_can' | 'axe' | 'scythe' | 'hand'
+
+export interface ToolDef {
+  id: ToolId
+  name: string
+  hotbarSlot: number // 0-4 -> keys 1-5
+  staminaCost: number
+  description: string
+}
+
+export interface CropDef {
+  id: string
+  name: string
+  seedItemId: string
+  /** Days from planting to first harvest. */
+  growDays: number
+  /** Number of growth stages (visual). Last stage = harvestable. */
+  stages: number
+  baseSell: number
+  /** If set, crop regrows after harvest; days between regrows. */
+  regrowDays?: number
+  /** Whether this crop rolls quality (golden pumpkin). */
+  rollsQuality: boolean
+  /** Season flavour / colour seed. */
   color: string
 }
 
-export type DropDef = { itemId: string; min: number; max: number; chance?: number; weight?: number }
+export type Terrain = 'grass' | 'soil' | 'tilled' | 'water' | 'path' | 'blocked'
+export type Obstacle =
+  | null
+  | 'weed'
+  | 'rock'
+  | 'tree'
+  | 'stump'
+  | 'large_stump'
+  | 'flower'
 
-export type MineDropDef = { itemId: string; min: number; max: number; weight: number }
-
-export type MineLevelDef = {
-  floor: number
-  name: string
-  nodeCount: number
-  nodeHp: number
-  staminaCost: number
-  unlockCondition?: UnlockCondition
-  descendRequirement?: { minedNodes: number }
-  drops: MineDropDef[]
+export interface Tile {
+  x: number
+  y: number
+  terrain: Terrain
+  cropId: string | null
+  growthStage: number
+  wateredToday: boolean
+  wateredYesterday: boolean
+  daysUnwatered: number
+  obstacle: Obstacle
+  hasFertilizer: boolean
+  /** For large stumps: chops remaining before it yields hardwood. */
+  hp?: number
+  metadata: Record<string, number | string | boolean>
 }
 
-export type ResourceNodeDef = {
-  name: string
-  kind: 'tree' | 'rock' | 'bush' | 'beach'
-  durability: number
-  staminaCost: number
-  respawnSeconds: number
-  drops: DropDef[]
-  rareDrops: DropDef[]
+export type Direction = 'down' | 'up' | 'left' | 'right'
+
+export interface PlayerState {
+  x: number // world pixel position (center)
+  y: number
+  dir: Direction
+  moving: boolean
+  animTime: number
+  exhausted: boolean
 }
 
-export type CropDef = {
+export type GiftTier = 'loved' | 'liked' | 'neutral' | 'disliked' | 'hated'
+
+export interface NPCFriendship {
+  points: number // 0..(hearts*GIFT...) we store raw points
+  talkedToday: boolean
+  giftedToday: boolean
+  /** milestone hearts already celebrated (to fire dialogue once). */
+  milestonesShown: number[]
+}
+
+export interface NPCState {
   id: string
-  name: string
-  growthSeconds: number
-  harvestStaminaCost: number
-  yield: { itemId: string; min: number; max: number }
-  unlockCondition: UnlockCondition
+  x: number
+  y: number
+  dir: Direction
+  friendship: NPCFriendship
 }
 
-export type UnlockCondition = {
-  defaultUnlocked?: boolean
-  requiredGold?: number
-  requiredTotalHarvestCount?: number
-  requiredTotalMineCount?: number
-  requiredMaxStamina?: number
-  requiredBuilding?: string
-  requiredQuestIds?: string[]
-  requiredRecipeDiscoveredCount?: number
-  requiredItemSeen?: string
-  requiredDeepestFloor?: number
-}
-
-export type CostDef = { gold?: number; items?: { itemId: string; amount: number }[] }
-
-export type BuildingLevel = { upgradeCost?: CostDef; effects: Record<string, number | string> }
-
-export type BuildingDef = {
-  id: string
-  name: string
-  emoji: string
-  category: string
-  prePlaced?: boolean
-  position: Vec
-  footprint: { w: number; h: number }
-  buildCost?: CostDef
-  unlockCondition?: UnlockCondition
-  maxLevel: number
-  levels: BuildingLevel[]
-}
-
-export type RecipeDef = {
-  id: string
-  name: string
-  emoji: string
-  inputs: { itemId: string; amount: number }[]
-  outputs: { itemId: string; amount: number }[]
-  craftSeconds: number
-  unlockCondition: UnlockCondition
-}
-
-export type AnimalDef = {
-  id: string
-  name: string
-  emoji: string
-  requiredBuilding: string
-  purchaseCost: number
-  product: { itemId: string; min: number; max: number }
-  produceSeconds: number
-  collectStaminaCost: number
-}
-
-export type QuestObjective = {
-  type:
-    | 'chop' | 'mine' | 'harvest' | 'collectAnimal' | 'sleep'
-    | 'maxStamina' | 'gold' | 'collectItem' | 'sell' | 'buyPlot'
-    | 'build' | 'craft' | 'staminaEmpty'
-  target: number
-  itemId?: string
-  buildingId?: string
-  recipeId?: string
-}
-
-export type QuestDef = {
-  id: string
-  name: string
-  desc: string
-  requires?: string
-  objective: QuestObjective
-  reward: { gold?: number; gems?: number; items?: { itemId: string; amount: number }[] }
-}
-
-// ---- Runtime state ----
-
-export type PlotState = 'EMPTY' | 'GROWING' | 'READY' | 'PAUSED_NO_STAMINA'
-
-export type Plot = {
-  id: number
-  pos: Vec
-  cropId: string
-  state: PlotState
-  plantedAt: number // game seconds when growth started
-  ready: boolean
-}
-
-export type WorldNode = {
-  id: number
-  type: string
-  pos: Vec
-  hp: number
-  alive: boolean
-  respawnAt: number // game seconds, 0 if alive
-  shakeUntil: number
-}
-
-export type AnimalInst = {
-  id: number
-  animalId: string
-  pos: Vec
-  product: number // count ready (0 or 1+)
-  nextAt: number // game seconds when next product ready
-}
-
-export type CookJob = { recipeId: string; doneAt: number }
-
-export type BuildingState = { id: string; built: boolean; level: number }
-
-export type InventoryEntry = { itemId: string; count: number }
-
-export type GameState = {
-  version: number
+export interface ShrineState {
   gold: number
-  gems: number
+  pumpkins: number
+  logs: number
+  restored: boolean
+}
+
+export type ToolUpgrades = {
+  watering_can: 'basic' | 'copper'
+  backpack: 0 | 1 // inventory expansion levels (cosmetic cap already 24)
+}
+
+export type EndingState = 'none' | 'good' | 'bittersweet'
+
+export interface GameState {
+  saveVersion: number
+  day: number
+  /** minutes elapsed since 06:00 of the current day (0..1200). */
+  timeMinutes: number
+  gold: number
   stamina: number
   maxStamina: number
-  inventory: InventoryEntry[]
-  plots: Plot[]
-  animals: AnimalInst[]
-  buildings: Record<string, BuildingState>
-  cookQueue: CookJob[]
-  // progress counters
-  counters: {
-    treeChop: number
-    rockMine: number
-    oreMine: number
-    harvest: number
-    animalCollect: number
-    bushClear: number
-    sleeps: number
-    plotsBought: number
-    totalSalesGold: number
-    staminaEmptyCount: number
+  nextDayStaminaCap: number | null // set when passing out
+  player: PlayerState
+  tiles: Tile[] // flattened WORLD_W * WORLD_H farm/village grid
+  selectedSlot: number // hotbar index 0..9 (0-4 tools, 5-9 item slots)
+  hotbarItems: (string | null)[] // length 5, item ids for usable item slots
+  water: number
+  inventory: InventorySlot[]
+  toolUpgrades: ToolUpgrades
+  npcs: Record<string, NPCState>
+  shrine: ShrineState
+  recipes: { herbalTea: boolean }
+  unlocks: {
+    seedDiscount: boolean
+    backpack: boolean
+    shippingBonus: boolean
+    fayeStaminaBoost: boolean
+    /** Built a workbench (tier 1 crafting). */
+    workbench: boolean
+    /** Expanded to a workshop (tier 2 crafting). */
+    workshop: boolean
   }
-  itemTotals: Record<string, number> // total ever gained per item
-  craftTotals: Record<string, number>
-  seenItems: Record<string, boolean>
-  recipesDiscovered: string[]
-  quests: Record<string, { done: boolean; claimed: boolean }>
-  unlockedZones: string[]
-  mineCurrentFloor: number
-  mineDeepestFloor: number
-  mineMinedNodes: Record<string, number[]>
-  // timekeeping
-  gameTime: number // accumulated game seconds
-  lastSaved: number // wallclock ms
-  // audio settings
-  audio: { master: number; bgm: number; sfx: number; muted: boolean }
+  flags: Record<string, boolean | number>
+  ending: EndingState
+  endless: boolean
+  /** Items shipped (sold via shipping bin) pending the overnight tally. */
+  pendingShip: InventorySlot[]
+}
+
+export interface DialogueLine {
+  speaker: string
+  text: string
+}
+
+export interface NPCDef {
+  id: string
+  name: string
+  color: string
+  accent: string
+  heartsMax: number
+  /** points needed per heart. */
+  pointsPerHeart: number
+  giftPrefs: {
+    loved: string[]
+    liked: string[]
+    disliked: string[]
+    hated: string[]
+  }
+  normalLines: string[]
+  timeLines: { from: number; to: number; lines: string[] }[]
+  milestoneLines: Record<number, string> // hearts -> line
+  giftReactions: Record<GiftTier, string[]>
+}
+
+export interface ShopEntry {
+  itemId: string
+  /** Buy price; if omitted not buyable. */
+  buyPrice?: number
+  /** Whether the entry is a one-time tool upgrade. */
+  upgrade?: 'copper_can' | 'backpack'
+  unlockFlag?: string
 }
