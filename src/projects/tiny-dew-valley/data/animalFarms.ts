@@ -4,6 +4,8 @@ import {
   PIG_UNLOCK_FLAG,
 } from './unlocks'
 
+export const ANIMAL_FARM_MAX_ANIMALS = 10
+
 export interface AnimalFarmDef {
   id: string
   name: string

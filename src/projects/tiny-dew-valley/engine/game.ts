@@ -3,7 +3,7 @@ import { CROPS, CROP_LIST } from '../data/crops'
 import { cropItemId, getItem } from '../data/items'
 import { SHOP_CATALOG } from '../data/shopCatalog'
 import { BUILD_OPTIONS } from '../data/buildOptions'
-import { ANIMAL_FARMS, type AnimalFarmDef } from '../data/animalFarms'
+import { ANIMAL_FARMS, ANIMAL_FARM_MAX_ANIMALS, type AnimalFarmDef } from '../data/animalFarms'
 import {
   DEFAULT_FIELD_CROP,
   FIELD_PLOTS,
@@ -1008,13 +1008,18 @@ export class Game {
     if (!farm || !this.animalFarmOwned(farm)) return
     const price = this.animalBuyPrice(farm)
     const s = this.state
+    const currentCount = this.animalCount(farm)
+    if (currentCount >= ANIMAL_FARM_MAX_ANIMALS) {
+      this.toast(`최대 ${ANIMAL_FARM_MAX_ANIMALS}마리까지 키울 수 있어요.`, 'info')
+      return
+    }
     if (s.gold < price) {
       this.toast('골드가 부족해요.', 'bad')
       this.audio.sfx('reject')
       return
     }
     s.gold -= price
-    const nextCount = this.animalCount(farm) + 1
+    const nextCount = currentCount + 1
     s.flags[this.animalCountKey(farm.id)] = nextCount
     if (typeof s.flags[this.animalDropKey(farm.id)] !== 'number') {
       s.flags[this.animalDropKey(farm.id)] = 0
@@ -1185,7 +1190,9 @@ export class Game {
 
   private animalCount(farm: AnimalFarmDef): number {
     const raw = this.state.flags[this.animalCountKey(farm.id)]
-    return typeof raw === 'number' ? Math.max(0, Math.floor(raw)) : 0
+    return typeof raw === 'number'
+      ? Math.max(0, Math.min(ANIMAL_FARM_MAX_ANIMALS, Math.floor(raw)))
+      : 0
   }
 
   private animalBuyPrice(farm: AnimalFarmDef): number {
@@ -1208,7 +1215,7 @@ export class Game {
     )
   }
 
-  private placeAnimalDrop(farm: AnimalFarmDef, qty: number): boolean {
+  private placeAnimalDrops(farm: AnimalFarmDef, count: number): boolean {
     const candidates: Tile[] = []
     for (let y = farm.y + 1; y < farm.y + farm.h - 1; y++) {
       for (let x = farm.x + 1; x < farm.x + farm.w - 1; x++) {
@@ -1218,11 +1225,19 @@ export class Game {
         candidates.push(t)
       }
     }
-    if (!candidates.length) return false
-    const t = candidates[Math.floor(Math.random() * candidates.length)]
-    t.metadata.groundItemId = farm.productItemId
-    t.metadata.groundItemQty = qty
-    t.metadata.animalDropFarm = farm.id
+    if (candidates.length < count) return false
+    for (let i = candidates.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      const tmp = candidates[i]
+      candidates[i] = candidates[j]
+      candidates[j] = tmp
+    }
+    for (let i = 0; i < count; i++) {
+      const t = candidates[i]
+      t.metadata.groundItemId = farm.productItemId
+      t.metadata.groundItemQty = farm.productQty
+      t.metadata.animalDropFarm = farm.id
+    }
     return true
   }
 
@@ -1259,8 +1274,7 @@ export class Game {
         this.state.flags[key] = elapsed
         continue
       }
-      const qty = count * farm.productQty
-      if (this.placeAnimalDrop(farm, qty)) {
+      if (this.placeAnimalDrops(farm, count)) {
         this.state.flags[key] = 0
         dropped = true
       }
@@ -1664,7 +1678,7 @@ export class Game {
       ctx.fillRect(x + 2 * S, y + 5 * S, 18 * S, 4 * S)
       ctx.fillStyle = '#6e4426'
       ctx.fillRect(x + 7 * S, y + 10 * S, 6 * S, 6 * S)
-      const count = Math.min(8, this.animalCount(farm))
+      const count = Math.min(ANIMAL_FARM_MAX_ANIMALS, this.animalCount(farm))
       const now = performance.now() / 1000
       for (let i = 0; i < count; i++) {
         const seed = (farm.id.charCodeAt(0) * 17 + i * 37) / 10
@@ -1919,12 +1933,15 @@ export class Game {
       const def = getItem(e.itemId)!
       const farm = e.animalFarmId ? ANIMAL_FARMS.find((f) => f.id === e.animalFarmId) : null
       const price = farm ? this.animalBuyPrice(farm) : (e.buyPrice ?? 0)
-      const ownedText = farm ? ` 보유 ${this.animalCount(farm)}마리 · ${farm.dropSeconds}초마다 생산` : ''
+      const animalCount = farm ? this.animalCount(farm) : 0
+      const ownedText = farm
+        ? ` 보유 ${animalCount}/${ANIMAL_FARM_MAX_ANIMALS}마리 · ${farm.dropSeconds}초마다 생산`
+        : ''
       return {
         itemId: e.itemId,
         name: def.name,
         price,
-        affordable: s.gold >= price,
+        affordable: s.gold >= price && (!farm || animalCount < ANIMAL_FARM_MAX_ANIMALS),
         sprite: def.sprite,
         color: def.cropId ? CROPS[def.cropId].color : undefined,
         desc: `${def.description}${ownedText}`,
