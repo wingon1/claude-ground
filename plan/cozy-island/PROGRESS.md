@@ -3,8 +3,8 @@
 > 각 스텝 완료 후: 한 일 / 영향받은 파일 상태 / 다음 스텝 을 갱신한다.
 
 ## 현재 상태
-- **단계**: M1(광산 본구현) 구현 완료, 검증 중.
-- **브랜치**: `codex/cozy-island-mine-loop`
+- **단계**: UI/아트 1차 패스 진행 중.
+- **브랜치**: `codex/cozy-island-ui-art-pass`
 - **저장 버전**: `SAVE_VERSION = 7`
 
 ## 로그
@@ -40,6 +40,15 @@
 - 영향받은 파일: `data/mineLevels.json`, `systems/MineSystem.ts`, `types.ts`, `content.ts`, `game/Game.ts`, `game/GameState.ts`, `index.tsx`.
 - 검증: `npm run lint -- src/projects/cozy-island` 통과, `npx tsc --ignoreConfig ... src/projects/cozy-island/index.tsx` 통과. 전체 `npm run build`는 기존 `src/projects/shikaku` 타입 오류로 실패.
 
+### 2026-06-23 — UI/아트 1차 패스
+- 한 일:
+  1. 홈 구역 기준 아트 바 확립: 나무/텐트/상점/광산 스프라이트를 더 큰 실루엣, 두꺼운 외곽선, 명암 블록 중심으로 교체.
+  2. 그림자와 잔디 텍스처 밀도 개선, 해안선/펜 내부 바닥에 블록 레이어 추가.
+  3. 하단 메뉴를 핵심 행동 6개(가방/상점/건설/광산/요리/메뉴)로 축소하고 퀘스트/도감/설정은 메뉴 패널로 이동.
+  4. 상단 HUD에 첫 활성 퀘스트 진행률을 추가해 다음 행동을 더 명확히 표시.
+- 영향받은 파일: `render/sprites.ts`, `game/Game.ts`, `index.tsx`, `src/projects/cozy-island/AGENTS.md`, `plan/cozy-island/PLAN.md`, `PROGRESS.md`.
+- 검증: 모바일(390x844)과 데스크톱(900x900) headless Chrome 스크린샷 확인, `npm run lint -- src/projects/cozy-island` 통과, 단독 TypeScript 검사 통과.
+
 ## 다음 스텝
-- [ ] 실기기/브라우저에서 광산 루프 시각 확인.
-- [ ] M2: 던전 플레이 루프 또는 M4: 밸런스 패스 착수.
+- [ ] UI/아트 패스를 동물·밭·광산 내부까지 확장.
+- [ ] 전체 `npm run build` 실패 원인인 `src/projects/shikaku` 기존 타입 오류를 별도 처리.

@@ -8,7 +8,7 @@ import type { GameState } from './types'
 import { activeQuests, questProgress } from './systems/QuestSystem'
 import { iconDataURL } from './render/art'
 
-type PanelId = 'inventory' | 'shop' | 'build' | 'cooking' | 'quests' | 'collection' | 'settings' | null
+type PanelId = 'inventory' | 'shop' | 'build' | 'cooking' | 'quests' | 'collection' | 'settings' | 'more' | null
 type Toast = { id: number; text: string; kind: string }
 
 const UI = {
@@ -213,11 +213,9 @@ export default function CozyIsland() {
             <MenuBtn icon="bag" label="가방" onClick={() => openPanel('inventory')} />
             <MenuBtn icon="shop" label="상점" onClick={() => openPanel('shop')} />
             <MenuBtn icon="hammer" label="건설" onClick={() => openPanel('build')} />
-            <MenuBtn icon="pot" label="요리" onClick={() => openPanel('cooking')} />
             <MenuBtn icon="pickaxe" label="광산" onClick={() => game.enterMine()} />
-            <MenuBtn icon="scroll" label="퀘스트" onClick={() => openPanel('quests')} />
-            <MenuBtn icon="book" label="도감" onClick={() => openPanel('collection')} />
-            <MenuBtn icon="gear" label="설정" onClick={() => openPanel('settings')} />
+            <MenuBtn icon="pot" label="요리" onClick={() => openPanel('cooking')} />
+            <MenuBtn icon="gear" label="메뉴" onClick={() => openPanel('more')} />
           </div>
         )}
 
@@ -243,6 +241,7 @@ export default function CozyIsland() {
             {panel === 'quests' && <QuestPanel s={s} />}
             {panel === 'collection' && <CollectionPanel s={s} />}
             {panel === 'settings' && <SettingsPanel game={game} s={s} />}
+            {panel === 'more' && <MorePanel openPanel={openPanel} />}
           </Panel>
         )}
       </div>
@@ -258,16 +257,19 @@ const mineBtn: React.CSSProperties = {
 }
 
 function panelTitle(p: PanelId): string {
-  return ({ inventory: '가방', shop: '상점', build: '건설', cooking: '요리', quests: '퀘스트', collection: '도감', settings: '설정' } as Record<string, string>)[p || ''] || ''
+  return ({ inventory: '가방', shop: '상점', build: '건설', cooking: '요리', quests: '퀘스트', collection: '도감', settings: '설정', more: '메뉴' } as Record<string, string>)[p || ''] || ''
 }
 function panelIcon(p: PanelId): string {
-  return ({ inventory: 'bag', shop: 'shop', build: 'hammer', cooking: 'pot', quests: 'scroll', collection: 'book', settings: 'gear' } as Record<string, string>)[p || ''] || 'bag'
+  return ({ inventory: 'bag', shop: 'shop', build: 'hammer', cooking: 'pot', quests: 'scroll', collection: 'book', settings: 'gear', more: 'gear' } as Record<string, string>)[p || ''] || 'bag'
 }
 
 // ---------- HUD ----------
 function Hud({ s }: { s: GameState }) {
   const pct = s.maxStamina > 0 ? s.stamina / s.maxStamina : 0
   const barColor = pct <= 0 ? '#d35a4a' : pct < 0.3 ? '#e8a23a' : '#5aa84a'
+  const q = activeQuests(s)[0]
+  const qCurrent = q ? questProgress(s, q) : 0
+  const qTarget = q?.objective.target || 1
   return (
     <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '8px 10px', zIndex: 16, pointerEvents: 'none' }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -283,6 +285,22 @@ function Hud({ s }: { s: GameState }) {
           <div style={{ width: `${pct * 100}%`, height: '100%', background: barColor, transition: 'width 0.2s' }} />
         </div>
       </div>
+      {q && (
+        <div style={{
+          marginTop: 6, maxWidth: 300, background: 'rgba(54,45,37,0.86)', color: '#fff8e8',
+          border: '2px solid rgba(255,226,160,0.72)', boxShadow: '0 3px 0 rgba(0,0,0,0.22)',
+          padding: '7px 10px', fontWeight: 800, fontSize: 12,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <PixelIcon name="scroll" size={15} />
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{q.name}</span>
+            <span style={{ marginLeft: 'auto' }}>{qCurrent}/{qTarget}</span>
+          </div>
+          <div style={{ marginTop: 4, height: 6, background: 'rgba(255,255,255,0.22)', overflow: 'hidden' }}>
+            <div style={{ width: `${Math.min(100, (qCurrent / Math.max(1, qTarget)) * 100)}%`, height: '100%', background: '#f2cf48' }} />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -291,10 +309,38 @@ function Pill({ children }: { children: React.ReactNode }) {
 }
 function MenuBtn({ icon, label, onClick }: { icon: string; label: string; onClick: () => void }) {
   return (
-    <button onClick={onClick} style={{ background: 'none', border: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, color: '#5a4632', cursor: 'pointer', padding: 2 }}>
-      <PixelIcon name={icon} size={22} />
-      <span style={{ fontSize: 10, fontWeight: 700 }}>{label}</span>
+    <button onClick={onClick} style={{
+      background: 'rgba(255,255,255,0.22)', border: `2px solid ${UI.border}`, display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center', gap: 2, color: '#5a4632', cursor: 'pointer',
+      width: 52, height: 48, padding: 2, boxShadow: '0 3px 0 rgba(90,70,50,0.20)',
+    }}>
+      <PixelIcon name={icon} size={21} />
+      <span style={{ fontSize: 10, fontWeight: 800, lineHeight: 1 }}>{label}</span>
     </button>
+  )
+}
+
+function MorePanel({ openPanel }: { openPanel: (p: PanelId) => void }) {
+  const entries = [
+    { id: 'quests' as PanelId, icon: 'scroll', label: '퀘스트', desc: '진행 목표와 보상 확인' },
+    { id: 'collection' as PanelId, icon: 'book', label: '도감', desc: '아이템과 레시피 수집 현황' },
+    { id: 'settings' as PanelId, icon: 'gear', label: '설정', desc: '소리와 저장 관리' },
+  ]
+  return (
+    <div style={{ display: 'grid', gap: 10 }}>
+      {entries.map((e) => (
+        <button key={e.id} onClick={() => openPanel(e.id)} style={{
+          display: 'flex', alignItems: 'center', gap: 12, background: '#fffaf0', border: `2px solid ${UI.border}`,
+          color: UI.text, padding: '11px 12px', textAlign: 'left', boxShadow: '0 3px 0 rgba(90,70,50,0.18)',
+        }}>
+          <PixelIcon name={e.icon} size={24} />
+          <span style={{ display: 'grid', gap: 2 }}>
+            <b style={{ fontSize: 15 }}>{e.label}</b>
+            <span style={{ fontSize: 12, opacity: 0.78 }}>{e.desc}</span>
+          </span>
+        </button>
+      ))}
+    </div>
   )
 }
 

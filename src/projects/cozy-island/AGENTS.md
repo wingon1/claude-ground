@@ -21,4 +21,4 @@ Read these files before starting multi-step work:
 
 ## Current Next Step
 
-M1 is the priority: implement the mine loop. Start with `data/mineLevels.json` schema confirmation, then add mine state/system/render/UX and save integration.
+Continue UI/art polish from the home area quality bar: extend the same sprite scale, outline, palette, shadow, and HUD density rules to animals, fields, mine, and later dungeon screens.

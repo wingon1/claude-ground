@@ -871,6 +871,18 @@ export class Game {
     ctx.fillRect(L.x - 10, L.y - 10, L.w + 20, L.h + 20)
     ctx.fillStyle = '#d9c489'
     ctx.fillRect(L.x - 10, L.y - 10, L.w + 20, 4)
+    ctx.fillRect(L.x - 10, L.y + L.h + 6, L.w + 20, 4)
+    ctx.fillRect(L.x - 10, L.y - 10, 4, L.h + 20)
+    ctx.fillRect(L.x + L.w + 6, L.y - 10, 4, L.h + 20)
+    ctx.fillStyle = '#f3dfaa'
+    for (let x = L.x - 6; x < L.x + L.w + 8; x += 28) {
+      ctx.fillRect(x, L.y - 6, 12, 3)
+      ctx.fillRect(x + 10, L.y + L.h + 3, 14, 3)
+    }
+    for (let y = L.y - 2; y < L.y + L.h + 4; y += 28) {
+      ctx.fillRect(L.x - 5, y, 3, 12)
+      ctx.fillRect(L.x + L.w + 2, y + 10, 3, 14)
+    }
     if (!this.grassTex) return
     const tile = this.grassTex.width
     const x0 = Math.floor(this.cam.x / tile) * tile
@@ -890,8 +902,12 @@ export class Game {
     this.drawLand(ctx)
     for (const pen of this.layout.pens) {
       if (pen.content === 'home' || pen.content === 'forest') continue // home + grove have no fence
-      ctx.fillStyle = 'rgba(60,120,40,0.10)'
+      ctx.fillStyle = 'rgba(54,112,42,0.09)'
       ctx.fillRect(pen.interior.x, pen.interior.y, pen.interior.w, pen.interior.h)
+      ctx.fillStyle = 'rgba(255,246,210,0.12)'
+      ctx.fillRect(pen.interior.x + 8, pen.interior.y + 8, pen.interior.w - 16, 4)
+      ctx.fillStyle = 'rgba(50,95,40,0.12)'
+      ctx.fillRect(pen.interior.x + 8, pen.interior.y + pen.interior.h - 12, pen.interior.w - 16, 4)
       drawFence(ctx, pen.rect, World.gate)
     }
 

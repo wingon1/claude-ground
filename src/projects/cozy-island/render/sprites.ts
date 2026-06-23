@@ -5,10 +5,14 @@ const PXR = 3 // pixel unit for resources/characters
 const PXB = 3 // pixel unit for buildings
 
 function shadow(ctx: CanvasRenderingContext2D, x: number, y: number, w: number) {
-  ctx.fillStyle = 'rgba(40,30,20,0.10)'
-  ctx.fillRect(Math.round(x - w / 2 - 3), Math.round(y - 2), w + 6, 4)
-  ctx.fillStyle = 'rgba(40,30,20,0.16)'
-  ctx.fillRect(Math.round(x - w / 2), Math.round(y - 4), w, 5)
+  const sx = Math.round(x - w / 2)
+  const sy = Math.round(y - 5)
+  ctx.fillStyle = 'rgba(44,34,22,0.10)'
+  ctx.fillRect(sx - 6, sy + 4, w + 12, 4)
+  ctx.fillStyle = 'rgba(44,34,22,0.18)'
+  ctx.fillRect(sx - 2, sy + 1, w + 4, 5)
+  ctx.fillStyle = 'rgba(44,34,22,0.12)'
+  ctx.fillRect(sx + 4, sy - 1, Math.max(8, w - 8), 3)
 }
 
 function r(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, c: string) {
@@ -75,34 +79,41 @@ const TREE_PAL: Record<string, string> = {
   K: '#1b1b1b', d: '#3f7d39', D: '#2e5e2b', l: '#62a347', t: '#9c6b3f', T: '#6e4626',
 }
 const TREE_SMALL = [
-  '...KdK...',
-  '..KdddK..',
-  '.KldddDK.',
-  'KldddddDK',
-  'KdddtddDK',
-  '.KdtttdK.',
-  '..KtttK..',
-  '..KtTtK..',
-  '..KtTtK..',
-  '..KKKKK..',
+  '....KKKKK....',
+  '..KKlllllKK..',
+  '.KlllddddDK.',
+  'KlllddddddDK',
+  'KlddddddddDK',
+  'KlddddDddDDK',
+  '.KdddDtdddK.',
+  '..KddttddK..',
+  '...KKttK....',
+  '....KtTK....',
+  '....KtTK....',
+  '....KtTK....',
+  '...KKKKKK...',
 ]
 const TREE_BIG = [
-  '.....KdK.....',
-  '....KdddK....',
-  '...KldddK....',
-  '..KldddddK...',
-  '..KldddddDK..',
-  '.KldddddddDK.',
-  '.KldddddddDK.',
-  '.KddddddddDK.',
-  '..KdddtddDK..',
-  '..KddtttdDK..',
-  '...KdtttdK...',
-  '....KtttK....',
-  '....KtTtK....',
-  '....KtTtK....',
-  '....KtTtK....',
-  '...KKKKKK....',
+  '.......KKKKK.......',
+  '.....KKlllllKK.....',
+  '....KllllllllK.....',
+  '...KllllddddddK....',
+  '..KlllldddddddDK...',
+  '.KlllddddddddddDK..',
+  '.KldddddddddddddDK.',
+  'KldddddddDdddddddDK',
+  'KlddddDddDDddddddDK',
+  'KddddDDDdDDDDddddDK',
+  '.KddddDDtDDDDdddDK.',
+  '..KdddDtttDDdddDK..',
+  '...KdddtttddddK...',
+  '....KKddttddKK....',
+  '......KKttK.......',
+  '.......KtTK.......',
+  '.......KtTK.......',
+  '.......KtTK.......',
+  '......KKtTKK......',
+  '.....KKKKKKK......',
 ]
 
 // rock: o outline, w highlight, r light, R mid, d shadow · m/M moss
@@ -165,21 +176,23 @@ const TENT_PAL: Record<string, string> = {
   K: '#1c1c1c', s: '#e8c47a', S: '#d2a857', r: '#d2603f', R: '#b0492f', d: '#3a2a1e', b: '#8f7d68',
 }
 const TENT = [
-  '....b.....b..',
-  '.....b...b...',
-  '......b.b....',
-  '......bbb....',
-  '.....KrK.....',
-  '.....KsK.....',
-  '....KsKsK....',
-  '....KrKrK....',
-  '...KrrKrrK...',
-  '...KrrKrrK...',
-  '..KsssKsssK..',
-  '..KsssKsssK..',
-  '.KsssKdKsssK.',
-  '.KsssdddsssK.',
-  'KssssdddssssK',
+  '.......b.....b.....',
+  '........b...b......',
+  '.........b.b.......',
+  '.........bbb.......',
+  '........KrK........',
+  '.......KsrSK.......',
+  '......KssrSSK......',
+  '.....KsssKsssK.....',
+  '....KsssRKrsssK....',
+  '...KsssRRKrrsssK...',
+  '..KssssrrKrrssssK..',
+  '.KsssssssKsssssssK.',
+  'KSSSSSSSSKSSSSSSSSK',
+  'KsssssssKdKsssssssK',
+  'KssssssKdddKssssssK',
+  'KsssssKdddddKsssssK',
+  'KKKKKKKdddddKKKKKKK',
 ]
 
 // campfire (ref): orange/yellow flame, crossed logs, gray stone ring, light rim.
@@ -208,20 +221,22 @@ const SHOP_PAL: Record<string, string> = {
   t: '#a9712f', T: '#7a4e22', y: '#f2c33a',
 }
 const SHOP = [
-  '....KjjjjjjjK....',
-  '..KjjjjjjjjjjjK..',
-  '.KrrWWrrWWrrWWrK.',
-  '.KrrWWrrWWrrWWrK.',
-  '.KRRwwRRwwRRwwRK.',
-  '.KKKKKKKKKKKKKKK.',
-  '...tt.......tt...',
-  '...tt.......tt...',
-  '..KKKKKKKKKKKKK..',
-  '..KtttttttttttK..',
-  '..KtttttttttttK..',
-  '..KtyTyTyTyTytK..',
-  '..KtttttttttttK..',
-  '..KKKKKKKKKKKKK..',
+  '.....KjjjjjjjjjK.....',
+  '...KjjjjjjjjjjjjjK...',
+  '..KjjjjjjjjjjjjjjjK..',
+  '.KrrrWWWrrrWWWrrrWK.',
+  '.KrrrWWWrrrWWWrrrWK.',
+  '.KRRRwwwRRRwwwRRRwK.',
+  '.KKKKKKKKKKKKKKKKKK.',
+  '....tt.........tt....',
+  '....tt..KyyyK..tt....',
+  '...KKKKKyyyyyKKKKK...',
+  '...KttttKyyyKttttK...',
+  '...KtttttttttttttK...',
+  '...KtTTtTTtTTtTTtK...',
+  '...KtttttttttttttK...',
+  '...KttKtttttttKttK...',
+  '...KKKKKKKKKKKKKKK...',
 ]
 
 const COOP = [
@@ -261,17 +276,20 @@ const FARMSIGN = [
 ]
 
 const MINE = [
-  '......RRRRR......',
-  '....RRRRRRRRR....',
-  '...RRRRRRRRRRR...',
-  '..RRRRRRRRRRRRR..',
-  '.RRRRRRRRRRRRRRR.',
-  'RRRRRTTTTTRRRRRRR',
-  'RRRRTKKKKKTRRRRRR',
-  'RRRTKKKKKKKTRRRRR',
-  'RRRTKKKKKKKTRRRRR',
-  'RRRTKKKKKKKTRRRRR',
-  'RRRRRRRRRRRRRRRRR',
+  '.........RRRRR.........',
+  '......RRRRRRRRRRR......',
+  '....RRRRRwwwwwRRRRR....',
+  '...RRRRwwRRRRRwwRRRR...',
+  '..RRRRRRRRRRRRRRRRRRR..',
+  '.RRRRRRRRRRRRRRRRRRRRR.',
+  'RRRRRRRTTTTTTTTRRRRRRRR',
+  'RRRRRTTttttttttTTRRRRRR',
+  'RRRRTttKKKKKKKKttTRRRRR',
+  'RRRRTtKKKKKKKKKKtTRRRRR',
+  'RRRRTtKKKKKKKKKKtTRRRRR',
+  'RRRRTtKKKKKKKKKKtTRRRRR',
+  'RRRRRTTttttttttTTRRRRRR',
+  'RRRRRRRRRRRRRRRRRRRRRRR',
 ]
 
 const ORE = [
@@ -505,29 +523,39 @@ function pxHash(x: number, y: number): number {
   return n - Math.floor(n)
 }
 
-/** Clean grass tile: two close greens, a few sparse flowers. Reused across the land. */
+/** Clean grass tile: unified pixel texture with controlled density. Reused across the land. */
 export function makeGrassTexture(size: number): HTMLCanvasElement {
   const cv = document.createElement('canvas')
   cv.width = size; cv.height = size
   const c = cv.getContext('2d')!
-  // flat base
-  c.fillStyle = '#85cb62'
+  c.fillStyle = '#84c963'
   c.fillRect(0, 0, size, size)
-  // gentle 2-tone speckle (very subtle, blocky)
   const cell = 6
   for (let y = 0; y < size; y += cell) {
     for (let x = 0; x < size; x += cell) {
-      if (pxHash(x * 0.5, y * 0.5) > 0.78) { c.fillStyle = '#7cc257'; c.fillRect(x, y, cell, cell) }
+      const h = pxHash(x * 0.5, y * 0.5)
+      if (h > 0.84) { c.fillStyle = '#75b955'; c.fillRect(x, y, cell, cell) }
+      else if (h < 0.14) { c.fillStyle = '#93d36c'; c.fillRect(x, y, cell, cell) }
     }
   }
-  // a few simple flowers, well spaced
-  const petals = ['#f4d24a', '#ffffff']
-  for (let i = 0; i < (size * size) / 2600; i++) {
-    const x = 6 + Math.floor(pxHash(i + 50, 7) * (size - 12))
-    const y = 6 + Math.floor(pxHash(i + 50, 17) * (size - 12))
-    c.fillStyle = petals[pxHash(i, 23) > 0.5 ? 0 : 1]
-    c.fillRect(x - 2, y, 2, 2); c.fillRect(x + 2, y, 2, 2); c.fillRect(x, y - 2, 2, 2); c.fillRect(x, y + 2, 2, 2)
-    c.fillStyle = '#e8a93a'; c.fillRect(x, y, 2, 2)
+  for (let i = 0; i < (size * size) / 1400; i++) {
+    const x = 4 + Math.floor(pxHash(i + 9, 19) * (size - 8))
+    const y = 4 + Math.floor(pxHash(i + 21, 31) * (size - 8))
+    c.fillStyle = pxHash(i, 41) > 0.55 ? '#5ea446' : '#a6dc79'
+    c.fillRect(x, y, 2, 8)
+    c.fillRect(x - 2, y + 4, 6, 2)
+  }
+  const petals = ['#f2cf48', '#fff7dc', '#f09aa3']
+  for (let i = 0; i < (size * size) / 3600; i++) {
+    const x = 8 + Math.floor(pxHash(i + 50, 7) * (size - 16))
+    const y = 8 + Math.floor(pxHash(i + 50, 17) * (size - 16))
+    c.fillStyle = petals[Math.floor(pxHash(i, 23) * petals.length)]
+    c.fillRect(x - 2, y, 2, 2)
+    c.fillRect(x + 2, y, 2, 2)
+    c.fillRect(x, y - 2, 2, 2)
+    c.fillRect(x, y + 2, 2, 2)
+    c.fillStyle = '#d99031'
+    c.fillRect(x, y, 2, 2)
   }
   return cv
 }
