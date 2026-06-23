@@ -21,6 +21,8 @@
 src/projects/<id>/        ← React(TSX) 작업물
 public/projects/<id>/     ← 정적(HTML/JS) 작업물
 src/projects/registry.ts  ← 갤러리 카드 등록 파일 (공통 인프라)
+plan/<id>/PLAN.md         ← plan
+plan/<id>/PROGRESS.md     ← plan progress
 ```
 
 새 작업물 추가 방법은 `README.md` 참고.
