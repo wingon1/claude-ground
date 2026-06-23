@@ -11,6 +11,7 @@
     { "id": "f_carrot",     "content": "field", "cropId": "carrot" },
     { "id": "f_strawberry", "content": "field", "cropId": "strawberry" },
     { "id": "f_tomato",     "content": "field", "cropId": "tomato" },
+    { "id": "grove",        "content": "forest" },
     { "id": "f_potato",     "content": "field", "cropId": "potato" },
     { "id": "p_chicken", "content": "animal", "building": "chicken_coop" },
     { "id": "p_cow",     "content": "animal", "building": "barn" },

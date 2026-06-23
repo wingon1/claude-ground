@@ -878,7 +878,7 @@ export class Game {
     this.drawSea(ctx)
     this.drawLand(ctx)
     for (const pen of this.layout.pens) {
-      if (pen.content === 'home') continue // starting region has no fence
+      if (pen.content === 'home' || pen.content === 'forest') continue // home + grove have no fence
       ctx.fillStyle = 'rgba(60,120,40,0.10)'
       ctx.fillRect(pen.interior.x, pen.interior.y, pen.interior.w, pen.interior.h)
       drawFence(ctx, pen.rect, World.gate)

@@ -472,35 +472,29 @@ function pxHash(x: number, y: number): number {
   return n - Math.floor(n)
 }
 
-/** Lush seamless-ish grass tile reused across the whole land. */
+/** Clean grass tile: two close greens, a few sparse flowers. Reused across the land. */
 export function makeGrassTexture(size: number): HTMLCanvasElement {
   const cv = document.createElement('canvas')
   cv.width = size; cv.height = size
   const c = cv.getContext('2d')!
-  const cell = 4
-  const tones = ['#7ec25a', '#88cd63', '#75b853', '#8ed268']
+  // flat base
+  c.fillStyle = '#85cb62'
+  c.fillRect(0, 0, size, size)
+  // gentle 2-tone speckle (very subtle, blocky)
+  const cell = 6
   for (let y = 0; y < size; y += cell) {
     for (let x = 0; x < size; x += cell) {
-      const n = pxHash(x * 0.7, y * 0.7)
-      c.fillStyle = tones[Math.floor(n * tones.length) % tones.length]
-      c.fillRect(x, y, cell, cell)
+      if (pxHash(x * 0.5, y * 0.5) > 0.78) { c.fillStyle = '#7cc257'; c.fillRect(x, y, cell, cell) }
     }
   }
-  // soft grass blades / clumps
-  for (let i = 0; i < (size * size) / 130; i++) {
-    const x = Math.floor(pxHash(i, 3) * size)
-    const y = Math.floor(pxHash(i, 11) * size)
-    c.fillStyle = pxHash(i, 5) > 0.5 ? '#5fa347' : '#6cb24f'
-    c.fillRect(x, y, 2, 3); c.fillRect(x + 2, y - 1, 2, 3)
-  }
-  // scattered little flowers
-  const petals = ['#f7d65a', '#f29ad0', '#fdfdf6']
-  for (let i = 0; i < (size * size) / 1100; i++) {
-    const x = Math.floor(pxHash(i + 50, 7) * size)
-    const y = Math.floor(pxHash(i + 50, 17) * size)
-    c.fillStyle = petals[Math.floor(pxHash(i, 23) * petals.length) % petals.length]
+  // a few simple flowers, well spaced
+  const petals = ['#f4d24a', '#ffffff']
+  for (let i = 0; i < (size * size) / 2600; i++) {
+    const x = 6 + Math.floor(pxHash(i + 50, 7) * (size - 12))
+    const y = 6 + Math.floor(pxHash(i + 50, 17) * (size - 12))
+    c.fillStyle = petals[pxHash(i, 23) > 0.5 ? 0 : 1]
     c.fillRect(x - 2, y, 2, 2); c.fillRect(x + 2, y, 2, 2); c.fillRect(x, y - 2, 2, 2); c.fillRect(x, y + 2, 2, 2)
-    c.fillStyle = '#f6c343'; c.fillRect(x, y, 2, 2)
+    c.fillStyle = '#e8a93a'; c.fillRect(x, y, 2, 2)
   }
   return cv
 }

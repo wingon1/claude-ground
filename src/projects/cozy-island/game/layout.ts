@@ -35,11 +35,6 @@ function rectInside(px: number, py: number, r: Rect): boolean {
   return px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h
 }
 
-function pxHash(x: number, y: number): number {
-  const n = Math.sin(x * 12.9898 + y * 4.1414) * 43758.5453
-  return n - Math.floor(n)
-}
-
 /** Cells for n pens: index 0 = home (0,0); the rest spiral CLOCKWISE from below. */
 function spiralCells(n: number): { col: number; row: number }[] {
   const cells: { col: number; row: number }[] = [{ col: 0, row: 0 }]
@@ -106,6 +101,8 @@ export function buildLayout(): Layout {
 
   const buildingPos: Record<string, Vec> = {}
   const cropAnchors: Record<string, Vec[]> = {}
+  // All nature lives in the fenceless grove above the tent — everywhere else is clean grass.
+  const resourceSpots: { type: string; x: number; y: number }[] = []
 
   for (const pen of pens) {
     const c = center(pen.rect)
@@ -127,22 +124,18 @@ export function buildLayout(): Layout {
       }
       cropAnchors[pen.cropId] = a
     }
-  }
-
-  // Scatter nature (trees/rocks/bushes) on the OPEN land between/around the pens.
-  const resourceSpots: { type: string; x: number; y: number }[] = []
-  const insideAnyPen = (x: number, y: number) => pens.some((p) =>
-    x >= p.rect.x - 12 && x <= p.rect.x + p.rect.w + 12 && y >= p.rect.y - 12 && y <= p.rect.y + p.rect.h + 12)
-  const step = 50
-  for (let gy = land.y + 26; gy < land.y + land.h - 10; gy += step) {
-    for (let gx = land.x + 26; gx < land.x + land.w - 10; gx += step) {
-      if (pxHash(gx * 1.3, gy * 1.7) > 0.52) continue
-      const jx = gx + (pxHash(gx, gy) - 0.5) * step * 0.6
-      const jy = gy + (pxHash(gx + 5, gy + 9) - 0.5) * step * 0.6
-      if (insideAnyPen(jx, jy)) continue
-      const t = pxHash(gx + 30, gy - 12)
-      const type = t < 0.34 ? 'tree_small' : t < 0.6 ? 'tree_big' : t < 0.76 ? 'rock_small' : t < 0.88 ? 'rock_big' : 'bush'
-      resourceSpots.push({ type, x: jx, y: jy })
+    if (pen.content === 'forest') {
+      const ix = pen.interior.x, iy = pen.interior.y, iw = pen.interior.w
+      // tidy grove: two rows of trees, a couple rocks and bushes for stone/fiber
+      const trees = ['tree_big', 'tree_small', 'tree_big', 'tree_small', 'tree_big', 'tree_small']
+      for (let k = 0; k < 6; k++) {
+        const col = k % 3, row = Math.floor(k / 3)
+        resourceSpots.push({ type: trees[k], x: ix + 34 + col * (iw - 68) / 2, y: iy + 40 + row * 52 })
+      }
+      resourceSpots.push({ type: 'rock_big', x: ix + 34, y: iy + pen.interior.h - 16 })
+      resourceSpots.push({ type: 'rock_small', x: ix + 78, y: iy + pen.interior.h - 14 })
+      resourceSpots.push({ type: 'bush', x: ix + iw - 30, y: iy + pen.interior.h - 16 })
+      resourceSpots.push({ type: 'bush', x: ix + iw - 70, y: iy + pen.interior.h - 12 })
     }
   }
 
@@ -155,13 +148,13 @@ export function buildLayout(): Layout {
 export function layoutWalkable(L: Layout, x: number, y: number): boolean {
   if (x < L.land.x + 4 || x > L.land.x + L.land.w - 4 || y < L.land.y + 4 || y > L.land.y + L.land.h - 4) return false
   for (const pen of L.pens) {
-    if (pen.content === 'home') { if (rectInside(x, y, pen.rect)) return true; continue }
+    if (pen.content === 'home' || pen.content === 'forest') { if (rectInside(x, y, pen.rect)) return true; continue }
     if (rectInside(x, y, pen.interior)) return true
     for (const g of pen.gates) if (rectInside(x, y, g)) return true
   }
-  // fence band of a non-home pen blocks; everything else is open grass
+  // fence band of a fenced pen blocks; the home, the grove and all open land are walkable
   for (const pen of L.pens) {
-    if (pen.content === 'home') continue
+    if (pen.content === 'home' || pen.content === 'forest') continue
     if (rectInside(x, y, pen.rect)) return false
   }
   return true
