@@ -16,6 +16,7 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
     ui.phase === 'build' ||
     ui.phase === 'cook' ||
     ui.phase === 'seed' ||
+    ui.phase === 'order' ||
     ui.phase === 'sleepConfirm' ||
     invOpen ||
     objectiveOpen
@@ -102,6 +103,7 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
             else if (ui.contextActionId === 'seed') game.openSeedSelect()
             else if (ui.contextActionId === 'shop') game.openShop()
             else if (ui.contextActionId === 'cook') game.openCooking()
+            else if (ui.contextActionId === 'order') game.openOrder()
           }}
         >
           {ui.contextAction}
@@ -139,6 +141,7 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
       {ui.phase === 'build' && <BuildModal game={game} ui={ui} />}
       {ui.phase === 'cook' && <CookingModal game={game} ui={ui} />}
       {ui.phase === 'seed' && <SeedModal game={game} ui={ui} />}
+      {ui.phase === 'order' && <OrderModal game={game} ui={ui} />}
       {ui.phase === 'sleepConfirm' && <SleepConfirm game={game} ui={ui} />}
       {invOpen && ui.phase === 'playing' && (
         <InventoryModal ui={ui} sel={invSel} setSel={setInvSel} onClose={() => setInvOpen(false)} />
@@ -200,12 +203,20 @@ function ObjectiveModal({
       <div className="tdv-modal" style={{ width: 'min(420px, 92vw)' }} onClick={(e) => e.stopPropagation()}>
         <h2>🎯 목표</h2>
         <div className="sub">현재 목표를 확인하고 상단에 다시 고정할 수 있어요.</div>
-        {ui.objective ? (
+        {ui.objectives.length > 0 ? (
           <div className="tdv-objective-list">
-            <button className="tdv-objective-row" onClick={onPin}>
-              <ObjectiveCard objective={ui.objective} />
-              <span className="pin">상단 고정</span>
-            </button>
+            {ui.objectives.map((objective) => (
+              <button
+                className={`tdv-objective-row ${objective.current ? 'current' : ''}`}
+                key={objective.id}
+                onClick={onPin}
+              >
+                <ObjectiveCard objective={objective} />
+                <span className={objective.claimed ? 'done' : objective.completed ? 'ready' : 'pin'}>
+                  {objective.claimed ? '보상 완료' : objective.completed ? `보상 ${objective.rewardText}` : `보상 ${objective.rewardText}`}
+                </span>
+              </button>
+            ))}
           </div>
         ) : (
           <div className="sub">진행 중인 목표가 없어요.</div>
@@ -486,6 +497,43 @@ function SeedModal({ game, ui }: { game: Game; ui: UISnapshot }) {
         )}
         <div className="tdv-row">
           <button className="tdv-btn ghost" onClick={() => game.closeModal()}>닫기</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function OrderModal({ game, ui }: { game: Game; ui: UISnapshot }) {
+  const order = ui.order
+  return (
+    <div className="tdv-modal-bg" onClick={() => game.closeOrder()}>
+      <div className="tdv-modal" style={{ width: 'min(420px, 92vw)' }} onClick={(e) => e.stopPropagation()}>
+        <h2>🧾 오늘의 주문</h2>
+        <div className="sub">상점 주인이 매일 하나씩 필요한 요리를 주문합니다.</div>
+        {!order && (
+          <div className="tdv-order-empty">
+            첫 빵을 만들어 보면 주문을 받을 수 있어요.
+          </div>
+        )}
+        {order && (
+          <div className={`tdv-order-card ${order.completed ? 'done' : ''}`}>
+            <img src={iconURL(order.sprite, order.color)} alt={order.itemName} />
+            <div className="info">
+              <div className="nm">{order.itemName} ×{order.qty}</div>
+              <div className="ds">{order.hint}</div>
+              <div className="mats">
+                <span className={`mat${order.have >= order.qty ? '' : ' miss'}`}>보유 {order.have}/{order.qty}</span>
+                <span className="mat">보상 {order.rewardGold}G</span>
+                {order.completed && <span className="mat">완료</span>}
+              </div>
+            </div>
+            <button className="tdv-btn gold sm" disabled={!order.canComplete} onClick={() => game.completeOrder()}>
+              납품
+            </button>
+          </div>
+        )}
+        <div className="tdv-row">
+          <button className="tdv-btn ghost" onClick={() => game.closeOrder()}>닫기</button>
         </div>
       </div>
     </div>

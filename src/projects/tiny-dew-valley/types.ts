@@ -219,6 +219,8 @@ export interface ShopEntry {
   buyPrice?: number
   /** Buys one animal for an unlocked animal farm. Price may scale by count. */
   animalFarmId?: string
+  /** Buys one level of a farm production upgrade. Price may scale by level. */
+  animalUpgradeId?: string
   /** Whether the entry is a one-time tool upgrade. */
   upgrade?: 'copper_can' | 'backpack'
   /** Entry is visible only after this flag is set. */

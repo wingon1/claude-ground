@@ -4,6 +4,7 @@ import { cropItemId, getItem } from '../data/items'
 import { SHOP_CATALOG } from '../data/shopCatalog'
 import { BUILD_OPTIONS } from '../data/buildOptions'
 import { ANIMAL_FARMS, ANIMAL_FARM_MAX_ANIMALS, type AnimalFarmDef } from '../data/animalFarms'
+import { ANIMAL_UPGRADES, type AnimalUpgradeDef } from '../data/animalUpgrades'
 import {
   DEFAULT_FIELD_CROP,
   FIELD_PLOTS,
@@ -44,6 +45,54 @@ const STAGE_SECS_PER_DAY = 22 // real seconds per crop "grow day"
 const COOK_BATCH_MAX = 20
 const COOKING_FIRE_BUILT_FLAG = 'build:cookingFire'
 const COOKING_FIRE_BUILD_COST = [{ itemId: 'wood', qty: 5 }]
+const ORDER_NPC = { x: LOCATIONS.storeStand.x, y: LOCATIONS.storeStand.y }
+
+const TUTORIAL_REWARDS = [
+  {
+    id: 'wood5',
+    title: '나무 5개 모으기',
+    detail: '화로를 만들 첫 재료를 모읍니다.',
+    rewardGold: 20,
+    rewardItems: [] as { itemId: string; qty: number }[],
+    rewardText: '20G',
+  },
+  {
+    id: 'build_fire',
+    title: '화로 제작하기',
+    detail: '건설탭에서 나무 5개로 화로를 만듭니다.',
+    rewardGold: 0,
+    rewardItems: [{ itemId: 'crop_wheat_normal', qty: 2 }],
+    rewardText: '밀 2개',
+  },
+  {
+    id: 'first_bread',
+    title: '첫 빵 굽기',
+    detail: '밀가루로 첫 빵을 만들어 판매 루프를 시작합니다.',
+    rewardGold: 80,
+    rewardItems: [] as { itemId: string; qty: number }[],
+    rewardText: '80G',
+  },
+  {
+    id: 'first_toast',
+    title: '첫 토스트 만들기',
+    detail: '빵과 달걀을 조합해 닭장 이후의 핵심 상품을 만듭니다.',
+    rewardGold: 150,
+    rewardItems: [] as { itemId: string; qty: number }[],
+    rewardText: '150G',
+  },
+]
+
+const ORDER_ITEM_POOL = [
+  { itemId: 'bread', minQty: 2, maxQty: 4, hint: '빵 주문은 닭장 자금을 모으기 좋아요.' },
+  { itemId: 'toast', minQty: 1, maxQty: 3, hint: '토스트 수익으로 딸기 재배권을 노려보세요.' },
+  { itemId: 'strawberry_jam', minQty: 1, maxQty: 3, hint: '딸기쨈은 다음 목장 확장의 징검다리예요.' },
+  { itemId: 'strawberry_milk', minQty: 1, maxQty: 2, hint: '우유 라인을 돌리면 고급 디저트가 빨라져요.' },
+  { itemId: 'strawberry_jam_toast', minQty: 1, maxQty: 2, hint: '딸기쨈 토스트 다음은 토마토와 피자예요.' },
+  { itemId: 'pizza', minQty: 1, maxQty: 2, hint: '피자 수익으로 옥수수 후반 라인을 열어보세요.' },
+  { itemId: 'butter_corn', minQty: 1, maxQty: 2, hint: '옥수수는 후반 요리의 좋은 보조 재료예요.' },
+  { itemId: 'corn_pizza', minQty: 1, maxQty: 2, hint: '콘치즈 피자는 후반 주문 보상이 큽니다.' },
+  { itemId: 'bacon_toast', minQty: 1, maxQty: 2, hint: '돼지농장까지 열면 베이컨 주문도 준비해보세요.' },
+]
 
 const LEGACY_ID_MAP: Record<string, string> = {
   parsnip: 'tomato',
@@ -66,7 +115,7 @@ const COST = { chop: 1, harvest: 1, plant: 1 }
 const START_MAX_STAMINA = 40
 
 // ---------- UI snapshot ----------
-export type UIPhase = 'title' | 'playing' | 'shop' | 'build' | 'cook' | 'seed' | 'sleepConfirm'
+export type UIPhase = 'title' | 'playing' | 'shop' | 'build' | 'cook' | 'seed' | 'order' | 'sleepConfirm'
 
 export interface ToastMsg {
   id: number
@@ -92,6 +141,7 @@ export interface ShopBuyView {
   sprite: string
   color?: string
   desc: string
+  owned?: boolean
 }
 export interface CostItemView {
   itemId: string
@@ -189,6 +239,26 @@ export interface ObjectiveView {
   progress: number
   max: number
 }
+export interface ObjectiveTaskView extends ObjectiveView {
+  id: string
+  rewardText: string | null
+  completed: boolean
+  claimed: boolean
+  current: boolean
+}
+export interface OrderView {
+  day: number
+  itemId: string
+  itemName: string
+  sprite: string
+  color?: string
+  qty: number
+  have: number
+  rewardGold: number
+  hint: string
+  completed: boolean
+  canComplete: boolean
+}
 export interface UISnapshot {
   phase: UIPhase
   day: number
@@ -210,8 +280,10 @@ export interface UISnapshot {
   cookQueue: CookJobView[]
   cookingFire: CookingFireView
   objective: ObjectiveView | null
+  objectives: ObjectiveTaskView[]
+  order: OrderView | null
   contextAction: string | null
-  contextActionId: 'sleep' | 'animal' | 'seed' | 'shop' | 'cook' | null
+  contextActionId: 'sleep' | 'animal' | 'seed' | 'shop' | 'cook' | 'order' | null
   nearBed: boolean
   nearStore: boolean
   nearBuild: boolean
@@ -273,6 +345,7 @@ export class Game {
   private itemIconCache = new Map<string, HTMLCanvasElement>()
   private jumpT = 0
   private workAnimT = 0
+  private awardingTutorialReward = false
 
   private listeners = new Set<() => void>()
   private snap: UISnapshot
@@ -787,6 +860,7 @@ export class Game {
     }
     const added = qty - left
     if (added > 0) this.markItemSeen(itemId)
+    if (added > 0 && !this.awardingTutorialReward) this.checkTutorialRewards()
     if (left > 0) this.toast('가방이 가득 차 일부를 잃었어요.', 'bad')
     return added
   }
@@ -861,6 +935,53 @@ export class Game {
       this.phase = 'playing'
       this.emit()
     }
+  }
+
+  openOrder() {
+    if (this.phase !== 'playing') return
+    if (!this.nearOrderNpc()) {
+      this.toast('상점 주인 가까이에서만 주문을 볼 수 있어요.', 'bad')
+      this.audio.sfx('reject')
+      return
+    }
+    this.ensureDailyOrder()
+    this.phase = 'order'
+    this.target = null
+    this.audio.resume()
+    this.audio.sfx('select')
+    this.emit()
+  }
+
+  closeOrder() {
+    if (this.phase === 'order') {
+      this.phase = 'playing'
+      this.emit()
+    }
+  }
+
+  completeOrder() {
+    if (this.phase !== 'order') return
+    const order = this.currentOrder()
+    if (!order) {
+      this.toast('아직 맡길 주문이 없어요.', 'info')
+      return
+    }
+    if (order.completed) {
+      this.toast('오늘 주문은 이미 완료했어요.', 'info')
+      return
+    }
+    if (this.countItem(order.itemId) < order.qty) {
+      this.toast('주문 수량이 부족해요.', 'bad')
+      this.audio.sfx('reject')
+      return
+    }
+    this.removeItem(order.itemId, order.qty)
+    this.state.gold += order.rewardGold
+    this.state.flags[this.orderCompletedKey(this.state.day)] = true
+    this.toast(`주문 완료! ${order.rewardGold}G`, 'good')
+    this.audio.sfx('coin')
+    this.autosave()
+    this.emit()
   }
 
   private updateCooking(dt: number) {
@@ -945,7 +1066,7 @@ export class Game {
   }
 
   closeModal() {
-    if (this.phase === 'shop' || this.phase === 'build' || this.phase === 'cook' || this.phase === 'seed') {
+    if (this.phase === 'shop' || this.phase === 'build' || this.phase === 'cook' || this.phase === 'seed' || this.phase === 'order') {
       this.phase = 'playing'
       this.emit()
     }
@@ -1117,6 +1238,7 @@ export class Game {
     stampCookingFire(this.state.tiles, true)
     this.toast('화로를 제작했어요! 이제 요리를 시작할 수 있어요.', 'good')
     this.audio.sfx('sparkle')
+    this.checkTutorialRewards()
     this.autosave()
     this.emit()
   }
@@ -1156,6 +1278,10 @@ export class Game {
     if (!this.flagEnabled(entry.requiresFlag)) return
     if (entry.animalFarmId) {
       this.buyAnimal(entry.animalFarmId)
+      return
+    }
+    if (entry.animalUpgradeId) {
+      this.buyAnimalUpgrade(entry.animalUpgradeId)
       return
     }
     if (entry.grantsFlag && this.flagEnabled(entry.grantsFlag)) {
@@ -1214,6 +1340,31 @@ export class Game {
     this.emit()
   }
 
+  private buyAnimalUpgrade(upgradeId: string) {
+    const upgrade = ANIMAL_UPGRADES.find((u) => u.id === upgradeId)
+    if (!upgrade) return
+    const farm = ANIMAL_FARMS.find((f) => f.id === upgrade.farmId)
+    if (!farm || !this.animalFarmOwned(farm)) return
+    const level = this.animalUpgradeLevel(upgrade)
+    if (level >= upgrade.maxLevel) {
+      this.toast('이미 최대 레벨이에요.', 'info')
+      return
+    }
+    const price = this.animalUpgradePrice(upgrade)
+    if (this.state.gold < price) {
+      this.toast('골드가 부족해요.', 'bad')
+      this.audio.sfx('reject')
+      return
+    }
+    this.state.gold -= price
+    this.state.flags[this.animalUpgradeKey(upgrade.id)] = level + 1
+    const def = getItem(upgrade.itemId)
+    this.toast(`${def?.name ?? '업그레이드'} Lv.${level + 1}!`, 'good')
+    this.audio.sfx('sparkle')
+    this.autosave()
+    this.emit()
+  }
+
   sellItem(index: number, all: boolean) {
     const slot = this.state.inventory[index]
     if (!slot || !slot.itemId) return
@@ -1252,6 +1403,7 @@ export class Game {
     this.exhaustedNotified = false
     s.day++
     s.timeMinutes = 360
+    this.ensureDailyOrder()
     s.player.x = LOCATIONS.spawn.x * T + T / 2
     s.player.y = LOCATIONS.spawn.y * T + T
     this.target = null
@@ -1277,6 +1429,11 @@ export class Game {
 
   private nearStore(): boolean {
     return this.nearTileMetadata('storeCounter') || this.nearTileMetadata('storeInterior')
+  }
+
+  private nearOrderNpc(): boolean {
+    const p = this.playerTile()
+    return Math.abs(p.x - ORDER_NPC.x) <= 1 && Math.abs(p.y - ORDER_NPC.y) <= 1
   }
 
   private nearBuild(): boolean {
@@ -1421,6 +1578,130 @@ export class Game {
 
   private recipeUnlocked(recipe: typeof RECIPES[number]): boolean {
     return recipe.inputs.every((input) => this.itemSeen(input.itemId))
+  }
+
+  private tutorialRewardKey(id: string): string {
+    return `tutorialReward:${id}`
+  }
+
+  private tutorialRewardComplete(id: string): boolean {
+    if (id === 'wood5') return this.countItem('wood') >= 5 || this.cookingFireBuilt()
+    if (id === 'build_fire') return this.cookingFireBuilt()
+    if (id === 'first_bread') return this.itemSeen('bread')
+    if (id === 'first_toast') return this.itemSeen('toast')
+    return false
+  }
+
+  private checkTutorialRewards() {
+    if (!this.state || this.awardingTutorialReward) return
+    this.awardingTutorialReward = true
+    try {
+      for (const reward of TUTORIAL_REWARDS) {
+        const key = this.tutorialRewardKey(reward.id)
+        if (this.state.flags[key] === true || !this.tutorialRewardComplete(reward.id)) continue
+        this.state.flags[key] = true
+        if (reward.rewardGold > 0) this.state.gold += reward.rewardGold
+        for (const item of reward.rewardItems) this.giveItem(item.itemId, item.qty)
+        this.toast(`${reward.title} 보상: ${reward.rewardText}`, 'good')
+      }
+    } finally {
+      this.awardingTutorialReward = false
+    }
+  }
+
+  private objectiveTasks(current: ObjectiveView | null = this.currentObjective()): ObjectiveTaskView[] {
+    const currentKey = current ? `${current.title}:${current.detail}` : null
+    return TUTORIAL_REWARDS.map((reward) => {
+      const claimed = this.state.flags[this.tutorialRewardKey(reward.id)] === true
+      const completed = claimed || this.tutorialRewardComplete(reward.id)
+      const progress = reward.id === 'wood5'
+        ? completed ? 5 : Math.min(5, this.countItem('wood'))
+        : completed ? 1 : 0
+      const max = reward.id === 'wood5' ? 5 : 1
+      const taskKey = `${reward.title}:${reward.detail}`
+      return {
+        id: reward.id,
+        title: reward.title,
+        detail: reward.detail,
+        progress,
+        max,
+        rewardText: reward.rewardText,
+        completed,
+        claimed,
+        current: taskKey === currentKey,
+      }
+    })
+  }
+
+  private orderDayKey(): string {
+    return 'dailyOrder:day'
+  }
+
+  private orderItemKey(): string {
+    return 'dailyOrder:itemId'
+  }
+
+  private orderQtyKey(): string {
+    return 'dailyOrder:qty'
+  }
+
+  private orderRewardKey(): string {
+    return 'dailyOrder:rewardGold'
+  }
+
+  private orderCompletedKey(day: number): string {
+    return `dailyOrder:completed:${day}`
+  }
+
+  private availableOrderPool() {
+    return ORDER_ITEM_POOL.filter((order) => this.itemSeen(order.itemId))
+  }
+
+  private ensureDailyOrder() {
+    if (this.state.flags[this.orderDayKey()] === this.state.day) return
+    const pool = this.availableOrderPool()
+    if (pool.length === 0) {
+      this.state.flags[this.orderDayKey()] = this.state.day
+      delete this.state.flags[this.orderItemKey()]
+      delete this.state.flags[this.orderQtyKey()]
+      delete this.state.flags[this.orderRewardKey()]
+      return
+    }
+    const pick = pool[(this.state.day * 7 + pool.length * 3) % pool.length]
+    const span = pick.maxQty - pick.minQty + 1
+    const qty = pick.minQty + ((this.state.day * 5 + pick.itemId.length) % span)
+    const item = getItem(pick.itemId)
+    const rewardGold = Math.round((item?.sellPrice ?? 10) * qty * 1.35 + 25)
+    this.state.flags[this.orderDayKey()] = this.state.day
+    this.state.flags[this.orderItemKey()] = pick.itemId
+    this.state.flags[this.orderQtyKey()] = qty
+    this.state.flags[this.orderRewardKey()] = rewardGold
+  }
+
+  private currentOrder(): OrderView | null {
+    this.ensureDailyOrder()
+    const itemId = this.state.flags[this.orderItemKey()]
+    const qty = this.state.flags[this.orderQtyKey()]
+    const rewardGold = this.state.flags[this.orderRewardKey()]
+    if (typeof itemId !== 'string' || typeof qty !== 'number' || typeof rewardGold !== 'number') return null
+    const item = getItem(itemId)
+    if (!item) return null
+    const pool = ORDER_ITEM_POOL.find((order) => order.itemId === itemId)
+    const have = this.countItem(itemId)
+    const completed = this.state.flags[this.orderCompletedKey(this.state.day)] === true
+    return {
+      day: this.state.day,
+      itemId,
+      itemName: item.name,
+      sprite: item.sprite,
+      color: item.cropId ? CROPS[item.cropId].color : undefined,
+      qty,
+      have,
+      rewardGold,
+      hint: pool?.hint ?? '주문을 완료하면 다음 생산 목표를 잡기 쉬워요.',
+      completed,
+      canComplete: !completed && have >= qty,
+    }
   }
 
   private catalogPrice(itemId: string): number {
@@ -1672,6 +1953,10 @@ export class Game {
     return `animalDropT:${farmId}`
   }
 
+  private animalUpgradeKey(upgradeId: string): string {
+    return `animalUpgrade:${upgradeId}`
+  }
+
   private animalCount(farm: AnimalFarmDef): number {
     const raw = this.state.flags[this.animalCountKey(farm.id)]
     return typeof raw === 'number'
@@ -1681,6 +1966,36 @@ export class Game {
 
   private animalBuyPrice(farm: AnimalFarmDef): number {
     return farm.animalBasePrice + this.animalCount(farm) * farm.animalPriceStep
+  }
+
+  private animalUpgradeLevel(upgrade: AnimalUpgradeDef): number {
+    const raw = this.state.flags[this.animalUpgradeKey(upgrade.id)]
+    return typeof raw === 'number'
+      ? Math.max(0, Math.min(upgrade.maxLevel, Math.floor(raw)))
+      : 0
+  }
+
+  private animalUpgradePrice(upgrade: AnimalUpgradeDef): number {
+    return upgrade.basePrice + this.animalUpgradeLevel(upgrade) * upgrade.priceStep
+  }
+
+  private farmUpgradeLevel(farm: AnimalFarmDef, kind: AnimalUpgradeDef['kind']): number {
+    const upgrade = ANIMAL_UPGRADES.find((u) => u.farmId === farm.id && u.kind === kind)
+    return upgrade ? this.animalUpgradeLevel(upgrade) : 0
+  }
+
+  private animalDropSeconds(farm: AnimalFarmDef): number {
+    const speedLevel = this.farmUpgradeLevel(farm, 'speed')
+    return Math.max(2, Math.round(farm.dropSeconds * (1 - speedLevel * 0.15) * 10) / 10)
+  }
+
+  private animalProductQty(farm: AnimalFarmDef): number {
+    const yieldLevel = this.farmUpgradeLevel(farm, 'yield')
+    const chance = [0, 0.25, 0.45, 0.65][yieldLevel] ?? 0
+    let qty = farm.productQty
+    if (Math.random() < chance) qty += 1
+    if (yieldLevel >= 3 && Math.random() < 0.15) qty += 1
+    return qty
   }
 
   private groundItemId(t: Tile): string | null {
@@ -1719,7 +2034,7 @@ export class Game {
     for (let i = 0; i < count; i++) {
       const t = candidates[i]
       t.metadata.groundItemId = farm.productItemId
-      t.metadata.groundItemQty = farm.productQty
+      t.metadata.groundItemQty = this.animalProductQty(farm)
       t.metadata.animalDropFarm = farm.id
     }
     return true
@@ -1754,7 +2069,8 @@ export class Game {
       if (this.farmHasGroundDrop(farm)) continue
       const key = this.animalDropKey(farm.id)
       const elapsed = (typeof this.state.flags[key] === 'number' ? this.state.flags[key] : 0) + dt
-      if (elapsed < farm.dropSeconds) {
+      const dropSeconds = this.animalDropSeconds(farm)
+      if (elapsed < dropSeconds) {
         this.state.flags[key] = elapsed
         continue
       }
@@ -2092,6 +2408,7 @@ export class Game {
         if (this.groundItemId(t)) draws.push({ y: ty * T + T, fn: () => this.drawGroundItem(t, S) })
       }
     }
+    draws.push({ y: ORDER_NPC.y * T + T, fn: () => this.drawOrderNpc(S) })
     draws.push({ y: p.y, fn: () => this.drawHuman(this.sprites.farmer, p.x, p.y, p.dir, p.moving, p.exhausted, p.animTime) })
     draws.sort((a, b) => a.y - b.y)
     for (const d of draws) d.fn()
@@ -2170,6 +2487,29 @@ export class Game {
     ctx.fillStyle = '#8f6230'
     ctx.fillRect(x + 4 * S, y + 4 * S, 9 * S, 1 * S)
     ctx.fillRect(x + 4 * S, y + 7 * S, 6 * S, 1 * S)
+  }
+
+  private drawOrderNpc(S: number) {
+    const x = ORDER_NPC.x * T + T / 2
+    const y = ORDER_NPC.y * T + T
+    this.drawHuman(this.sprites.barnaby, x, y, 'down', false, false, 0)
+    const order = this.currentOrder()
+    if (!order || order.completed) return
+    const ctx = this.ctx
+    const sx = this.wx(x - 4)
+    const sy = this.wy(y - 30)
+    ctx.fillStyle = '#fff4c8'
+    ctx.strokeStyle = '#8a5a32'
+    ctx.lineWidth = Math.max(1, S)
+    ctx.beginPath()
+    ctx.arc(sx, sy, 5 * S, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.stroke()
+    ctx.fillStyle = '#a6791f'
+    ctx.font = `${7 * S}px monospace`
+    ctx.textAlign = 'center'
+    ctx.fillText('!', sx, sy + 3 * S)
+    ctx.textAlign = 'left'
   }
 
   private drawAnimalFarms(S: number) {
@@ -2469,6 +2809,8 @@ export class Game {
           canUpgrade: false,
         },
         objective: null,
+        objectives: [],
+        order: null,
         contextAction: null, contextActionId: null, nearBed: false, nearStore: false, nearBuild: false, nearCooking: false, exhausted: false,
         muted: this.audio.muted, musicOn: this.audio.musicOn, hasSave: this.hasSavedGame(),
       }
@@ -2491,14 +2833,22 @@ export class Game {
       if (!this.flagEnabled(e.requiresFlag)) return false
       if (this.isAnimalPermitEntry(e)) return false
       if (e.grantsFlag && this.flagEnabled(e.grantsFlag)) return false
+      if (e.animalUpgradeId) {
+        const upgrade = ANIMAL_UPGRADES.find((u) => u.id === e.animalUpgradeId)
+        if (!upgrade || this.animalUpgradeLevel(upgrade) >= upgrade.maxLevel) return false
+      }
       return true
     }).map((e) => {
       const def = getItem(e.itemId)!
       const farm = e.animalFarmId ? ANIMAL_FARMS.find((f) => f.id === e.animalFarmId) : null
-      const price = farm ? this.animalBuyPrice(farm) : (e.buyPrice ?? 0)
+      const upgrade = e.animalUpgradeId ? ANIMAL_UPGRADES.find((u) => u.id === e.animalUpgradeId) : null
+      const price = farm ? this.animalBuyPrice(farm) : upgrade ? this.animalUpgradePrice(upgrade) : (e.buyPrice ?? 0)
       const animalCount = farm ? this.animalCount(farm) : 0
       const ownedText = farm
-        ? ` 보유 ${animalCount}/${ANIMAL_FARM_MAX_ANIMALS}마리 · ${farm.dropSeconds}초마다 생산`
+        ? ` 보유 ${animalCount}/${ANIMAL_FARM_MAX_ANIMALS}마리 · ${this.animalDropSeconds(farm)}초마다 생산`
+        : ''
+      const upgradeText = upgrade
+        ? ` ${upgrade.levelDesc} · Lv.${this.animalUpgradeLevel(upgrade)}/${upgrade.maxLevel}`
         : ''
       return {
         itemId: e.itemId,
@@ -2507,7 +2857,8 @@ export class Game {
         affordable: s.gold >= price && (!farm || animalCount < ANIMAL_FARM_MAX_ANIMALS),
         sprite: def.sprite,
         color: def.cropId ? CROPS[def.cropId].color : undefined,
-        desc: `${def.description}${ownedText}`,
+        desc: `${def.description}${ownedText}${upgradeText}`,
+        owned: !!upgrade && this.animalUpgradeLevel(upgrade) >= upgrade.maxLevel,
       }
     })
     const buildPermits: BuildPermitView[] = SHOP_CATALOG.filter((e) =>
@@ -2683,6 +3034,7 @@ export class Game {
         mystery: true,
       })
     }
+    const objective = this.currentObjective()
     let contextAction: string | null = null
     let contextActionId: UISnapshot['contextActionId'] = null
     if (this.phase === 'playing') {
@@ -2696,6 +3048,9 @@ export class Game {
       } else if (animalFarm) {
         contextAction = null
         contextActionId = null
+      } else if (this.nearOrderNpc()) {
+        contextAction = '주문'
+        contextActionId = 'order'
       } else if (this.nearStore()) {
         contextAction = '상점'
         contextActionId = 'shop'
@@ -2724,7 +3079,9 @@ export class Game {
       cookRecipes,
       cookQueue,
       cookingFire,
-      objective: this.currentObjective(),
+      objective,
+      objectives: this.objectiveTasks(objective),
+      order: this.currentOrder(),
       contextAction,
       contextActionId,
       nearBed: this.nearBed(),

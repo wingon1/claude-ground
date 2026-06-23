@@ -5,6 +5,7 @@ import {
   PIG_UNLOCK_FLAG,
   cropUnlockFlag,
 } from './unlocks'
+import { ANIMAL_UPGRADES } from './animalUpgrades'
 
 // Barnaby's General Store now sells permanent production unlocks first.
 // Animal farm ownership creates fenced farms beside the farmhouse.
@@ -18,4 +19,15 @@ export const SHOP_CATALOG: ShopEntry[] = [
   { itemId: 'seed_corn', buyPrice: 2200, grantsFlag: cropUnlockFlag('corn'), requiresFlag: 'seen:item:pizza' },
   { itemId: 'permit_pig', buyPrice: 2600, grantsFlag: PIG_UNLOCK_FLAG, requiresFlag: DAIRY_UNLOCK_FLAG },
   { itemId: 'animal_pig', buyPrice: 480, animalFarmId: 'pig', requiresFlag: PIG_UNLOCK_FLAG },
+  ...ANIMAL_UPGRADES.map((upgrade) => ({
+    itemId: upgrade.itemId,
+    buyPrice: upgrade.basePrice,
+    animalUpgradeId: upgrade.id,
+    requiresFlag:
+      upgrade.farmId === 'chicken'
+        ? CHICKEN_UNLOCK_FLAG
+        : upgrade.farmId === 'cow'
+          ? DAIRY_UNLOCK_FLAG
+          : PIG_UNLOCK_FLAG,
+  })),
 ]
