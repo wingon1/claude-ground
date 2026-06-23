@@ -6,6 +6,8 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [invOpen, setInvOpen] = useState(false)
   const [invSel, setInvSel] = useState<number | null>(null)
+  const [objectiveOpen, setObjectiveOpen] = useState(false)
+  const [hiddenObjectiveKey, setHiddenObjectiveKey] = useState<string | null>(null)
 
   if (ui.phase === 'title') return <TitleScreen game={game} ui={ui} />
 
@@ -15,8 +17,11 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
     ui.phase === 'cook' ||
     ui.phase === 'seed' ||
     ui.phase === 'sleepConfirm' ||
-    invOpen
+    invOpen ||
+    objectiveOpen
   const hasContextAction = ui.contextActionId != null
+  const objectiveKey = ui.objective ? `${ui.objective.title}:${ui.objective.detail}` : null
+  const objectivePinned = !!ui.objective && hiddenObjectiveKey !== objectiveKey
 
   return (
     <>
@@ -47,6 +52,14 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
       </div>
 
       {ui.exhausted && <div className="tdv-exhaust">지쳤어요 — 침대에서 잠을 자요</div>}
+
+      {!modalOpen && objectivePinned && ui.objective && (
+        <ObjectiveCard
+          objective={ui.objective}
+          pinned
+          onClose={() => setHiddenObjectiveKey(objectiveKey)}
+        />
+      )}
 
       {/* Toasts */}
       <div className="tdv-toasts">
@@ -87,6 +100,8 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
             if (ui.contextActionId === 'sleep') game.requestSleep()
             else if (ui.contextActionId === 'animal') game.collectAnimalProduct()
             else if (ui.contextActionId === 'seed') game.openSeedSelect()
+            else if (ui.contextActionId === 'shop') game.openShop()
+            else if (ui.contextActionId === 'cook') game.openCooking()
           }}
         >
           {ui.contextAction}
@@ -103,15 +118,6 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
         </button>
         <button
           className="tdv-navbtn"
-          disabled={!ui.nearStore}
-          title={ui.nearStore ? '상점 열기' : '잡화점 가까이에서 활성화돼요'}
-          onClick={() => { game.openShop(); setMenuOpen(false) }}
-        >
-          <span>🛒</span>
-          <small>상점</small>
-        </button>
-        <button
-          className="tdv-navbtn"
           title="건설 열기"
           onClick={() => { game.openBuild(); setMenuOpen(false) }}
         >
@@ -120,16 +126,11 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
         </button>
         <button
           className="tdv-navbtn"
-          disabled={!ui.nearCooking}
-          title={ui.nearCooking ? '요리 열기' : '요리 화덕 가까이에서 활성화돼요'}
-          onClick={() => { game.openCooking(); setMenuOpen(false) }}
+          title="목표 보기"
+          onClick={() => { setObjectiveOpen(true); setMenuOpen(false) }}
         >
-          <span>🍳</span>
-          <small>요리</small>
-        </button>
-        <button className="tdv-navbtn" onClick={() => setMenuOpen((v) => !v)}>
-          <span>☰</span>
-          <small>메뉴</small>
+          <span>🎯</span>
+          <small>목표</small>
         </button>
       </nav>
 
@@ -142,7 +143,78 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
       {invOpen && ui.phase === 'playing' && (
         <InventoryModal ui={ui} sel={invSel} setSel={setInvSel} onClose={() => setInvOpen(false)} />
       )}
+      {objectiveOpen && ui.phase === 'playing' && (
+        <ObjectiveModal
+          ui={ui}
+          onPin={() => {
+            setHiddenObjectiveKey(null)
+            setObjectiveOpen(false)
+          }}
+          onClose={() => setObjectiveOpen(false)}
+        />
+      )}
     </>
+  )
+}
+
+function objectiveProgress(objective: UISnapshot['objective']) {
+  if (!objective) return 0
+  return Math.min(100, Math.round((objective.progress / Math.max(1, objective.max)) * 100))
+}
+
+function ObjectiveCard({
+  objective,
+  pinned,
+  onClose,
+}: {
+  objective: NonNullable<UISnapshot['objective']>
+  pinned?: boolean
+  onClose?: () => void
+}) {
+  return (
+    <div className={`tdv-objective ${pinned ? 'pinned' : 'inline'}`}>
+      <div className="head">
+        <div className="label">목표</div>
+        {pinned && <button className="close" onClick={onClose} aria-label="목표 숨기기">×</button>}
+      </div>
+      <div className="title">{objective.title}</div>
+      <div className="detail">{objective.detail}</div>
+      <div className="bar">
+        <span style={{ width: `${objectiveProgress(objective)}%` }} />
+      </div>
+    </div>
+  )
+}
+
+function ObjectiveModal({
+  ui,
+  onPin,
+  onClose,
+}: {
+  ui: UISnapshot
+  onPin: () => void
+  onClose: () => void
+}) {
+  return (
+    <div className="tdv-modal-bg" onClick={onClose}>
+      <div className="tdv-modal" style={{ width: 'min(420px, 92vw)' }} onClick={(e) => e.stopPropagation()}>
+        <h2>🎯 목표</h2>
+        <div className="sub">현재 목표를 확인하고 상단에 다시 고정할 수 있어요.</div>
+        {ui.objective ? (
+          <div className="tdv-objective-list">
+            <button className="tdv-objective-row" onClick={onPin}>
+              <ObjectiveCard objective={ui.objective} />
+              <span className="pin">상단 고정</span>
+            </button>
+          </div>
+        ) : (
+          <div className="sub">진행 중인 목표가 없어요.</div>
+        )}
+        <div className="tdv-row">
+          <button className="tdv-btn ghost" onClick={onClose}>닫기</button>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -377,17 +449,6 @@ function BuildModal({ game, ui }: { game: Game; ui: UISnapshot }) {
           <button className="tdv-btn ghost" onClick={() => game.closeModal()}>닫기</button>
         </div>
       </div>
-
-      {ui.objective && (
-        <div className="tdv-objective">
-          <div className="label">목표</div>
-          <div className="title">{ui.objective.title}</div>
-          <div className="detail">{ui.objective.detail}</div>
-          <div className="bar">
-            <span style={{ width: `${Math.min(100, Math.round((ui.objective.progress / ui.objective.max) * 100))}%` }} />
-          </div>
-        </div>
-      )}
     </div>
   )
 }

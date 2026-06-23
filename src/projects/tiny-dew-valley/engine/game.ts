@@ -211,7 +211,7 @@ export interface UISnapshot {
   cookingFire: CookingFireView
   objective: ObjectiveView | null
   contextAction: string | null
-  contextActionId: 'sleep' | 'animal' | 'seed' | null
+  contextActionId: 'sleep' | 'animal' | 'seed' | 'shop' | 'cook' | null
   nearBed: boolean
   nearStore: boolean
   nearBuild: boolean
@@ -1272,7 +1272,7 @@ export class Game {
   private nearBed(): boolean {
     const p = this.playerTile()
     const b = LOCATIONS.bed
-    return Math.abs(p.x - b.x) <= 1 && Math.abs(p.y - b.y) <= 2
+    return Math.abs(p.x - b.x) <= 1 && Math.abs(p.y - b.y) <= 1
   }
 
   private nearStore(): boolean {
@@ -2698,6 +2698,10 @@ export class Game {
         contextActionId = null
       } else if (this.nearStore()) {
         contextAction = '상점'
+        contextActionId = 'shop'
+      } else if (this.nearCooking()) {
+        contextAction = '요리'
+        contextActionId = 'cook'
       }
     }
     return {
