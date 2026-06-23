@@ -2680,40 +2680,38 @@ export class Game {
     }
   }
 
+  // One-handed scythe swing. The tool is held in a single hand and arcs from
+  // raised-back to chopped-forward as `t` (0→1→0) drives the swing.
   private drawWorkPose(x: number, y: number, dir: string, t: number, S: number) {
     const ctx = this.ctx
-    ctx.fillStyle = '#f0c79a'
-    ctx.strokeStyle = '#6e4426'
-    ctx.lineWidth = Math.max(1, Math.round(S))
     const sx = this.wx(x)
     const sy = this.wy(y)
-    if (dir === 'left') {
-      ctx.fillRect(sx - 8 * S, sy + (12 - t * 4) * S, 4 * S, 2 * S)
-      ctx.beginPath()
-      ctx.moveTo(sx - 8 * S, sy + 13 * S)
-      ctx.lineTo(sx - (12 + t * 5) * S, sy + (8 + t * 4) * S)
-      ctx.stroke()
-    } else if (dir === 'right') {
-      ctx.fillRect(sx + 4 * S, sy + (12 - t * 4) * S, 4 * S, 2 * S)
-      ctx.beginPath()
-      ctx.moveTo(sx + 8 * S, sy + 13 * S)
-      ctx.lineTo(sx + (12 + t * 5) * S, sy + (8 + t * 4) * S)
-      ctx.stroke()
-    } else if (dir === 'up') {
-      ctx.fillRect(sx - 6 * S, sy + (10 - t * 3) * S, 4 * S, 2 * S)
-      ctx.fillRect(sx + 2 * S, sy + (10 - t * 3) * S, 4 * S, 2 * S)
-      ctx.beginPath()
-      ctx.moveTo(sx, sy + 12 * S)
-      ctx.lineTo(sx, sy + (5 + t * 5) * S)
-      ctx.stroke()
-    } else {
-      ctx.fillRect(sx - 7 * S, sy + (13 - t * 4) * S, 4 * S, 2 * S)
-      ctx.fillRect(sx + 3 * S, sy + (13 - t * 4) * S, 4 * S, 2 * S)
-      ctx.beginPath()
-      ctx.moveTo(sx, sy + 13 * S)
-      ctx.lineTo(sx, sy + (20 - t * 5) * S)
-      ctx.stroke()
-    }
+    // Hand pivot: the player's right hand, except when facing left it mirrors.
+    const mirror = dir === 'left' ? -1 : 1
+    const hx = sx + mirror * 4 * S
+    const hy = sy + 14 * S
+    const ang = mirror * (-0.5 + t * 2.0) // raise → chop forward
+
+    ctx.save()
+    ctx.translate(hx, hy)
+    ctx.scale(mirror, 1)
+    ctx.rotate(mirror * ang)
+    // Hand gripping the snath.
+    ctx.fillStyle = '#f0c79a'
+    ctx.fillRect(-2 * S, -2 * S, 4 * S, 4 * S)
+    // Wooden snath (handle) pointing up from the hand.
+    ctx.fillStyle = '#9a6a3a'
+    ctx.fillRect(-1 * S, -15 * S, 2 * S, 15 * S)
+    ctx.fillStyle = '#7a5230'
+    ctx.fillRect(-1 * S, -15 * S, 1 * S, 15 * S)
+    // Curved steel blade hooking off the top.
+    ctx.fillStyle = '#cfd3dc'
+    ctx.fillRect(0, -16 * S, 8 * S, 2 * S)
+    ctx.fillStyle = '#eef0f6'
+    ctx.fillRect(0, -16 * S, 8 * S, 1 * S)
+    ctx.fillStyle = '#aeb2bc'
+    ctx.fillRect(7 * S, -16 * S, 2 * S, 4 * S)
+    ctx.restore()
   }
 
   private drawWorkHighlight(S: number) {
