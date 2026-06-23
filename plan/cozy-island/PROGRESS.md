@@ -3,7 +3,7 @@
 > 각 스텝 완료 후: 한 일 / 영향받은 파일 상태 / 다음 스텝 을 갱신한다.
 
 ## 현재 상태
-- **단계**: M6 스프라이트시트 파이프라인 계획 수립.
+- **단계**: M6 스프라이트시트 파이프라인 파일 생성 완료, 렌더 전환 전.
 - **브랜치**: `codex/cozy-island-spritesheet-plan`
 - **저장 버전**: `SAVE_VERSION = 7`
 
@@ -57,7 +57,14 @@
 - 영향받은 파일: `src/projects/cozy-island/AGENTS.md`, `src/projects/cozy-island/docs/spritesheet-inventory.md`, `plan/cozy-island/PLAN.md`, `plan/cozy-island/PROGRESS.md`.
 - 현재 상태: 아직 실제 sprite sheet 파일/로더는 없음. 다음 단계에서 `assets/`와 `render/spriteSheet.ts`를 만든다.
 
+### 2026-06-23 — 스프라이트시트 파일/로더 생성
+- 한 일:
+  1. `assets/spritesheet.png` 생성: 1차 대상 초안(player, 홈 건물, 주요 자원, 밀밭, UI 아이콘)을 투명 PNG로 배치.
+  2. `assets/spritesheet.json` 생성: 각 sprite id의 rect, anchor, scale, tags 정의.
+  3. `render/spriteSheet.ts` 신설: manifest 접근, 이미지 preload, `drawSprite()`, 누락 sprite 경고/fallback 반환.
+- 영향받은 파일: `src/projects/cozy-island/assets/spritesheet.png`, `spritesheet.json`, `render/spriteSheet.ts`, `plan/cozy-island/PLAN.md`, `PROGRESS.md`.
+- 검증: PNG 육안 확인, `npm run lint -- src/projects/cozy-island` 통과, `spriteSheet.ts` 단독 TypeScript 검사 통과(`vite/client` 타입 포함).
+
 ## 다음 스텝
-- [ ] `assets/spritesheet.png`, `assets/spritesheet.json`, `render/spriteSheet.ts` 생성.
 - [ ] 홈 구역 핵심 오브젝트부터 sprite sheet 렌더로 전환.
 - [ ] 전체 `npm run build` 실패 원인인 `src/projects/shikaku` 기존 타입 오류를 별도 처리.
