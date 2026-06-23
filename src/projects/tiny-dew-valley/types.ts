@@ -173,7 +173,7 @@ export interface GameState {
   player: PlayerState
   tiles: Tile[] // flattened WORLD_W * WORLD_H farm/village grid
   inventory: InventorySlot[]
-  flags: Record<string, boolean | number>
+  flags: Record<string, boolean | number | string>
 }
 
 export interface DialogueLine {

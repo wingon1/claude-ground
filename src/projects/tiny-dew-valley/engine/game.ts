@@ -3,6 +3,13 @@ import { CROPS, CROP_LIST } from '../data/crops'
 import { cropItemId, getItem } from '../data/items'
 import { SHOP_CATALOG } from '../data/shopCatalog'
 import { BUILD_OPTIONS } from '../data/buildOptions'
+import {
+  DEFAULT_FIELD_CROP,
+  FIELD_PLOTS,
+  FIELD_ROW_COST_GOLD,
+  FIELD_ROW_COST_WOOD,
+  FIELD_SIZE,
+} from '../data/fields'
 import { RECIPES } from '../data/recipes'
 import { OBSTACLE_DROP, OBSTACLE_HP, OBSTACLE_SOLID, TERRAIN_SOLID } from '../data/tiles'
 import {
@@ -75,6 +82,24 @@ export interface BuildOptionView {
   built: boolean
   locked: boolean
 }
+export interface CropChoiceView {
+  id: string
+  name: string
+  color: string
+  selected: boolean
+}
+export interface FieldPlotView {
+  id: string
+  name: string
+  rows: number
+  selectedCropId: string
+  selectedCropName: string
+  selected: boolean
+  nextToUnlock: boolean
+  canBuyRow: boolean
+  costGold: number
+  costItems: CostItemView[]
+}
 export interface CookRecipeView {
   id: string
   name: string
@@ -99,6 +124,9 @@ export interface UISnapshot {
   toasts: ToastMsg[]
   shopBuy: ShopBuyView[]
   buildOptions: BuildOptionView[]
+  fieldPlots: FieldPlotView[]
+  cropChoices: CropChoiceView[]
+  selectedFieldId: string | null
   cookRecipes: CookRecipeView[]
   contextAction: string | null
   nearBed: boolean
@@ -204,6 +232,7 @@ export class Game {
     const s = loadGame()
     if (!s) return false
     this.state = s
+    this.applyFieldRows()
     this.applyFieldExpansions()
     this.initRuntime()
     this.phase = 'playing'
@@ -222,7 +251,6 @@ export class Game {
     const tiles = generateWorld()
     const inv: InventorySlot[] = []
     for (let i = 0; i < INV_SIZE; i++) inv.push({ itemId: '', qty: 0 })
-    inv[0] = { itemId: 'seed_parsnip', qty: 8 }
     return {
       saveVersion: SAVE_VERSION,
       day: 1,
@@ -240,7 +268,10 @@ export class Game {
       },
       tiles,
       inventory: inv,
-      flags: { fieldExpansionLevel: 0 },
+      flags: {
+        'fieldRows:field_1': FIELD_SIZE,
+        'fieldCrop:field_1': DEFAULT_FIELD_CROP,
+      },
     }
   }
 
@@ -429,7 +460,7 @@ export class Game {
         let pri = 0
         if (t.cropId && t.growthStage >= CROPS[t.cropId].stages - 1) { kind = 'harvest'; pri = 3 }
         else if (t.obstacle) { kind = 'chop'; pri = 2 }
-        else if (t.terrain === 'soil' && !t.cropId && this.firstSeed()) { kind = 'plant'; pri = 1 }
+        else if (t.terrain === 'soil' && !t.cropId && this.cropForTile(t)) { kind = 'plant'; pri = 1 }
         if (!kind) continue
         const cx = tx * T + T / 2
         const cy = ty * T + T / 2
@@ -523,20 +554,12 @@ export class Game {
   }
 
   // ---------------- crops ----------------
-  private firstSeed(): string | null {
-    for (const sl of this.state.inventory) {
-      if (sl.itemId && getItem(sl.itemId)?.type === 'seed') return sl.itemId
-    }
-    return null
-  }
-
   private plantTile(t: Tile) {
-    const seedId = this.firstSeed()
-    if (!seedId) return
-    const crop = CROP_LIST.find((c) => c.seedItemId === seedId)
+    const cropId = this.cropForTile(t)
+    if (!cropId) return
+    const crop = CROPS[cropId]
     if (!crop) return
     if (!this.spendStamina(COST.plant)) return
-    if (!this.removeItem(seedId, 1)) return
     t.cropId = crop.id
     t.growthStage = 0
     t.metadata.growT = 0
@@ -570,17 +593,10 @@ export class Game {
     this.giveItem(itemId, 1)
     this.audio.sfx('harvest')
     this.leafBurst(t.x * T + T / 2, t.y * T + T / 2, crop.color)
-    if (crop.regrowDays) {
-      // regrow: drop back so it ripens again after regrowDays
-      const matureSecs = crop.growDays * STAGE_SECS_PER_DAY
-      const regrow = crop.regrowDays * STAGE_SECS_PER_DAY
-      t.metadata.growT = Math.max(0, matureSecs - regrow)
-      t.growthStage = Math.max(1, crop.stages - 2)
-    } else {
-      t.cropId = null
-      t.growthStage = 0
-      t.metadata.growT = 0
-    }
+    const nextCropId = this.cropForTile(t) ?? crop.id
+    t.cropId = nextCropId
+    t.growthStage = 0
+    t.metadata.growT = 0
     this.toast(`${crop.name}을(를) 수확했어요!`, 'good')
   }
 
@@ -710,7 +726,7 @@ export class Game {
 
   openBuild() {
     if (this.phase !== 'playing') return
-    if (!this.nearBuild()) {
+    if (!this.selectedFieldId()) {
       this.toast('건설 게시판 가까이에서만 열 수 있어요.', 'bad')
       this.audio.sfx('reject')
       return
@@ -766,6 +782,54 @@ export class Game {
     this.applyBuildRect(option.rect)
     this.toast(`${option.name} 완료!`, 'good')
     this.audio.sfx('sparkle')
+    this.autosave()
+    this.emit()
+  }
+
+  buyFieldRow(fieldId: string) {
+    if (this.phase !== 'build') return
+    const plot = FIELD_PLOTS.find((p) => p.id === fieldId)
+    if (!plot || this.selectedFieldId() !== fieldId) return
+    const rows = this.fieldRows(fieldId)
+    if (rows >= FIELD_SIZE) {
+      this.toast('이미 모두 해금된 밭이에요.', 'info')
+      return
+    }
+    if (this.nextUnlockFieldId() !== fieldId) {
+      this.toast('오른쪽 밭부터 순서대로 해금해야 해요.', 'bad')
+      this.audio.sfx('reject')
+      return
+    }
+    const costItems = [{ itemId: 'wood', qty: FIELD_ROW_COST_WOOD }]
+    if (!this.canPayCost(FIELD_ROW_COST_GOLD, costItems)) {
+      this.toast('땅을 살 재료가 부족해요.', 'bad')
+      this.audio.sfx('reject')
+      return
+    }
+    this.payCost(FIELD_ROW_COST_GOLD, costItems)
+    this.state.flags[this.fieldRowsKey(fieldId)] = rows + 1
+    if (!this.fieldCrop(fieldId)) this.state.flags[this.fieldCropKey(fieldId)] = DEFAULT_FIELD_CROP
+    this.applyFieldRows()
+    this.toast(`${plot.name} ${rows + 1}/${FIELD_SIZE}줄 해금!`, 'good')
+    this.audio.sfx('sparkle')
+    this.autosave()
+    this.emit()
+  }
+
+  setFieldCrop(fieldId: string, cropId: string) {
+    if (this.phase !== 'build') return
+    if (this.selectedFieldId() !== fieldId) return
+    if (!CROPS[cropId] || this.fieldRows(fieldId) <= 0) return
+    this.state.flags[this.fieldCropKey(fieldId)] = cropId
+    for (const t of this.state.tiles) {
+      if (t.metadata.fieldId === fieldId && t.terrain === 'soil' && !t.cropId) {
+        t.cropId = cropId
+        t.growthStage = 0
+        t.metadata.growT = 0
+      }
+    }
+    this.toast(`${CROPS[cropId].name} 밭으로 등록했어요.`, 'good')
+    this.audio.sfx('select')
     this.autosave()
     this.emit()
   }
@@ -877,7 +941,7 @@ export class Game {
   }
 
   private nearBuild(): boolean {
-    return this.nearTileMetadata('buildBoard')
+    return this.selectedFieldId() != null
   }
 
   private nearCooking(): boolean {
@@ -895,6 +959,73 @@ export class Game {
       }
     }
     return false
+  }
+
+  private selectedFieldId(): string | null {
+    const pt = this.playerTile()
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const t = inBounds(pt.x + dx, pt.y + dy)
+          ? this.state.tiles[idx(pt.x + dx, pt.y + dy)]
+          : null
+        const fieldId = t?.metadata.fieldSign
+        if (typeof fieldId === 'string') return fieldId
+      }
+    }
+    return null
+  }
+
+  private fieldRowsKey(fieldId: string): string {
+    return `fieldRows:${fieldId}`
+  }
+
+  private fieldCropKey(fieldId: string): string {
+    return `fieldCrop:${fieldId}`
+  }
+
+  private fieldRows(fieldId: string): number {
+    const raw = this.state.flags[this.fieldRowsKey(fieldId)]
+    return typeof raw === 'number' ? Math.max(0, Math.min(FIELD_SIZE, raw)) : 0
+  }
+
+  private fieldCrop(fieldId: string): string | null {
+    const raw = this.state.flags[this.fieldCropKey(fieldId)]
+    return typeof raw === 'string' && CROPS[raw] ? raw : null
+  }
+
+  private nextUnlockFieldId(): string | null {
+    for (const plot of FIELD_PLOTS) {
+      if (this.fieldRows(plot.id) < FIELD_SIZE) return plot.id
+    }
+    return null
+  }
+
+  private cropForTile(t: Tile): string | null {
+    const fieldId = t.metadata.fieldId
+    if (typeof fieldId !== 'string') return null
+    if (this.fieldRows(fieldId) <= 0) return null
+    return this.fieldCrop(fieldId) ?? DEFAULT_FIELD_CROP
+  }
+
+  private applyFieldRows() {
+    for (const plot of FIELD_PLOTS) {
+      const rows = this.fieldRows(plot.id)
+      for (let row = 0; row < FIELD_SIZE; row++) {
+        for (let col = 0; col < FIELD_SIZE; col++) {
+          const t = this.state.tiles[idx(plot.x + col, plot.y + row)]
+          const unlocked = row < rows
+          t.terrain = unlocked ? 'soil' : 'grass'
+          if (!unlocked) {
+            t.cropId = null
+            t.growthStage = 0
+            t.metadata.growT = 0
+          }
+          t.obstacle = null
+          t.hp = undefined
+          t.metadata.fieldId = plot.id
+        }
+      }
+    }
   }
 
   private fieldExpansionLevel(): number {
@@ -1055,9 +1186,9 @@ export class Game {
     }
     // buildings — kept as decoration (shrine never restored)
     this.drawBuilding(this.sprites.farmhouse, 29, 6, S, -16)
-    this.drawBuilding(this.sprites.store, 14, 26, S, -14)
+    this.drawBuilding(this.sprites.store, 22, 6, S, -14)
     this.drawBuilding(this.sprites.shrineBroken, 19, 2, S, -8)
-    this.drawBuildBoard(S)
+    this.drawFieldSigns(S)
     this.drawCookingFire(S)
 
     type Draw = { y: number; fn: () => void }
@@ -1100,10 +1231,14 @@ export class Game {
     this.ctx.drawImage(img, this.wx(tx * T), this.wy(ty * T + yOff), img.width * S, img.height * S)
   }
 
-  private drawBuildBoard(S: number) {
+  private drawFieldSigns(S: number) {
+    for (const plot of FIELD_PLOTS) this.drawSign(plot.sign.x, plot.sign.y, S)
+  }
+
+  private drawSign(tx: number, ty: number, S: number) {
     const ctx = this.ctx
-    const x = this.wx(LOCATIONS.buildBoard.x * T)
-    const y = this.wy(LOCATIONS.buildBoard.y * T)
+    const x = this.wx(tx * T)
+    const y = this.wy(ty * T)
     ctx.fillStyle = '#7a4c2a'
     ctx.fillRect(x + 5 * S, y + 4 * S, 2 * S, 11 * S)
     ctx.fillRect(x + 10 * S, y + 4 * S, 2 * S, 11 * S)
@@ -1205,7 +1340,7 @@ export class Game {
     if (period === 'night') {
       ctx.globalCompositeOperation = 'lighter'
       this.glowRect(31 * T, 6 * T + 10, 6, 6, '#ffd65c', S)
-      this.glowRect(16 * T + 6, 26 * T + 8, 6, 6, '#ffd07a', S)
+      this.glowRect(24 * T + 6, 6 * T + 8, 6, 6, '#ffd07a', S)
       for (const f of this.fireflies) {
         const sx = this.wx(f.x)
         const sy = this.wy(f.y)
@@ -1288,7 +1423,7 @@ export class Game {
       return {
         phase: this.phase, day: 1, clock: '오전 6:00', period: '아침', periodKey: 'morning',
         gold: 0, stamina: 0, maxStamina: 0, inventory: [], toasts: [...this.toasts], shopBuy: [],
-        buildOptions: [], cookRecipes: [],
+        buildOptions: [], fieldPlots: [], cropChoices: [], selectedFieldId: null, cookRecipes: [],
         contextAction: null, nearBed: false, nearStore: false, nearBuild: false, nearCooking: false, exhausted: false,
         muted: this.audio.muted, musicOn: this.audio.musicOn, hasSave: this.hasSavedGame(),
       }
@@ -1350,6 +1485,39 @@ export class Game {
         locked,
       }
     })
+    const selectedFieldId = this.selectedFieldId()
+    const nextFieldId = this.nextUnlockFieldId()
+    const rowCostItems = costViews([{ itemId: 'wood', qty: FIELD_ROW_COST_WOOD }])
+    const fieldPlots: FieldPlotView[] = FIELD_PLOTS.map((plot) => {
+      const rows = this.fieldRows(plot.id)
+      const cropId = this.fieldCrop(plot.id) ?? DEFAULT_FIELD_CROP
+      const crop = CROPS[cropId] ?? CROPS[DEFAULT_FIELD_CROP]
+      const nextToUnlock = nextFieldId === plot.id
+      return {
+        id: plot.id,
+        name: plot.name,
+        rows,
+        selectedCropId: crop.id,
+        selectedCropName: crop.name,
+        selected: selectedFieldId === plot.id,
+        nextToUnlock,
+        canBuyRow:
+          selectedFieldId === plot.id &&
+          rows < FIELD_SIZE &&
+          nextToUnlock &&
+          s.gold >= FIELD_ROW_COST_GOLD &&
+          rowCostItems.every((it) => it.ok),
+        costGold: FIELD_ROW_COST_GOLD,
+        costItems: rowCostItems,
+      }
+    })
+    const selectedCropId = selectedFieldId ? (this.fieldCrop(selectedFieldId) ?? DEFAULT_FIELD_CROP) : DEFAULT_FIELD_CROP
+    const cropChoices: CropChoiceView[] = CROP_LIST.map((crop) => ({
+      id: crop.id,
+      name: crop.name,
+      color: crop.color,
+      selected: crop.id === selectedCropId,
+    }))
     const cookRecipes: CookRecipeView[] = RECIPES.map((recipe) => {
       const out = getItem(recipe.output.itemId)
       const inputs = costViews(recipe.inputs)
@@ -1385,6 +1553,9 @@ export class Game {
       toasts: [...this.toasts],
       shopBuy,
       buildOptions,
+      fieldPlots,
+      cropChoices,
+      selectedFieldId,
       cookRecipes,
       contextAction,
       nearBed: this.nearBed(),

@@ -1,4 +1,5 @@
 import type { Obstacle, Terrain, Tile } from '../types'
+import { FIELD_PLOTS, FIELD_SIZE } from '../data/fields'
 
 export const WORLD_W = 40
 export const WORLD_H = 36
@@ -59,10 +60,10 @@ function rect(
 export const LOCATIONS: WorldLocations = {
   spawn: { x: 31, y: 11 },
   bed: { x: 31, y: 9 },
-  storeCounter: { x: 16, y: 29 },
-  storeStand: { x: 16, y: 28 },
-  storeFront: { x: 16, y: 30 },
-  buildBoard: { x: 22, y: 30 },
+  storeCounter: { x: 24, y: 9 },
+  storeStand: { x: 24, y: 8 },
+  storeFront: { x: 24, y: 10 },
+  buildBoard: { x: 32, y: 12 },
   cookingFire: { x: 33, y: 11 },
   shrine: { x: 20, y: 5 },
   pond: { x: 25, y: 15 },
@@ -72,7 +73,7 @@ export const LOCATIONS: WorldLocations = {
 
 // Pre-tilled farm field. Crops are auto-planted here when the player idles on
 // an empty plot and auto-harvested when ripe — no hoe/watering required.
-export const FARM = { x: 19, y: 18, w: 4, h: 3 }
+export const FARM = { x: 31, y: 13, w: FIELD_SIZE, h: FIELD_SIZE }
 
 // Stamps the general store's static structure onto a tiles array.
 // The store is an open-front stall: solid back walls, with a walk-in
@@ -81,23 +82,43 @@ export const FARM = { x: 19, y: 18, w: 4, h: 3 }
 // saves pick up the new layout via migration.
 export function stampStore(tiles: Tile[]) {
   // Back walls (the building body, hidden behind the store sprite).
-  rect(tiles, 14, 26, 19, 27, (t) => {
+  rect(tiles, 22, 6, 27, 7, (t) => {
     t.terrain = 'blocked'
     t.obstacle = null
     t.cropId = null
   })
   // Open interior + front. No fence here so the player can walk straight in
   // from the village square and up to the counter where Barnaby stands.
-  rect(tiles, 14, 28, 19, 29, (t) => {
+  rect(tiles, 22, 8, 27, 9, (t) => {
     t.terrain = 'path'
     t.obstacle = null
     t.cropId = null
   })
   // Mark every interior/front tile so the shop opens however the player
   // approaches: standing inside, or facing the counter from the square.
-  for (let x = 14; x <= 19; x++) {
-    tiles[idx(x, 28)].metadata.storeInterior = true
-    tiles[idx(x, 29)].metadata.storeCounter = true
+  for (let x = 22; x <= 27; x++) {
+    tiles[idx(x, 8)].metadata.storeInterior = true
+    tiles[idx(x, 9)].metadata.storeCounter = true
+  }
+}
+
+function stampFields(tiles: Tile[]) {
+  for (const plot of FIELD_PLOTS) {
+    for (let y = plot.y; y < plot.y + FIELD_SIZE; y++) {
+      for (let x = plot.x; x < plot.x + FIELD_SIZE; x++) {
+        const t = tiles[idx(x, y)]
+        t.terrain = plot.id === 'field_1' ? 'soil' : 'grass'
+        clearObstacle(t)
+        t.cropId = null
+        t.growthStage = 0
+        t.metadata.fieldId = plot.id
+      }
+    }
+    const sign = tiles[idx(plot.sign.x, plot.sign.y)]
+    sign.terrain = 'path'
+    clearObstacle(sign)
+    sign.cropId = null
+    sign.metadata.fieldSign = plot.id
   }
 }
 
@@ -116,29 +137,24 @@ export function generateWorld(): Tile[] {
   rect(tiles, 0, 0, 0, WORLD_H - 1, (t) => (t.terrain = 'blocked'))
   rect(tiles, WORLD_W - 1, 0, WORLD_W - 1, WORLD_H - 1, (t) => (t.terrain = 'blocked'))
 
-  // ---- Pond (water, with collision) ----
-  const p = LOCATIONS.pond
-  rect(tiles, p.x - 1, p.y - 1, p.x + 1, p.y + 1, (t) => (t.terrain = 'water'))
-  tiles[idx(p.x - 2, p.y)].terrain = 'water'
-  tiles[idx(p.x + 2, p.y)].terrain = 'water'
-
   // ---- Farmhouse (north-east) ----
   rect(tiles, 29, 6, 33, 8, (t) => (t.terrain = 'blocked'))
   tiles[idx(LOCATIONS.bed.x, LOCATIONS.bed.y)].metadata.bed = true
   tiles[idx(LOCATIONS.bed.x, LOCATIONS.bed.y)].terrain = 'path'
 
-  // ---- General Store (south) ----
+  // ---- General Store (beside the farmhouse) ----
   stampStore(tiles)
 
   // ---- Village square paths (south) ----
   rect(tiles, 12, 30, 24, 33, (t) => {
     if (t.terrain === 'grass') t.terrain = 'path'
   })
+  rect(tiles, 24, 10, 31, 12, (t) => {
+    if (t.terrain === 'grass') t.terrain = 'path'
+  })
   rect(tiles, 16, 11, 16, 30, (t) => {
     if (t.terrain === 'grass') t.terrain = 'path'
   })
-  tiles[idx(LOCATIONS.buildBoard.x, LOCATIONS.buildBoard.y)].terrain = 'path'
-  tiles[idx(LOCATIONS.buildBoard.x, LOCATIONS.buildBoard.y)].metadata.buildBoard = true
   tiles[idx(LOCATIONS.cookingFire.x, LOCATIONS.cookingFire.y)].terrain = 'path'
   tiles[idx(LOCATIONS.cookingFire.x, LOCATIONS.cookingFire.y)].metadata.cookingFire = true
 
@@ -193,12 +209,8 @@ export function generateWorld(): Tile[] {
     if (t.obstacle) clearObstacle(t)
   })
 
-  // ---- Pre-tilled farm field ----
-  rect(tiles, FARM.x, FARM.y, FARM.x + FARM.w - 1, FARM.y + FARM.h - 1, (t) => {
-    t.terrain = 'soil'
-    clearObstacle(t)
-    t.cropId = null
-  })
+  // ---- Plot-based farm fields ----
+  stampFields(tiles)
 
   return tiles
 }

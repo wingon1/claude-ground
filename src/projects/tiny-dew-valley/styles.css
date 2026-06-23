@@ -684,6 +684,75 @@
 }
 .tdv-craft .owned { font-weight: 800; font-size: 11px; color: var(--good); }
 .tdv-craft .lock { font-size: 10px; font-weight: 700; opacity: 0.85; text-align: right; }
+.tdv-fieldpanel {
+  background: var(--panel-dark);
+  border: 2px solid var(--panel-edge);
+  border-radius: 9px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+.tdv-fieldhead,
+.tdv-fieldbuy {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+.tdv-fieldhead {
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+.tdv-cropchoices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.tdv-cropbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #ead9ae;
+  border: 2px solid var(--panel-edge);
+  border-radius: 7px;
+  padding: 4px 7px;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--ink);
+  cursor: pointer;
+}
+.tdv-cropbtn.on {
+  background: var(--accent);
+  border-color: #5a8a32;
+  color: #fff;
+}
+.tdv-cropbtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.tdv-cropbtn span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid #0004;
+}
+.tdv-fieldbuy .mats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 3px;
+  font-size: 10px;
+  font-weight: 700;
+}
+.tdv-fieldbuy .mats span {
+  background: #00000018;
+  border-radius: 6px;
+  padding: 1px 6px;
+}
+.tdv-fieldbuy .mats .miss {
+  color: var(--bad);
+}
 
 /* ---------------- Tally ---------------- */
 .tdv-tally {

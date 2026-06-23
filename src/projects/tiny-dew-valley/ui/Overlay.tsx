@@ -133,7 +133,7 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
 
       {/* Modals */}
       {ui.phase === 'shop' && <ShopModal game={game} ui={ui} />}
-      {ui.phase === 'build' && <BuildModal game={game} ui={ui} />}
+      {ui.phase === 'build' && <FieldBuildModal game={game} ui={ui} />}
       {ui.phase === 'cook' && <CookingModal game={game} ui={ui} />}
       {ui.phase === 'sleepConfirm' && <SleepConfirm game={game} ui={ui} />}
       {invOpen && ui.phase === 'playing' && (
@@ -305,6 +305,77 @@ function BuildModal({ game, ui }: { game: Game; ui: UISnapshot }) {
                     건설
                   </button>
                 )}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="tdv-row">
+          <button className="tdv-btn ghost" onClick={() => game.closeModal()}>닫기</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export const LegacyBuildModal = BuildModal
+
+function FieldBuildModal({ game, ui }: { game: Game; ui: UISnapshot }) {
+  const selected = ui.fieldPlots.find((field) => field.id === ui.selectedFieldId)
+  return (
+    <div className="tdv-modal-bg" onClick={() => game.closeModal()}>
+      <div className="tdv-modal" style={{ width: 'min(420px, 92vw)' }} onClick={(e) => e.stopPropagation()}>
+        <h2>밭 관리</h2>
+        <div className="sub">표지판에 작물을 등록하고, 3칸짜리 줄을 하나씩 구매해요.</div>
+        {!selected && <div className="sub">밭 표지판 바로 앞에서 다시 열어주세요.</div>}
+        {selected && (
+          <div className="tdv-fieldpanel">
+            <div className="tdv-fieldhead">
+              <strong>{selected.name}</strong>
+              <span>{selected.rows}/3줄</span>
+            </div>
+            <div className="tdv-cropchoices">
+              {ui.cropChoices.map((crop) => (
+                <button
+                  key={crop.id}
+                  className={`tdv-cropbtn ${crop.selected ? 'on' : ''}`}
+                  disabled={selected.rows <= 0}
+                  onClick={() => game.setFieldCrop(selected.id, crop.id)}
+                >
+                  <span style={{ background: crop.color }} />
+                  {crop.name}
+                </button>
+              ))}
+            </div>
+            <div className="tdv-fieldbuy">
+              <div>
+                <strong>다음 줄 구매</strong>
+                <div className="mats">
+                  <span className={ui.gold >= selected.costGold ? '' : 'miss'}>골드 {ui.gold}/{selected.costGold}</span>
+                  {selected.costItems.map((it) => (
+                    <span className={it.ok ? '' : 'miss'} key={it.itemId}>{it.name} {it.have}/{it.need}</span>
+                  ))}
+                </div>
+              </div>
+              <button className="tdv-btn gold sm" disabled={!selected.canBuyRow} onClick={() => game.buyFieldRow(selected.id)}>
+                구매
+              </button>
+            </div>
+          </div>
+        )}
+        <div className="tdv-craftlist">
+          {ui.fieldPlots.map((field) => (
+            <div className={`tdv-craft${field.nextToUnlock || field.rows === 3 ? '' : ' locked'}`} key={field.id}>
+              <div className="tdv-crafticon">밭</div>
+              <div className="info">
+                <div className="nm">{field.name}</div>
+                <div className="ds">{field.rows === 0 ? '비활성 밭' : `${field.selectedCropName} 자동 재배`}</div>
+                <div className="mats">
+                  <span className="mat">해금 {field.rows}/3줄</span>
+                  <span className="mat">{field.selected ? '선택됨' : field.nextToUnlock ? '다음 해금' : '대기'}</span>
+                </div>
+              </div>
+              <div className="act">
+                {field.rows === 3 ? <span className="owned">완료</span> : <span className="lock">순서 해금</span>}
               </div>
             </div>
           ))}
