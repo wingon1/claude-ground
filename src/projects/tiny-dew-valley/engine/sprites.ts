@@ -972,6 +972,115 @@ function bakeToolIcon(tool: string): HTMLCanvasElement {
   return c
 }
 
+// ---------------- UI dot icons (replace emoji in the HUD/menus) ----------------
+export function bakeUIIcon(key: string): HTMLCanvasElement {
+  const c = cv(T, T)
+  const g = ctxOf(c)
+  switch (key) {
+    case 'ui_coin': {
+      px(g, 6, 2, 4, 1, '#e8c14a'); px(g, 5, 3, 6, 1, '#e8c14a')
+      px(g, 4, 4, 8, 6, '#e8c14a'); px(g, 5, 10, 6, 1, '#e8c14a'); px(g, 6, 11, 4, 1, '#e8c14a')
+      px(g, 4, 8, 8, 2, '#b9892f') // rim shade
+      px(g, 6, 3, 3, 1, '#f6e08a') // sheen
+      px(g, 7, 5, 2, 5, '#b9892f') // engraved mark
+      px(g, 6, 6, 4, 1, '#b9892f')
+      break
+    }
+    case 'ui_bolt': {
+      px(g, 9, 2, 3, 4, '#f7c63b'); px(g, 7, 5, 4, 2, '#f7c63b')
+      px(g, 5, 7, 4, 2, '#f7c63b'); px(g, 7, 8, 3, 5, '#f7c63b')
+      px(g, 9, 2, 1, 4, '#fff0a6'); px(g, 7, 8, 1, 5, '#caa024')
+      break
+    }
+    case 'ui_hammer':
+      px(g, 4, 3, 8, 4, '#9aa0ac'); px(g, 4, 3, 8, 1, '#c2c6cf')
+      px(g, 4, 6, 8, 1, '#6e727c')
+      px(g, 8, 6, 2, 8, '#9a6a3a'); px(g, 8, 6, 1, 8, '#b3824a')
+      break
+    case 'ui_target':
+      px(g, 4, 4, 8, 8, '#c64a3a'); px(g, 5, 5, 6, 6, '#f6e9c9')
+      px(g, 6, 6, 4, 4, '#c64a3a'); px(g, 7, 7, 2, 2, '#fff4c8')
+      break
+    case 'ui_basket':
+      px(g, 3, 4, 10, 2, '#caa066') // rim
+      px(g, 4, 6, 8, 6, '#b07a44') // body
+      for (let i = 5; i < 12; i += 2) px(g, i, 6, 1, 6, 'rgba(90,60,30,0.4)')
+      px(g, 4, 6, 8, 1, '#caa066')
+      px(g, 5, 3, 1, 2, '#caa066'); px(g, 10, 3, 1, 2, '#caa066'); px(g, 6, 2, 4, 1, '#caa066') // handle
+      break
+    case 'ui_sprout':
+      px(g, 4, 11, 8, 2, '#6e4426'); px(g, 4, 11, 8, 1, '#8a5a32')
+      px(g, 7, 5, 2, 6, '#3a8a3a')
+      px(g, 3, 6, 3, 2, '#56a84a'); px(g, 4, 5, 2, 1, '#6fc25a')
+      px(g, 9, 7, 3, 2, '#56a84a'); px(g, 10, 6, 2, 1, '#6fc25a')
+      break
+    case 'ui_receipt':
+      px(g, 4, 2, 8, 10, '#f4ecd6'); px(g, 4, 2, 8, 1, '#fffaf0')
+      px(g, 5, 4, 6, 1, '#9a6a3a'); px(g, 5, 6, 6, 1, '#9a6a3a'); px(g, 5, 8, 4, 1, '#9a6a3a')
+      px(g, 4, 12, 2, 1, '#f4ecd6'); px(g, 7, 12, 2, 1, '#f4ecd6'); px(g, 10, 12, 2, 1, '#f4ecd6') // torn edge
+      break
+    case 'ui_pan':
+      px(g, 3, 7, 8, 4, '#3e3a40'); px(g, 3, 7, 8, 1, '#5a565e')
+      px(g, 4, 8, 6, 2, '#55505a')
+      px(g, 11, 8, 4, 2, '#9a6a3a'); px(g, 11, 8, 4, 1, '#b3824a') // handle
+      px(g, 6, 8, 3, 2, '#f0c84b') // egg
+      break
+    case 'ui_bed':
+      px(g, 2, 9, 12, 4, '#9a6a3a'); px(g, 2, 9, 12, 1, '#b3824a')
+      px(g, 3, 7, 5, 3, '#eee6d4') // pillow
+      px(g, 8, 8, 5, 2, '#c8763f') // blanket
+      px(g, 2, 13, 1, 2, '#6e4426'); px(g, 13, 13, 1, 2, '#6e4426') // legs
+      break
+    case 'ui_fire':
+      px(g, 6, 6, 4, 7, '#e0532f')
+      px(g, 7, 3, 3, 9, '#f0902f')
+      px(g, 7, 2, 2, 5, '#f7c63b'); dot(g, 8, 4, '#fff0a6')
+      break
+    case 'ui_save':
+      px(g, 3, 3, 10, 10, '#4a6a9a'); px(g, 3, 3, 10, 1, '#6a86b4')
+      px(g, 5, 3, 5, 4, '#cdd6e0'); px(g, 8, 4, 1, 2, '#2a3a5a') // shutter
+      px(g, 5, 9, 6, 3, '#cdd6e0') // label
+      break
+    case 'ui_sound':
+    case 'ui_mute': {
+      px(g, 3, 6, 2, 4, '#9a6a3a')
+      px(g, 5, 4, 3, 8, '#caa066'); px(g, 5, 4, 3, 1, '#e0c089')
+      if (key === 'ui_sound') {
+        px(g, 10, 5, 1, 6, '#7cae4e'); px(g, 12, 4, 1, 8, '#7cae4e')
+      } else {
+        px(g, 10, 5, 1, 1, '#c64a3a'); px(g, 11, 6, 1, 1, '#c64a3a'); px(g, 12, 7, 1, 1, '#c64a3a')
+        px(g, 12, 5, 1, 1, '#c64a3a'); px(g, 11, 6, 1, 1, '#c64a3a'); px(g, 10, 7, 1, 1, '#c64a3a')
+      }
+      break
+    }
+    case 'ui_music':
+      px(g, 9, 2, 2, 8, '#5a4a6a'); px(g, 9, 2, 4, 2, '#5a4a6a') // stem + flag
+      px(g, 4, 9, 4, 3, '#7a6a8a'); px(g, 4, 9, 4, 1, '#9a8aaa') // note head
+      break
+    case 'ui_trash':
+      px(g, 4, 5, 8, 8, '#9aa0ac'); px(g, 4, 5, 8, 1, '#c2c6cf')
+      for (let i = 6; i < 12; i += 2) px(g, i, 6, 1, 6, '#6e727c')
+      px(g, 3, 3, 10, 2, '#6e727c'); px(g, 6, 2, 4, 1, '#8b8f99') // lid + handle
+      break
+    case 'ui_wheat':
+      for (const [x, hy] of [[5, 3], [9, 3]] as [number, number][]) {
+        px(g, x, hy + 3, 1, 8, '#caa24a')
+        px(g, x - 1, hy, 3, 5, '#e8c14a'); px(g, x - 1, hy, 1, 5, '#b9892f'); px(g, x + 1, hy, 1, 5, '#b9892f')
+        dot(g, x, hy + 1, '#f6e08a'); px(g, x, hy - 2, 1, 2, '#e8d27a')
+      }
+      break
+    default:
+      px(g, 4, 4, 8, 8, '#cccccc')
+  }
+  return c
+}
+
+const UI_ICONS = new Set([
+  'ui_coin', 'ui_bolt', 'ui_hammer', 'ui_target', 'ui_basket', 'ui_sprout',
+  'ui_receipt', 'ui_pan', 'ui_bed', 'ui_fire', 'ui_save', 'ui_sound',
+  'ui_mute', 'ui_music', 'ui_trash', 'ui_wheat',
+])
+
 const iconCache = new Map<string, string>()
 
 export function iconURL(key: string, color?: string): string {
@@ -979,7 +1088,9 @@ export function iconURL(key: string, color?: string): string {
   const hit = iconCache.get(ck)
   if (hit) return hit
   let canvas: HTMLCanvasElement
-  if (['hoe', 'watering_can', 'axe', 'scythe', 'hand', 'backpack'].includes(key)) {
+  if (UI_ICONS.has(key)) {
+    canvas = bakeUIIcon(key)
+  } else if (['hoe', 'watering_can', 'axe', 'scythe', 'hand', 'backpack'].includes(key)) {
     canvas = bakeToolIcon(key)
   } else {
     canvas = bakeItemIcon(key, color)

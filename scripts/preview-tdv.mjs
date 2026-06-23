@@ -144,7 +144,7 @@ globalThis.document = {
 }
 globalThis.performance = globalThis.performance ?? { now: () => 0 }
 
-const { buildSprites } = await import(
+const { buildSprites, bakeUIIcon } = await import(
   '../src/projects/tiny-dew-valley/engine/sprites.ts'
 )
 const { CROPS } = await import('../src/projects/tiny-dew-valley/data/crops.ts')
@@ -238,6 +238,25 @@ function bg(g, x, y, w, h, S) {
 
 // individual sprites (scaled big)
 const SCALE = 6
+
+// UI dot icons (replace emoji): coin, bolt, hammer, target, basket, sprout,
+// receipt, pan, bed, fire, save, sound, mute, music, trash, wheat.
+const UI_KEYS = [
+  'ui_coin', 'ui_bolt', 'ui_hammer', 'ui_target', 'ui_basket', 'ui_sprout',
+  'ui_receipt', 'ui_pan', 'ui_bed', 'ui_fire', 'ui_save', 'ui_sound',
+  'ui_mute', 'ui_music', 'ui_trash', 'ui_wheat',
+]
+const UISC = 7
+const UICOLS = 8
+const uiCellW = UICOLS * (16 * UISC + 8)
+const uiCellH = Math.ceil(UI_KEYS.length / UICOLS) * (16 * UISC + 8)
+cell('UI dot icons (emoji 대체)', uiCellW, uiCellH, (sheet, x, y) => {
+  UI_KEYS.forEach((k, i) => {
+    const cxp = x + (i % UICOLS) * (16 * UISC + 8)
+    const cyp = y + Math.floor(i / UICOLS) * (16 * UISC + 8)
+    blit(sheet, bakeUIIcon(k), cxp, cyp, UISC)
+  })
+})
 cell('TENT (house)', SP.farmhouse.width * SCALE, SP.farmhouse.height * SCALE, (sheet, x, y) => blit(sheet, SP.farmhouse, x, y, SCALE))
 cell('STORE stall', SP.store.width * SCALE, SP.store.height * SCALE, (sheet, x, y) => blit(sheet, SP.store, x, y, SCALE))
 cell('FENCE (h / v)', SP.fence.width * SCALE * 3 + 12, SP.fence.height * SCALE, (sheet, x, y) => {
