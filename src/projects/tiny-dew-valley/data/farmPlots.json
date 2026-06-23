@@ -1,8 +1,0 @@
-{
-  "basePurchaseCost": 40,
-  "costGrowthMultiplier": 1.32,
-  "maxPlots": 12,
-  "freeStartingPlots": 1,
-  "defaultCropId": "wheat",
-  "autoReplant": true
-}

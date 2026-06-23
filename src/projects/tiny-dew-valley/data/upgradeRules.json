@@ -1,5 +1,0 @@
-{
-  "buildSparkle": true,
-  "refundOnReset": false,
-  "notes": "Per-building upgrade costs and effects live in buildings.json levels[]."
-}
