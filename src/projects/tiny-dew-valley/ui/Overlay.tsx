@@ -9,7 +9,13 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
 
   if (ui.phase === 'title') return <TitleScreen game={game} ui={ui} />
 
-  const modalOpen = ui.phase === 'shop' || ui.phase === 'sleepConfirm' || invOpen
+  const modalOpen =
+    ui.phase === 'shop' ||
+    ui.phase === 'build' ||
+    ui.phase === 'cook' ||
+    ui.phase === 'sleepConfirm' ||
+    invOpen
+  const canSleep = ui.contextAction === '잠자기'
 
   return (
     <>
@@ -28,10 +34,6 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
         </div>
 
         <div className="tdv-rightcol">
-          <div className="tdv-iconbtns">
-            <button className="tdv-iconbtn" title="메뉴" onClick={() => setMenuOpen((v) => !v)}>☰</button>
-            <button className="tdv-iconbtn" title="가방" onClick={() => { setInvOpen(true); setInvSel(null) }}>🎒</button>
-          </div>
           <div className="tdv-panel tdv-bars">
             <Bar
               cls={ui.stamina <= ui.maxStamina * 0.25 ? 'stam low' : 'stam'}
@@ -71,26 +73,68 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
       )}
 
       {/* Help hint */}
-      {!modalOpen && !ui.contextAction && (
-        <div className="tdv-deskhint">화면을 탭해 이동 · 작물·나무·바위 곁에 서면 자동으로 일해요</div>
+      {!modalOpen && !canSleep && (
+        <div className="tdv-deskhint">화면을 탭해 이동 · 시설 근처에서 하단 메뉴가 활성화돼요</div>
       )}
 
-      {/* Context action button (sleep / shop) */}
-      {!modalOpen && ui.contextAction && (
+      {/* Context action button (sleep only) */}
+      {!modalOpen && canSleep && (
         <button
           className="tdv-action"
           onPointerDown={(e) => {
             e.preventDefault()
-            if (ui.contextAction === '잠자기') game.requestSleep()
-            else if (ui.contextAction === '상점') game.openShop()
+            game.requestSleep()
           }}
         >
-          {ui.contextAction}
+          잠자기
         </button>
       )}
 
+      <nav className="tdv-bottomnav" aria-label="게임 메뉴">
+        <button
+          className="tdv-navbtn"
+          onClick={() => { setInvOpen(true); setInvSel(null); setMenuOpen(false) }}
+        >
+          <span>🎒</span>
+          <small>가방</small>
+        </button>
+        <button
+          className="tdv-navbtn"
+          disabled={!ui.nearStore}
+          title={ui.nearStore ? '상점 열기' : '잡화점 가까이에서 활성화돼요'}
+          onClick={() => { game.openShop(); setMenuOpen(false) }}
+        >
+          <span>🛒</span>
+          <small>상점</small>
+        </button>
+        <button
+          className="tdv-navbtn"
+          disabled={!ui.nearBuild}
+          title={ui.nearBuild ? '건설 열기' : '건설 게시판 가까이에서 활성화돼요'}
+          onClick={() => { game.openBuild(); setMenuOpen(false) }}
+        >
+          <span>🔨</span>
+          <small>건설</small>
+        </button>
+        <button
+          className="tdv-navbtn"
+          disabled={!ui.nearCooking}
+          title={ui.nearCooking ? '요리 열기' : '요리 화덕 가까이에서 활성화돼요'}
+          onClick={() => { game.openCooking(); setMenuOpen(false) }}
+        >
+          <span>🍳</span>
+          <small>요리</small>
+        </button>
+        <button className="tdv-navbtn" onClick={() => setMenuOpen((v) => !v)}>
+          <span>☰</span>
+          <small>메뉴</small>
+        </button>
+      </nav>
+
       {/* Modals */}
       {ui.phase === 'shop' && <ShopModal game={game} ui={ui} />}
+      {ui.phase === 'build' && <BuildModal game={game} />}
+      {ui.phase === 'cook' && <CookingModal game={game} />}
       {ui.phase === 'sleepConfirm' && <SleepConfirm game={game} ui={ui} />}
       {invOpen && ui.phase === 'playing' && (
         <InventoryModal ui={ui} sel={invSel} setSel={setInvSel} onClose={() => setInvOpen(false)} />
@@ -220,6 +264,44 @@ function InventoryModal({
         )}
         <div className="tdv-row">
           <button className="tdv-btn ghost" onClick={onClose}>닫기</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ---------------- Build ----------------
+function BuildModal({ game }: { game: Game }) {
+  return (
+    <div className="tdv-modal-bg" onClick={() => game.closeModal()}>
+      <div className="tdv-modal" style={{ width: 'min(420px, 92vw)' }} onClick={(e) => e.stopPropagation()}>
+        <h2>🔨 건설</h2>
+        <div className="sub">건설 게시판 근처에서만 열리는 메뉴예요.</div>
+        <div className="tdv-card">
+          <div className="nm">준비 중</div>
+          <div className="ds">다음 단계에서 밭·창고·동물 시설 건설을 이 메뉴에 연결합니다.</div>
+        </div>
+        <div className="tdv-row">
+          <button className="tdv-btn ghost" onClick={() => game.closeModal()}>닫기</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ---------------- Cooking ----------------
+function CookingModal({ game }: { game: Game }) {
+  return (
+    <div className="tdv-modal-bg" onClick={() => game.closeModal()}>
+      <div className="tdv-modal" style={{ width: 'min(420px, 92vw)' }} onClick={(e) => e.stopPropagation()}>
+        <h2>🍳 요리</h2>
+        <div className="sub">요리 화덕 근처에서만 열리는 메뉴예요.</div>
+        <div className="tdv-card">
+          <div className="nm">준비 중</div>
+          <div className="ds">다음 단계에서 레시피와 조리 대기열을 이 메뉴에 연결합니다.</div>
+        </div>
+        <div className="tdv-row">
+          <button className="tdv-btn ghost" onClick={() => game.closeModal()}>닫기</button>
         </div>
       </div>
     </div>

@@ -268,7 +268,7 @@
 .tdv-action {
   position: absolute;
   right: 20px;
-  bottom: 30px;
+  bottom: 86px;
   width: 92px;
   height: 92px;
   border-radius: 50%;
@@ -319,6 +319,58 @@
 }
 .tdv-minibtn .ic {
   font-size: 16px;
+}
+
+.tdv-bottomnav {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  display: grid;
+  grid-template-columns: repeat(5, 58px);
+  gap: 6px;
+  padding: 6px;
+  background: #f6e9c9ee;
+  border: 2px solid var(--panel-edge);
+  border-radius: 10px;
+  box-shadow: 0 4px 0 #0004, inset 0 2px 0 #fff6;
+  pointer-events: auto;
+  z-index: 8;
+}
+.tdv-navbtn {
+  width: 58px;
+  height: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  background: var(--panel-dark);
+  border: 2px solid var(--panel-edge);
+  border-radius: 8px;
+  color: var(--ink);
+  font-family: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 2px 0 #0003;
+}
+.tdv-navbtn span {
+  font-size: 17px;
+  line-height: 1;
+}
+.tdv-navbtn small {
+  font-size: 10px;
+  line-height: 1;
+}
+.tdv-navbtn:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+.tdv-navbtn:disabled {
+  opacity: 0.42;
+  filter: grayscale(0.55);
+  cursor: not-allowed;
+  box-shadow: none;
 }
 
 /* ---------------- Toasts ---------------- */
@@ -707,8 +759,8 @@
 }
 .tdv-menu {
   position: absolute;
-  top: 50px;
-  right: 8px;
+  right: 10px;
+  bottom: 76px;
   z-index: 15;
   display: flex;
   flex-direction: column;
@@ -723,7 +775,7 @@
 .tdv-deskhint {
   position: absolute;
   left: 50%;
-  bottom: 150px;
+  bottom: 76px;
   transform: translateX(-50%);
   background: var(--panel);
   border: 2px solid var(--panel-edge);

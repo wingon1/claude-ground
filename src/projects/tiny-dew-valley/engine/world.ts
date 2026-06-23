@@ -9,6 +9,8 @@ export interface WorldLocations {
   storeCounter: { x: number; y: number }
   storeStand: { x: number; y: number } // where Barnaby stands
   storeFront: { x: number; y: number } // where player stands to interact
+  buildBoard: { x: number; y: number }
+  cookingFire: { x: number; y: number }
   shrine: { x: number; y: number } // interactive shrine tile
   pond: { x: number; y: number }
   woods: { x: number; y: number; w: number; h: number }
@@ -60,6 +62,8 @@ export const LOCATIONS: WorldLocations = {
   storeCounter: { x: 16, y: 29 },
   storeStand: { x: 16, y: 28 },
   storeFront: { x: 16, y: 30 },
+  buildBoard: { x: 22, y: 30 },
+  cookingFire: { x: 33, y: 11 },
   shrine: { x: 20, y: 5 },
   pond: { x: 25, y: 15 },
   woods: { x: 1, y: 8, w: 9, h: 20 },
@@ -133,6 +137,10 @@ export function generateWorld(): Tile[] {
   rect(tiles, 16, 11, 16, 30, (t) => {
     if (t.terrain === 'grass') t.terrain = 'path'
   })
+  tiles[idx(LOCATIONS.buildBoard.x, LOCATIONS.buildBoard.y)].terrain = 'path'
+  tiles[idx(LOCATIONS.buildBoard.x, LOCATIONS.buildBoard.y)].metadata.buildBoard = true
+  tiles[idx(LOCATIONS.cookingFire.x, LOCATIONS.cookingFire.y)].terrain = 'path'
+  tiles[idx(LOCATIONS.cookingFire.x, LOCATIONS.cookingFire.y)].metadata.cookingFire = true
 
   // ---- Shrine (north) ----
   rect(tiles, 19, 2, 21, 4, (t) => (t.terrain = 'blocked'))

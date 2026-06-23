@@ -29,7 +29,7 @@ const COST = { chop: 1, harvest: 1, plant: 1 }
 const START_MAX_STAMINA = 40
 
 // ---------- UI snapshot ----------
-export type UIPhase = 'title' | 'playing' | 'shop' | 'sleepConfirm'
+export type UIPhase = 'title' | 'playing' | 'shop' | 'build' | 'cook' | 'sleepConfirm'
 
 export interface ToastMsg {
   id: number
@@ -70,6 +70,9 @@ export interface UISnapshot {
   shopBuy: ShopBuyView[]
   contextAction: string | null
   nearBed: boolean
+  nearStore: boolean
+  nearBuild: boolean
+  nearCooking: boolean
   exhausted: boolean
   muted: boolean
   musicOn: boolean
@@ -644,6 +647,11 @@ export class Game {
   // ---------------- shop ----------------
   openShop() {
     if (this.phase !== 'playing') return
+    if (!this.nearStore()) {
+      this.toast('잡화점 가까이에서만 열 수 있어요.', 'bad')
+      this.audio.sfx('reject')
+      return
+    }
     this.phase = 'shop'
     this.target = null
     this.audio.resume()
@@ -652,6 +660,41 @@ export class Game {
   }
   closeShop() {
     if (this.phase === 'shop') {
+      this.phase = 'playing'
+      this.emit()
+    }
+  }
+
+  openBuild() {
+    if (this.phase !== 'playing') return
+    if (!this.nearBuild()) {
+      this.toast('건설 게시판 가까이에서만 열 수 있어요.', 'bad')
+      this.audio.sfx('reject')
+      return
+    }
+    this.phase = 'build'
+    this.target = null
+    this.audio.resume()
+    this.audio.sfx('select')
+    this.emit()
+  }
+
+  openCooking() {
+    if (this.phase !== 'playing') return
+    if (!this.nearCooking()) {
+      this.toast('요리 화덕 가까이에서만 열 수 있어요.', 'bad')
+      this.audio.sfx('reject')
+      return
+    }
+    this.phase = 'cook'
+    this.target = null
+    this.audio.resume()
+    this.audio.sfx('select')
+    this.emit()
+  }
+
+  closeModal() {
+    if (this.phase === 'shop' || this.phase === 'build' || this.phase === 'cook') {
       this.phase = 'playing'
       this.emit()
     }
@@ -739,13 +782,25 @@ export class Game {
   }
 
   private nearStore(): boolean {
+    return this.nearTileMetadata('storeCounter') || this.nearTileMetadata('storeInterior')
+  }
+
+  private nearBuild(): boolean {
+    return this.nearTileMetadata('buildBoard')
+  }
+
+  private nearCooking(): boolean {
+    return this.nearTileMetadata('cookingFire')
+  }
+
+  private nearTileMetadata(key: string): boolean {
     const pt = this.playerTile()
     for (let dy = -1; dy <= 1; dy++) {
       for (let dx = -1; dx <= 1; dx++) {
         const t = inBounds(pt.x + dx, pt.y + dy)
           ? this.state.tiles[idx(pt.x + dx, pt.y + dy)]
           : null
-        if (t && (t.metadata.storeCounter || t.metadata.storeInterior)) return true
+        if (t && t.metadata[key]) return true
       }
     }
     return false
@@ -884,6 +939,8 @@ export class Game {
     this.drawBuilding(this.sprites.farmhouse, 29, 6, S, -16)
     this.drawBuilding(this.sprites.store, 14, 26, S, -14)
     this.drawBuilding(this.sprites.shrineBroken, 19, 2, S, -8)
+    this.drawBuildBoard(S)
+    this.drawCookingFire(S)
 
     type Draw = { y: number; fn: () => void }
     const draws: Draw[] = []
@@ -923,6 +980,34 @@ export class Game {
 
   private drawBuilding(img: HTMLCanvasElement, tx: number, ty: number, S: number, yOff: number) {
     this.ctx.drawImage(img, this.wx(tx * T), this.wy(ty * T + yOff), img.width * S, img.height * S)
+  }
+
+  private drawBuildBoard(S: number) {
+    const ctx = this.ctx
+    const x = this.wx(LOCATIONS.buildBoard.x * T)
+    const y = this.wy(LOCATIONS.buildBoard.y * T)
+    ctx.fillStyle = '#7a4c2a'
+    ctx.fillRect(x + 5 * S, y + 4 * S, 2 * S, 11 * S)
+    ctx.fillRect(x + 10 * S, y + 4 * S, 2 * S, 11 * S)
+    ctx.fillStyle = '#d6aa63'
+    ctx.fillRect(x + 3 * S, y + 2 * S, 11 * S, 7 * S)
+    ctx.fillStyle = '#8f6230'
+    ctx.fillRect(x + 4 * S, y + 4 * S, 9 * S, 1 * S)
+    ctx.fillRect(x + 4 * S, y + 7 * S, 6 * S, 1 * S)
+  }
+
+  private drawCookingFire(S: number) {
+    const ctx = this.ctx
+    const x = this.wx(LOCATIONS.cookingFire.x * T)
+    const y = this.wy(LOCATIONS.cookingFire.y * T)
+    ctx.fillStyle = '#6b6255'
+    ctx.fillRect(x + 3 * S, y + 11 * S, 10 * S, 3 * S)
+    ctx.fillStyle = '#f0b23b'
+    ctx.fillRect(x + 6 * S, y + 5 * S, 5 * S, 7 * S)
+    ctx.fillStyle = '#e05a36'
+    ctx.fillRect(x + 5 * S, y + 7 * S, 7 * S, 5 * S)
+    ctx.fillStyle = '#fff0a6'
+    ctx.fillRect(x + 8 * S, y + 6 * S, 2 * S, 4 * S)
   }
 
   private drawObstacle(t: Tile, S: number) {
@@ -1085,7 +1170,7 @@ export class Game {
       return {
         phase: this.phase, day: 1, clock: '오전 6:00', period: '아침', periodKey: 'morning',
         gold: 0, stamina: 0, maxStamina: 0, inventory: [], toasts: [...this.toasts], shopBuy: [],
-        contextAction: null, nearBed: false, exhausted: false,
+        contextAction: null, nearBed: false, nearStore: false, nearBuild: false, nearCooking: false, exhausted: false,
         muted: this.audio.muted, musicOn: this.audio.musicOn, hasSave: this.hasSavedGame(),
       }
     }
@@ -1134,6 +1219,9 @@ export class Game {
       shopBuy,
       contextAction,
       nearBed: this.nearBed(),
+      nearStore: this.nearStore(),
+      nearBuild: this.nearBuild(),
+      nearCooking: this.nearCooking(),
       exhausted: s.player.exhausted,
       muted: this.audio.muted,
       musicOn: this.audio.musicOn,
