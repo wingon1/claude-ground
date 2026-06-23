@@ -89,10 +89,9 @@ export const World = worldJson as {
   world: { tile: number }
   water: number
   penSize: { w: number; h: number }
-  pathWidth: number
+  gap: number
   fence: number
   gate: number
-  cols: number
   pens: PenDef[]
   mineNodeAnchors: Vec[]
 }

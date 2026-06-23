@@ -15,13 +15,13 @@ import { AudioManager } from '../audio/AudioManager'
 import { checkQuests } from '../systems/QuestSystem'
 import { clearSave, loadState, saveState } from '../systems/SaveSystem'
 import { buildLayout, layoutWalkable } from './layout'
-import type { Layout, Pen } from './layout'
+import type { Layout } from './layout'
 import { buildGrid, findPath } from '../utils/pathfind'
 import type { Grid } from '../utils/pathfind'
 import {
   drawApiary, drawBarn, drawBee, drawBuildSite, drawBush, drawChicken, drawCookingFire, drawCoop,
   drawCow, drawCrop, drawFence, drawMine, drawOreNode, drawPlayer, drawRock, drawShell, drawShop,
-  drawStorage, drawTent, drawTree, makeGrassTexture, makeStoneTexture,
+  drawStorage, drawTent, drawTree, makeGrassTexture,
 } from '../render/sprites'
 import { PAL } from '../render/palette'
 
@@ -63,7 +63,6 @@ export class Game {
   private layout!: Layout
   private grid: Grid | null = null
   private grassTex: HTMLCanvasElement | null = null
-  private stoneTex: HTMLCanvasElement | null = null
 
   constructor() {
     this.state = newGameState()
@@ -98,8 +97,7 @@ export class Game {
     this.layout = buildLayout()
     this.cam.setWorld(this.layout.worldW, this.layout.worldH, this.layout.penW, this.layout.penH)
     this.grid = buildGrid(this.layout.worldW, this.layout.worldH, 16, (x, y) => layoutWalkable(this.layout, x, y))
-    this.grassTex = makeGrassTexture(this.layout.penW, this.layout.penH)
-    this.stoneTex = makeStoneTexture(64)
+    this.grassTex = makeGrassTexture(96)
     this.nodes = []
     for (const n of this.layout.resourceSpots) {
       const def = ResourceNodes[n.type]
@@ -840,30 +838,37 @@ export class Game {
     }
   }
 
-  // One pixel-grass canvas reused for every (identical) pen.
-  private drawPenGrass(ctx: CanvasRenderingContext2D, pen: Pen) {
-    if (this.grassTex) ctx.drawImage(this.grassTex, pen.rect.x, pen.rect.y)
-  }
-
-  // Stone-path tiles fill the land; pens are painted over with grass.
-  private drawPaths(ctx: CanvasRenderingContext2D) {
-    if (!this.stoneTex) return
+  // The whole continent is grass (no stone path). A sand rim sits at the shore.
+  private drawLand(ctx: CanvasRenderingContext2D) {
     const L = this.layout.land
-    const tile = this.stoneTex.width
-    const x0 = Math.max(L.x, Math.floor(this.cam.x / tile) * tile)
-    const y0 = Math.max(L.y, Math.floor(this.cam.y / tile) * tile)
-    const x1 = Math.min(L.x + L.w, this.cam.x + this.cam.spanW())
-    const y1 = Math.min(L.y + L.h, this.cam.y + this.cam.spanH())
-    for (let y = y0; y < y1; y += tile) {
-      for (let x = x0; x < x1; x += tile) ctx.drawImage(this.stoneTex, x, y)
+    // sandy beach rim around the land
+    ctx.fillStyle = '#e7d49a'
+    ctx.fillRect(L.x - 10, L.y - 10, L.w + 20, L.h + 20)
+    ctx.fillStyle = '#d9c489'
+    ctx.fillRect(L.x - 10, L.y - 10, L.w + 20, 4)
+    if (!this.grassTex) return
+    const tile = this.grassTex.width
+    const x0 = Math.floor(this.cam.x / tile) * tile
+    const y0 = Math.floor(this.cam.y / tile) * tile
+    const x1 = this.cam.x + this.cam.spanW()
+    const y1 = this.cam.y + this.cam.spanH()
+    ctx.save()
+    ctx.beginPath(); ctx.rect(L.x, L.y, L.w, L.h); ctx.clip()
+    for (let y = y0 - tile; y < y1 + tile; y += tile) {
+      for (let x = x0 - tile; x < x1 + tile; x += tile) ctx.drawImage(this.grassTex, x, y)
     }
+    ctx.restore()
   }
 
   private renderIsland(ctx: CanvasRenderingContext2D) {
     this.drawSea(ctx)
-    this.drawPaths(ctx)
-    for (const pen of this.layout.pens) this.drawPenGrass(ctx, pen)
-    for (const pen of this.layout.pens) drawFence(ctx, pen.rect, pen.gate)
+    this.drawLand(ctx)
+    for (const pen of this.layout.pens) {
+      if (pen.content === 'home') continue // starting region has no fence
+      ctx.fillStyle = 'rgba(60,120,40,0.10)'
+      ctx.fillRect(pen.interior.x, pen.interior.y, pen.interior.w, pen.interior.h)
+      drawFence(ctx, pen.rect, pen.gate, pen.gateSide)
+    }
 
     // y-sorted draw list, all in world coordinates
     type Drawable = { y: number; fn: () => void }
@@ -882,8 +887,11 @@ export class Game {
     for (const a of this.state.animals) {
       list.push({ y: a.pos.y, fn: () => this.drawAnimal(ctx, a.animalId, a.pos.x, a.pos.y, a.product > 0) })
     }
+    const vx0 = this.cam.x - 40, vy0 = this.cam.y - 80
+    const vx1 = this.cam.x + this.cam.spanW() + 40, vy1 = this.cam.y + this.cam.spanH() + 40
     for (const n of this.nodes) {
       if (!n.alive) continue
+      if (n.pos.x < vx0 || n.pos.x > vx1 || n.pos.y < vy0 || n.pos.y > vy1) continue // cull off-screen
       const def = ResourceNodes[n.type]
       const shake = n.shakeUntil > performance.now() ? Math.round(Math.sin(performance.now() / 28) * 2) : 0
       list.push({ y: n.pos.y, fn: () => this.drawResource(ctx, def.kind, n.type, n.pos.x + shake, n.pos.y) })

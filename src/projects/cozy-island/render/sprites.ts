@@ -69,71 +69,89 @@ const CHICKEN = [
   '.k....k..',
 ]
 
+// leaves: o outline, h highlight, l light, g mid, G deep, d shadow · trunk t/T/b
+const TREE_PAL: Record<string, string> = {
+  o: '#274a1c', h: '#bff08a', l: '#9be069', g: '#6cc04a', G: '#46933a', d: '#327029',
+  t: '#9a6536', T: '#5f3c22', b: '#b27a44',
+}
 const TREE_SMALL = [
-  '...lllll...',
-  '..lgggggl..',
-  '.lgggggggl.',
-  'lgggGGGgggl',
-  'lggGGGGGggl',
-  'lgggGGGgggl',
-  '.lggGGGggl.',
-  '..GGGGGGG..',
-  '...GGGGG...',
-  '....ttt....',
+  '...olllo...',
+  '..olllllo..',
+  '.olllllllo.',
+  '.ohhllllgo.',
+  'ohhllgggglo',
+  'olggggGGGGo',
+  '.oggGGGGGo.',
+  '..oGGdddo..',
+  '....tbt....',
   '....tTt....',
-  '....tTt....',
-  '...ttttt...',
+  '...ttbtt...',
+  '...tTTtt...',
+  '..tttttt...',
 ]
-
 const TREE_BIG = [
-  '....lllll....',
-  '..llgggggll..',
-  '.lggggggggGl.',
-  'lggggGGGggggl',
-  'lgggGGGGGgggl',
-  'lggGGGGGGGggl',
-  'lgggGGGGGgggl',
-  '.lggGGGGGggl.',
-  '..lgGGGGGgl..',
-  '...GGGGGGG...',
-  '....GGGGG....',
-  '.....ttt.....',
-  '....ttTtt....',
-  '....ttTtt....',
-  '...tttttt....',
+  '.....olllo.....',
+  '...ollllllo....',
+  '..ollllllllo...',
+  '.ohhlllllllgo..',
+  '.ohhllggggglgo.',
+  'ohhllgggggggglo',
+  'ohllgggggggGGlo',
+  'ollgggggGGGGGGo',
+  'olgggGGGGGGGGdo',
+  '.ogGGGGGGGGdo..',
+  '.ogGGGGGdddgo..',
+  '..ogGddddddo...',
+  '...oGdddddo....',
+  '......tbt......',
+  '.....ttTtt.....',
+  '.....tbTtt.....',
+  '....tttTttt....',
+  '...tttttttt....',
 ]
 
+// rock: o outline, w highlight, r light, R mid, d shadow · m/M moss
+const ROCK_PAL: Record<string, string> = {
+  o: '#454c57', w: '#e3e9ef', r: '#b3bcc6', R: '#7f8893', d: '#5a636d',
+  m: '#6cbb55', M: '#4f9a3f',
+}
 const ROCK_SMALL = [
-  '...rrrr...',
-  '..rwwwwr..',
-  '.rwwwwwwr.',
-  'rwwwwwwwwr',
-  'rRrwwwwRRr',
-  'rRRRRRRRRr',
-  '.RRRRRRR..',
-  '..RRRRR...',
+  '...orrro...',
+  '.owwrrrwwo.',
+  'owrrrrrrrwo',
+  'orrrRRRrrro',
+  'orRRmRRMRro',
+  '.oRRRRRRRo.',
+  '.odRRRRRdo.',
+  '..oddddo...',
 ]
-
 const ROCK_BIG = [
-  '....rrrrr....',
-  '..rrwwwwwrr..',
-  '.rwwwwwwwwwr.',
-  'rwwwwwwwwwwwr',
-  'rwwRwwwwwRwwr',
-  'rRRRRRRRRRRRr',
-  'rRRRRRRRRRRRr',
-  '.RRRRRRRRRR..',
-  '..RRRRRRR....',
+  '....orrrro.....',
+  '..owwwrrrwwwo..',
+  '.owwrrrrrrrwwo.',
+  'owrrrrrrrrrrrwo',
+  'orrRRRRRRRRRrro',
+  'oRRmMRRRRRMmRRo',
+  'oRRRRRRRRRRRRRo',
+  '.odRRRRRRRRRdo.',
+  '.oddRRRRRRRddo.',
+  '..oddddddddoo..',
 ]
 
+// bush: o outline, l light, g mid, G deep, d shadow · f/F berries
+const BUSH_PAL: Record<string, string> = {
+  o: '#274a1c', l: '#9be069', g: '#6cc04a', G: '#46933a', d: '#2f6e29',
+  f: '#e85563', F: '#bb3a45',
+}
 const BUSH = [
-  '...gggggg...',
-  '..gggggggg..',
-  '.ggglGGgggg.',
-  'gggggggggggg',
-  'gGgggggggGgg',
-  '.GGGGGGGGGG.',
-  '..GG..GG.G..',
+  '...ooooooo...',
+  '..ogllllllgo.',
+  '.oglllllllgo.',
+  'ogllllllllllgo',
+  'ogGfgggggfGgo',
+  'ogGGfgggfGGgo',
+  '.ogGGGGGGGgo.',
+  '..oGGdddGGo..',
 ]
 
 const SHELL = [
@@ -337,19 +355,19 @@ export function drawChicken(ctx: CanvasRenderingContext2D, x: number, y: number,
 }
 
 export function drawTree(ctx: CanvasRenderingContext2D, x: number, y: number, big: boolean) {
-  shadow(ctx, x, y, big ? 26 : 20)
-  drawGrid(ctx, big ? TREE_BIG : TREE_SMALL, x, y, PXR, 'foot')
+  shadow(ctx, x, y, big ? 28 : 22)
+  drawGrid(ctx, big ? TREE_BIG : TREE_SMALL, x, y, PXR, 'foot', TREE_PAL)
 }
 
 export function drawRock(ctx: CanvasRenderingContext2D, x: number, y: number, big: boolean) {
   shadow(ctx, x, y, big ? 30 : 24)
-  drawGrid(ctx, big ? ROCK_BIG : ROCK_SMALL, x, y, PXR, 'foot')
+  drawGrid(ctx, big ? ROCK_BIG : ROCK_SMALL, x, y, PXR, 'foot', ROCK_PAL)
 }
 
-export function drawBush(ctx: CanvasRenderingContext2D, x: number, y: number, berry: boolean) {
+export function drawBush(ctx: CanvasRenderingContext2D, x: number, y: number, _berry: boolean) {
+  void _berry
   shadow(ctx, x, y, 26)
-  drawGrid(ctx, BUSH, x, y, PXR, 'foot')
-  if (berry) { r(ctx, x - 8, y - 18, 4, 4, '#e2515b'); r(ctx, x + 6, y - 12, 4, 4, '#e2515b') }
+  drawGrid(ctx, BUSH, x, y, PXR, 'foot', BUSH_PAL)
 }
 
 export function drawShell(ctx: CanvasRenderingContext2D, x: number, y: number) {
@@ -454,77 +472,75 @@ function pxHash(x: number, y: number): number {
   return n - Math.floor(n)
 }
 
-/** One reusable pixel-grass texture for every (identical) pen. */
-export function makeGrassTexture(w: number, h: number): HTMLCanvasElement {
+/** Lush seamless-ish grass tile reused across the whole land. */
+export function makeGrassTexture(size: number): HTMLCanvasElement {
   const cv = document.createElement('canvas')
-  cv.width = w; cv.height = h
+  cv.width = size; cv.height = size
   const c = cv.getContext('2d')!
   const cell = 4
-  const tones = ['#7cc25b', '#8fd06a', '#72b552', '#86c863']
-  for (let y = 0; y < h; y += cell) {
-    for (let x = 0; x < w; x += cell) {
-      const r = pxHash(x, y)
-      c.fillStyle = tones[Math.floor(r * tones.length)]
+  const tones = ['#7ec25a', '#88cd63', '#75b853', '#8ed268']
+  for (let y = 0; y < size; y += cell) {
+    for (let x = 0; x < size; x += cell) {
+      const n = pxHash(x * 0.7, y * 0.7)
+      c.fillStyle = tones[Math.floor(n * tones.length) % tones.length]
       c.fillRect(x, y, cell, cell)
     }
   }
-  for (let i = 0; i < (w * h) / 360; i++) {
-    const x = Math.floor(pxHash(i, 7) * w)
-    const y = Math.floor(pxHash(i, 13) * h)
-    c.fillStyle = pxHash(i, 21) > 0.5 ? '#5fa347' : '#6bb04e'
-    c.fillRect(x, y, 2, pxHash(i, 4) > 0.5 ? 3 : 2)
+  // soft grass blades / clumps
+  for (let i = 0; i < (size * size) / 130; i++) {
+    const x = Math.floor(pxHash(i, 3) * size)
+    const y = Math.floor(pxHash(i, 11) * size)
+    c.fillStyle = pxHash(i, 5) > 0.5 ? '#5fa347' : '#6cb24f'
+    c.fillRect(x, y, 2, 3); c.fillRect(x + 2, y - 1, 2, 3)
+  }
+  // scattered little flowers
+  const petals = ['#f7d65a', '#f29ad0', '#fdfdf6']
+  for (let i = 0; i < (size * size) / 1100; i++) {
+    const x = Math.floor(pxHash(i + 50, 7) * size)
+    const y = Math.floor(pxHash(i + 50, 17) * size)
+    c.fillStyle = petals[Math.floor(pxHash(i, 23) * petals.length) % petals.length]
+    c.fillRect(x - 2, y, 2, 2); c.fillRect(x + 2, y, 2, 2); c.fillRect(x, y - 2, 2, 2); c.fillRect(x, y + 2, 2, 2)
+    c.fillStyle = '#f6c343'; c.fillRect(x, y, 2, 2)
   }
   return cv
 }
 
-/** Cobblestone path tile (square-pixel). */
-export function makeStoneTexture(tile: number): HTMLCanvasElement {
-  const cv = document.createElement('canvas')
-  cv.width = tile; cv.height = tile
-  const c = cv.getContext('2d')!
-  c.fillStyle = '#9a9183'; c.fillRect(0, 0, tile, tile)
-  const cell = 4
-  for (let y = 0; y < tile; y += cell) {
-    for (let x = 0; x < tile; x += cell) {
-      const r = pxHash(x + 1, y + 2)
-      c.fillStyle = r > 0.82 ? '#857c6f' : r > 0.5 ? '#a79e8f' : '#b4ab9c'
-      c.fillRect(x, y, cell, cell)
-    }
-  }
-  c.fillStyle = '#7d7468'
-  for (let y = 0; y < tile; y += 16) c.fillRect(0, y, tile, 1)
-  for (let x = 0; x < tile; x += 16) c.fillRect(x, 0, 1, tile)
-  return cv
-}
-
-/** Pixel wooden fence around a pen rect, leaving the gate gap on the bottom edge. */
-export function drawFence(ctx: CanvasRenderingContext2D, rect: RectT, gate: RectT) {
-  const post = '#7a4a26'
-  const rail = '#9c6a3c'
-  const railHi = '#b07f4c'
+/** Pixel wooden fence around a pen, leaving a gap for the gate on one side. */
+export function drawFence(ctx: CanvasRenderingContext2D, rect: RectT, gate: RectT, gateSide: string) {
+  const railLo = '#6f421f', rail = '#9c6a3c', railHi = '#bd8651', post = '#5e371d'
+  const th = 5
   const x0 = Math.round(rect.x), y0 = Math.round(rect.y)
   const x1 = Math.round(rect.x + rect.w), y1 = Math.round(rect.y + rect.h)
-  const th = 4
-  ctx.fillStyle = rail
-  ctx.fillRect(x0, y0, rect.w, th)
-  ctx.fillRect(x0, y0, th, rect.h)
-  ctx.fillRect(x1 - th, y0, th, rect.h)
   const gx0 = Math.round(gate.x), gx1 = Math.round(gate.x + gate.w)
-  ctx.fillRect(x0, y1 - th, gx0 - x0, th)
-  ctx.fillRect(gx1, y1 - th, x1 - gx1, th)
-  ctx.fillStyle = railHi
-  ctx.fillRect(x0, y0, rect.w, 1)
-  ctx.fillStyle = post
-  const step = 26
-  for (let x = x0; x <= x1; x += step) {
-    ctx.fillRect(x - 2, y0 - 2, 5, th + 4)
-    const inGate = x > gx0 - 3 && x < gx1 + 3
-    if (!inGate) ctx.fillRect(x - 2, y1 - th - 2, 5, th + 4)
+  const gy0 = Math.round(gate.y), gy1 = Math.round(gate.y + gate.h)
+  const hRail = (ax: number, bx: number, y: number) => {
+    if (bx <= ax) return
+    ctx.fillStyle = rail; ctx.fillRect(ax, y, bx - ax, th)
+    ctx.fillStyle = railHi; ctx.fillRect(ax, y, bx - ax, 1)
+    ctx.fillStyle = railLo; ctx.fillRect(ax, y + th - 1, bx - ax, 1)
   }
-  for (let y = y0; y <= y1; y += step) {
-    ctx.fillRect(x0 - 2, y - 2, th + 4, 5)
-    ctx.fillRect(x1 - th - 2, y - 2, th + 4, 5)
+  const vRail = (ay: number, by: number, x: number) => {
+    if (by <= ay) return
+    ctx.fillStyle = rail; ctx.fillRect(x, ay, th, by - ay)
+    ctx.fillStyle = railHi; ctx.fillRect(x, ay, 1, by - ay)
+    ctx.fillStyle = railLo; ctx.fillRect(x + th - 1, ay, 1, by - ay)
   }
-  ctx.fillRect(gx0 - 3, y1 - th - 3, 5, th + 7)
-  ctx.fillRect(gx1 - 2, y1 - th - 3, 5, th + 7)
+  // four rails, each split around the gate gap when the gate is on that edge
+  if (gateSide === 'top') { hRail(x0, gx0, y0); hRail(gx1, x1, y0) } else hRail(x0, x1, y0)
+  if (gateSide === 'bottom') { hRail(x0, gx0, y1 - th); hRail(gx1, x1, y1 - th) } else hRail(x0, x1, y1 - th)
+  if (gateSide === 'left') { vRail(y0, gy0, x0); vRail(gy1, y1, x0) } else vRail(y0, y1, x0)
+  if (gateSide === 'right') { vRail(y0, gy0, x1 - th); vRail(gy1, y1, x1 - th) } else vRail(y0, y1, x1 - th)
+  // posts: corners + the two gate posts
+  const drawPost = (px: number, py: number) => {
+    ctx.fillStyle = post; ctx.fillRect(px - 2, py - 3, 6, th + 6)
+    ctx.fillStyle = railHi; ctx.fillRect(px - 2, py - 3, 6, 1)
+  }
+  drawPost(x0, y0); drawPost(x1 - th, y0); drawPost(x0, y1 - th); drawPost(x1 - th, y1 - th)
+  if (gateSide === 'top' || gateSide === 'bottom') {
+    const py = gateSide === 'top' ? y0 : y1 - th
+    drawPost(gx0 - 3, py); drawPost(gx1 - 2, py)
+  } else {
+    const px = gateSide === 'left' ? x0 : x1 - th
+    drawPost(px, gy0 - 3); drawPost(px, gy1 - 2)
+  }
 }
