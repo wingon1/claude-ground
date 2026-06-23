@@ -243,6 +243,8 @@ export class Game {
   private keys = new Set<string>()
   private workTile: { x: number; y: number } | null = null
   private itemIconCache = new Map<string, HTMLCanvasElement>()
+  private jumpT = 0
+  private workAnimT = 0
 
   private listeners = new Set<() => void>()
   private snap: UISnapshot
@@ -356,6 +358,8 @@ export class Game {
     this.fadeDir = 0
     this.target = null
     this.workTile = null
+    this.jumpT = 0
+    this.workAnimT = 0
   }
 
   // ---------------- main loop ----------------
@@ -392,6 +396,8 @@ export class Game {
       }
     }
     if (this.workCooldown > 0) this.workCooldown -= dt
+    if (this.jumpT > 0) this.jumpT = Math.max(0, this.jumpT - dt)
+    if (this.workAnimT > 0) this.workAnimT = Math.max(0, this.workAnimT - dt)
   }
 
   // ---------------- update ----------------
@@ -463,6 +469,7 @@ export class Game {
     if (!this.collides(nx, p.y)) { p.x = nx; moved = true }
     if (!this.collides(p.x, ny)) { p.y = ny; moved = true }
     if (!moved) this.target = null // stuck against a wall — stop
+    if (moved && this.overlapsAnimalFence(p.x, p.y)) this.jumpT = Math.max(this.jumpT, 0.22)
     p.animTime += dt
   }
 
@@ -481,8 +488,23 @@ export class Game {
   }
 
   private tileSolid(t: Tile): boolean {
+    if (t.metadata.animalFence === true) return false
     if (TERRAIN_SOLID[t.terrain]) return true
     if (t.obstacle && OBSTACLE_SOLID[t.obstacle]) return true
+    return false
+  }
+
+  private overlapsAnimalFence(cx: number, cy: number): boolean {
+    const x0 = Math.floor((cx - 5) / T)
+    const x1 = Math.floor((cx + 5) / T)
+    const y0 = Math.floor((cy - 6) / T)
+    const y1 = Math.floor((cy - 0.5) / T)
+    for (let ty = y0; ty <= y1; ty++) {
+      for (let tx = x0; tx <= x1; tx++) {
+        if (!inBounds(tx, ty)) continue
+        if (this.state.tiles[idx(tx, ty)].metadata.animalFence === true) return true
+      }
+    }
     return false
   }
 
@@ -558,6 +580,7 @@ export class Game {
     else if (Math.abs(cy - p.y) > 2) p.dir = cy > p.y ? 'down' : 'up'
     if (this.workCooldown > 0) return
     this.workCooldown = WORK_INTERVAL
+    this.workAnimT = 0.28
     if (work.kind === 'pickup') this.pickupGroundItem(work.t)
     else if (work.kind === 'harvest') this.harvestCrop(work.t)
     else if (work.kind === 'chop') this.chopObstacle(work.t)
@@ -1504,6 +1527,7 @@ export class Game {
       t.obstacle = null
       t.hp = undefined
       delete t.metadata.animalFarm
+      delete t.metadata.animalFence
     }
     for (const farm of ANIMAL_FARMS) {
       for (let y = farm.y; y < farm.y + farm.h; y++) {
@@ -1516,6 +1540,7 @@ export class Game {
           t.obstacle = null
           t.hp = undefined
           delete t.metadata.animalFarm
+          delete t.metadata.animalFence
         }
       }
       if (!this.animalFarmOwned(farm)) continue
@@ -1529,6 +1554,8 @@ export class Game {
           const gate = x === gateX && y === gateY
           t.terrain = edge && !gate ? 'blocked' : 'grass'
           t.metadata.animalFarm = farm.id
+          if (edge && !gate) t.metadata.animalFence = true
+          else delete t.metadata.animalFence
         }
       }
     }
@@ -1708,7 +1735,7 @@ export class Game {
         if (this.groundItemId(t)) draws.push({ y: ty * T + T, fn: () => this.drawGroundItem(t, S) })
       }
     }
-    draws.push({ y: p.y, fn: () => this.drawHuman(this.sprites.farmer, p.x, p.y, p.dir, p.moving, p.exhausted) })
+    draws.push({ y: p.y, fn: () => this.drawHuman(this.sprites.farmer, p.x, p.y, p.dir, p.moving, p.exhausted, p.animTime) })
     draws.sort((a, b) => a.y - b.y)
     for (const d of draws) d.fn()
 
@@ -1728,7 +1755,10 @@ export class Game {
     let img: HTMLCanvasElement
     if (t.terrain === 'water') img = this.sprites.water[wf]
     else if (t.terrain === 'path') img = this.sprites.path
-    else if (t.terrain === 'blocked') img = this.sprites.fence
+    else if (t.terrain === 'blocked') {
+      this.ctx.drawImage(this.sprites.grass[(t.x * 7 + t.y * 13) % 3], dx, dy, sz, sz)
+      img = this.sprites.fence
+    }
     else if (t.terrain === 'soil' || t.terrain === 'tilled') img = this.sprites.soil
     else img = this.sprites.grass[(t.x * 7 + t.y * 13) % 3]
     this.ctx.drawImage(img, dx, dy, sz, sz)
@@ -1876,16 +1906,58 @@ export class Game {
     dir: string,
     moving: boolean,
     exhausted: boolean,
+    animTime: number,
   ) {
     const S = this.scale
     let frame = 0
-    if (moving) frame = Math.floor(performance.now() / 160) % 2 === 0 ? 1 : 2
+    if (moving) frame = Math.floor(animTime * 10) % 2 === 0 ? 1 : 2
     const img = sheet[`${dir}_${frame}`] ?? sheet['down_0']
-    this.ctx.drawImage(img, this.wx(x - 8), this.wy(y - 22 + 2), 16 * S, 22 * S)
+    const walkBob = moving ? Math.abs(Math.sin(animTime * 18)) * 1.2 : 0
+    const jump = this.jumpT > 0 ? Math.sin((this.jumpT / 0.22) * Math.PI) * 7 : 0
+    const work = this.workAnimT > 0 ? Math.sin((this.workAnimT / 0.28) * Math.PI) : 0
+    const drawY = y - 22 + 2 - walkBob - jump - work * 1.5
+    this.ctx.drawImage(img, this.wx(x - 8), this.wy(drawY), 16 * S, 22 * S)
+    if (work > 0) this.drawWorkPose(x, drawY, dir, work, S)
     if (exhausted) {
       const t = performance.now() / 300
       this.ctx.fillStyle = '#9fd0ff'
-      this.ctx.fillRect(this.wx(x + 5), this.wy(y - 20 + Math.sin(t) * 2), 2 * S, 3 * S)
+      this.ctx.fillRect(this.wx(x + 5), this.wy(drawY + 2 + Math.sin(t) * 2), 2 * S, 3 * S)
+    }
+  }
+
+  private drawWorkPose(x: number, y: number, dir: string, t: number, S: number) {
+    const ctx = this.ctx
+    ctx.fillStyle = '#f0c79a'
+    ctx.strokeStyle = '#6e4426'
+    ctx.lineWidth = Math.max(1, Math.round(S))
+    const sx = this.wx(x)
+    const sy = this.wy(y)
+    if (dir === 'left') {
+      ctx.fillRect(sx - 8 * S, sy + (12 - t * 4) * S, 4 * S, 2 * S)
+      ctx.beginPath()
+      ctx.moveTo(sx - 8 * S, sy + 13 * S)
+      ctx.lineTo(sx - (12 + t * 5) * S, sy + (8 + t * 4) * S)
+      ctx.stroke()
+    } else if (dir === 'right') {
+      ctx.fillRect(sx + 4 * S, sy + (12 - t * 4) * S, 4 * S, 2 * S)
+      ctx.beginPath()
+      ctx.moveTo(sx + 8 * S, sy + 13 * S)
+      ctx.lineTo(sx + (12 + t * 5) * S, sy + (8 + t * 4) * S)
+      ctx.stroke()
+    } else if (dir === 'up') {
+      ctx.fillRect(sx - 6 * S, sy + (10 - t * 3) * S, 4 * S, 2 * S)
+      ctx.fillRect(sx + 2 * S, sy + (10 - t * 3) * S, 4 * S, 2 * S)
+      ctx.beginPath()
+      ctx.moveTo(sx, sy + 12 * S)
+      ctx.lineTo(sx, sy + (5 + t * 5) * S)
+      ctx.stroke()
+    } else {
+      ctx.fillRect(sx - 7 * S, sy + (13 - t * 4) * S, 4 * S, 2 * S)
+      ctx.fillRect(sx + 3 * S, sy + (13 - t * 4) * S, 4 * S, 2 * S)
+      ctx.beginPath()
+      ctx.moveTo(sx, sy + 13 * S)
+      ctx.lineTo(sx, sy + (20 - t * 5) * S)
+      ctx.stroke()
     }
   }
 

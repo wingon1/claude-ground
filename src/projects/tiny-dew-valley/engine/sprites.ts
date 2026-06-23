@@ -189,7 +189,6 @@ function bakePath(): HTMLCanvasElement {
 function bakeFence(): HTMLCanvasElement {
   const c = cv(T, T)
   const g = ctxOf(c)
-  px(g, 0, 0, T, T, '#5d8a3a')
   px(g, 0, 5, T, 3, '#8a6a40')
   px(g, 2, 2, 2, 12, '#6e5230')
   px(g, 11, 2, 2, 12, '#6e5230')
