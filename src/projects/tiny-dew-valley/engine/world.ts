@@ -100,7 +100,7 @@ export function stampStore(tiles: Tile[]) {
   }
 }
 
-export function stampCookingFire(tiles: Tile[]) {
+export function stampCookingFire(tiles: Tile[], built = true) {
   for (const t of tiles) {
     if (t.metadata.cookingFire === true || t.metadata.cookingFireBlock === true) {
       t.terrain = 'grass'
@@ -110,6 +110,7 @@ export function stampCookingFire(tiles: Tile[]) {
       delete t.metadata.cookingFireBlock
     }
   }
+  if (!built) return
   rect(
     tiles,
     LOCATIONS.cookingFire.x,
@@ -170,7 +171,7 @@ export function generateWorld(): Tile[] {
   // ---- General Store (beside the farmhouse) ----
   stampStore(tiles)
 
-  stampCookingFire(tiles)
+  stampCookingFire(tiles, false)
 
   // ---- Western woods: trees, stumps, daffodils, weeds ----
   const w = LOCATIONS.woods

@@ -73,6 +73,47 @@
 .tdv-gold {
   color: #a6791f;
 }
+.tdv-objective {
+  position: absolute;
+  top: 48px;
+  left: 8px;
+  width: min(320px, calc(100vw - 16px));
+  background: var(--panel);
+  border: 2px solid var(--panel-edge);
+  border-radius: 8px;
+  box-shadow: 0 2px 0 #0003, inset 0 2px 0 #fff6;
+  padding: 7px 9px;
+  pointer-events: none;
+}
+.tdv-objective .label {
+  font-size: 9px;
+  font-weight: 800;
+  color: #7a5a32;
+}
+.tdv-objective .title {
+  margin-top: 1px;
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--ink);
+}
+.tdv-objective .detail {
+  margin-top: 2px;
+  font-size: 10px;
+  line-height: 1.25;
+  color: #5a4632;
+}
+.tdv-objective .bar {
+  height: 5px;
+  margin-top: 6px;
+  background: #0000001c;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.tdv-objective .bar span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #7cae4e, #e8c86a);
+}
 .tdv-rightcol {
   display: flex;
   flex-direction: column;
@@ -644,6 +685,16 @@
   padding: 8px 10px;
 }
 .tdv-craft.locked { opacity: 0.6; }
+.tdv-craft.mystery {
+  border-style: dashed;
+  opacity: 0.82;
+}
+.tdv-craft.mystery .tdv-crafticon {
+  color: #7a5a32;
+  background: #e3cfa0;
+  border: 2px solid #b88a52;
+  font-weight: 900;
+}
 .tdv-craft img {
   width: 34px;
   height: 34px;

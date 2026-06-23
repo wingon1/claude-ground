@@ -290,8 +290,8 @@ function BuildModal({ game, ui }: { game: Game; ui: UISnapshot }) {
             <div className="tdv-craft">
               <div className="tdv-crafticon">🔥</div>
               <div className="info">
-                <div className="nm">화로대 Lv.{ui.cookingFire.level}</div>
-                <div className="ds">요리 작업칸 {ui.cookingFire.slots}칸 사용 가능</div>
+                <div className="nm">{ui.cookingFire.built ? `화로대 Lv.${ui.cookingFire.level}` : '화로 제작'}</div>
+                <div className="ds">{ui.cookingFire.built ? `요리 작업칸 ${ui.cookingFire.slots}칸 사용 가능` : '나무 5개로 첫 요리 화로를 만듭니다.'}</div>
                 {ui.cookingFire.nextSlots ? (
                   <div className="mats">
                     <span className={`mat${ui.gold >= ui.cookingFire.costGold ? '' : ' miss'}`}>
@@ -311,7 +311,7 @@ function BuildModal({ game, ui }: { game: Game; ui: UISnapshot }) {
               <div className="act">
                 {ui.cookingFire.nextSlots ? (
                   <button className="tdv-btn gold sm" disabled={!ui.cookingFire.canUpgrade} onClick={() => game.upgradeCookingFire()}>
-                    업그레이드
+                    {ui.cookingFire.built ? '업그레이드' : '제작'}
                   </button>
                 ) : (
                   <span className="owned">완료</span>
@@ -377,6 +377,17 @@ function BuildModal({ game, ui }: { game: Game; ui: UISnapshot }) {
           <button className="tdv-btn ghost" onClick={() => game.closeModal()}>닫기</button>
         </div>
       </div>
+
+      {ui.objective && (
+        <div className="tdv-objective">
+          <div className="label">목표</div>
+          <div className="title">{ui.objective.title}</div>
+          <div className="detail">{ui.objective.detail}</div>
+          <div className="bar">
+            <span style={{ width: `${Math.min(100, Math.round((ui.objective.progress / ui.objective.max) * 100))}%` }} />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -459,8 +470,10 @@ function CookingModal({ game, ui }: { game: Game; ui: UISnapshot }) {
         </div>
         <div className="tdv-craftlist">
           {ui.cookRecipes.map((r) => (
-            <div className={`tdv-craft${r.unlocked ? '' : ' locked'}`} key={r.id}>
-              <img src={iconURL(r.outputSprite, r.outputColor)} alt={r.outputName} />
+            <div className={`tdv-craft${r.unlocked ? '' : ' locked'}${r.mystery ? ' mystery' : ''}`} key={r.id}>
+              {r.mystery ? <div className="tdv-crafticon">?</div> : (
+                <img src={iconURL(r.outputSprite, r.outputColor)} alt={r.outputName} />
+              )}
               <div className="info">
                 <div className="nm">
                   {r.name}
@@ -468,7 +481,7 @@ function CookingModal({ game, ui }: { game: Game; ui: UISnapshot }) {
                 </div>
                 <div className="ds">{r.desc}</div>
                 {!r.unlocked && <div className="lock">{r.lockText}</div>}
-                <div className="mats">
+                {!r.mystery && <div className="mats">
                   <span className="mat">난이도 {r.difficulty}</span>
                   <span className="mat">시간 {fmtTime(r.craftSeconds)} × 개수</span>
                   <span className="mat">판매 {r.sellPrice}G</span>
@@ -478,16 +491,16 @@ function CookingModal({ game, ui }: { game: Game; ui: UISnapshot }) {
                       {it.name} {it.have}/{it.need}
                     </span>
                   ))}
-                </div>
+                </div>}
               </div>
-              <div className="act">
+              {!r.mystery && <div className="act">
                 <button className="tdv-btn gold sm" disabled={!r.canCook} onClick={() => game.cook(r.id, 1)}>
                   1개
                 </button>
                 <button className="tdv-btn gold sm" disabled={!r.canCook || r.maxCookQty <= 1} onClick={() => game.cook(r.id, r.maxCookQty)}>
                   ×{r.maxCookQty}
                 </button>
-              </div>
+              </div>}
             </div>
           ))}
         </div>

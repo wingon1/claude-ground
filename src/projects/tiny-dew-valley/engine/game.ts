@@ -42,6 +42,8 @@ const WORK_RANGE = T * 1.5 // how close to a node before auto-working
 const RESPAWN_SECS = 80 // trees/rocks/stumps regrow after this
 const STAGE_SECS_PER_DAY = 22 // real seconds per crop "grow day"
 const COOK_BATCH_MAX = 20
+const COOKING_FIRE_BUILT_FLAG = 'build:cookingFire'
+const COOKING_FIRE_BUILD_COST = [{ itemId: 'wood', qty: 5 }]
 
 const LEGACY_ID_MAP: Record<string, string> = {
   parsnip: 'tomato',
@@ -154,6 +156,7 @@ export interface CookRecipeView {
   craftSeconds: number
   difficulty: number
   sellPrice: number
+  mystery?: boolean
 }
 export interface CookJobView {
   id: string
@@ -170,6 +173,7 @@ export interface CookJobView {
   ready: boolean
 }
 export interface CookingFireView {
+  built: boolean
   level: number
   maxLevel: number
   slots: number
@@ -178,6 +182,12 @@ export interface CookingFireView {
   costGold: number
   costItems: CostItemView[]
   canUpgrade: boolean
+}
+export interface ObjectiveView {
+  title: string
+  detail: string
+  progress: number
+  max: number
 }
 export interface UISnapshot {
   phase: UIPhase
@@ -199,6 +209,7 @@ export interface UISnapshot {
   cookRecipes: CookRecipeView[]
   cookQueue: CookJobView[]
   cookingFire: CookingFireView
+  objective: ObjectiveView | null
   contextAction: string | null
   contextActionId: 'sleep' | 'animal' | 'seed' | null
   nearBed: boolean
@@ -316,7 +327,7 @@ export class Game {
     this.applyFieldRows()
     this.applyAnimalFarms()
     this.applyFieldExpansions()
-    stampCookingFire(this.state.tiles)
+    stampCookingFire(this.state.tiles, this.cookingFireBuilt())
     this.initRuntime()
     this.phase = 'playing'
     this.audio.resume()
@@ -338,7 +349,7 @@ export class Game {
       saveVersion: SAVE_VERSION,
       day: 1,
       timeMinutes: 360,
-      gold: 120,
+      gold: 0,
       stamina: START_MAX_STAMINA,
       maxStamina: START_MAX_STAMINA,
       player: {
@@ -356,6 +367,7 @@ export class Game {
         'fieldRows:field_1': 1,
         'fieldCrop:field_1': DEFAULT_FIELD_CROP,
         [cropUnlockFlag(DEFAULT_FIELD_CROP)]: true,
+        [COOKING_FIRE_BUILT_FLAG]: false,
       },
     }
   }
@@ -774,6 +786,7 @@ export class Game {
       left -= add
     }
     const added = qty - left
+    if (added > 0) this.markItemSeen(itemId)
     if (left > 0) this.toast('가방이 가득 차 일부를 잃었어요.', 'bad')
     return added
   }
@@ -914,6 +927,11 @@ export class Game {
 
   openCooking() {
     if (this.phase !== 'playing') return
+    if (!this.cookingFireBuilt()) {
+      this.toast('건설탭에서 화로를 먼저 제작하세요.', 'bad')
+      this.audio.sfx('reject')
+      return
+    }
     if (!this.nearCooking()) {
       this.toast('요리 화덕 가까이에서만 열 수 있어요.', 'bad')
       this.audio.sfx('reject')
@@ -1029,7 +1047,7 @@ export class Game {
     const recipe = RECIPES.find((r) => r.id === recipeId)
     if (!recipe || this.phase !== 'cook') return
     const cookQty = Math.max(1, Math.min(COOK_BATCH_MAX, Math.floor(qty)))
-    if (!this.flagEnabled(recipe.unlockFlag)) {
+    if (!this.recipeUnlocked(recipe)) {
       this.toast('아직 해금되지 않은 레시피예요.', 'bad')
       this.audio.sfx('reject')
       return
@@ -1060,6 +1078,10 @@ export class Game {
 
   upgradeCookingFire() {
     if (this.phase !== 'build') return
+    if (!this.cookingFireBuilt()) {
+      this.buildCookingFire()
+      return
+    }
     const upgrade = this.nextCookingFireUpgrade()
     if (!upgrade) {
       this.toast('화로대가 최대 레벨이에요.', 'info')
@@ -1073,6 +1095,27 @@ export class Game {
     this.payCost(upgrade.costGold, upgrade.costItems)
     this.state.flags.cookingFireLevel = upgrade.level
     this.toast(`화로대 Lv.${upgrade.level}! 조리 칸 ${this.cookingSlots()}개`, 'good')
+    this.audio.sfx('sparkle')
+    this.autosave()
+    this.emit()
+  }
+
+  buildCookingFire() {
+    if (this.phase !== 'build') return
+    if (this.cookingFireBuilt()) {
+      this.toast('이미 화로가 있어요.', 'info')
+      return
+    }
+    if (!this.canPayCost(0, COOKING_FIRE_BUILD_COST)) {
+      this.toast('화로를 만들 나무가 부족해요.', 'bad')
+      this.audio.sfx('reject')
+      return
+    }
+    this.payCost(0, COOKING_FIRE_BUILD_COST)
+    this.state.flags[COOKING_FIRE_BUILT_FLAG] = true
+    this.state.flags.cookingFireLevel = 1
+    stampCookingFire(this.state.tiles, true)
+    this.toast('화로를 제작했어요! 이제 요리를 시작할 수 있어요.', 'good')
     this.audio.sfx('sparkle')
     this.autosave()
     this.emit()
@@ -1241,7 +1284,7 @@ export class Game {
   }
 
   private nearCooking(): boolean {
-    return this.nearTileMetadata('cookingFire')
+    return this.cookingFireBuilt() && this.nearTileMetadata('cookingFire')
   }
 
   private nearTileMetadata(key: string): boolean {
@@ -1295,6 +1338,7 @@ export class Game {
 
   private applyInitialUnlocks() {
     this.migrateCropContentIds()
+    this.migrateSeenItems()
     this.state.flags[cropUnlockFlag(DEFAULT_FIELD_CROP)] = true
     const migratedKey = 'migration:initialFieldRows:v2'
     if (this.state.flags[migratedKey] !== true) {
@@ -1304,6 +1348,24 @@ export class Game {
         this.state.flags[firstRowsKey] = 1
       }
       this.state.flags[migratedKey] = true
+    }
+  }
+
+  private seenItemKey(itemId: string): string {
+    return `seen:item:${itemId}`
+  }
+
+  private itemSeen(itemId: string): boolean {
+    return this.state.flags[this.seenItemKey(itemId)] === true
+  }
+
+  private markItemSeen(itemId: string) {
+    if (getItem(itemId)) this.state.flags[this.seenItemKey(itemId)] = true
+  }
+
+  private migrateSeenItems() {
+    for (const slot of this.state.inventory) {
+      if (slot.itemId) this.markItemSeen(slot.itemId)
     }
   }
 
@@ -1336,6 +1398,7 @@ export class Game {
   }
 
   private cookingFireLevel(): number {
+    if (!this.cookingFireBuilt()) return 0
     const raw = this.state.flags.cookingFireLevel
     return typeof raw === 'number'
       ? Math.max(1, Math.min(COOKING_FIRE_MAX_LEVEL, raw))
@@ -1343,11 +1406,254 @@ export class Game {
   }
 
   private cookingSlots(level = this.cookingFireLevel()): number {
+    if (level <= 0) return 0
     return COOKING_FIRE_BASE_SLOTS + (level - 1) * COOKING_FIRE_SLOTS_PER_LEVEL
   }
 
   private nextCookingFireUpgrade() {
+    if (!this.cookingFireBuilt()) return null
     return COOKING_FIRE_UPGRADES.find((u) => u.level === this.cookingFireLevel() + 1) ?? null
+  }
+
+  private cookingFireBuilt(): boolean {
+    return this.state.flags[COOKING_FIRE_BUILT_FLAG] === true
+  }
+
+  private recipeUnlocked(recipe: typeof RECIPES[number]): boolean {
+    return recipe.inputs.every((input) => this.itemSeen(input.itemId))
+  }
+
+  private catalogPrice(itemId: string): number {
+    return SHOP_CATALOG.find((entry) => entry.itemId === itemId)?.buyPrice ?? 0
+  }
+
+  private currentObjective(): ObjectiveView | null {
+    if (!this.cookingFireBuilt()) {
+      const wood = this.countItem('wood')
+      if (wood < 5) {
+        return {
+          title: '나무 5개 모으기',
+          detail: '나무를 베어 화로 제작 재료를 준비하세요.',
+          progress: wood,
+          max: 5,
+        }
+      }
+      return {
+        title: '화로 제작하기',
+        detail: '건설탭에서 나무 5개로 화로를 만드세요.',
+        progress: 5,
+        max: 5,
+      }
+    }
+    if (!this.itemSeen('crop_wheat_normal')) {
+      return {
+        title: '밀 수확하기',
+        detail: '처음 열린 밭에서 밀을 수확하세요.',
+        progress: 0,
+        max: 1,
+      }
+    }
+    if (!this.itemSeen('flour')) {
+      return {
+        title: '밀가루 만들기',
+        detail: '화로에서 밀 2개를 갈아 밀가루를 만드세요.',
+        progress: Math.min(2, this.countItem('crop_wheat_normal')),
+        max: 2,
+      }
+    }
+    if (!this.itemSeen('bread')) {
+      return {
+        title: '빵 굽기',
+        detail: '밀가루를 빵으로 구운 뒤 상점에서 팔아 돈을 모으세요.',
+        progress: Math.min(1, this.countItem('flour')),
+        max: 1,
+      }
+    }
+    if (!this.flagEnabled('unlock:animal:chicken')) {
+      const price = this.catalogPrice('permit_chicken')
+      return {
+        title: '닭장 구매하기',
+        detail: '빵을 팔아 건설탭에서 닭장을 지으세요.',
+        progress: Math.min(price, this.state.gold),
+        max: price,
+      }
+    }
+    const chickenFarm = ANIMAL_FARMS.find((farm) => farm.id === 'chicken')
+    if (chickenFarm && this.animalCount(chickenFarm) <= 0) {
+      const price = this.animalBuyPrice(chickenFarm)
+      return {
+        title: '닭 구매하기',
+        detail: '상점에서 닭을 사면 달걀이 바닥에 떨어집니다.',
+        progress: Math.min(price, this.state.gold),
+        max: price,
+      }
+    }
+    if (!this.itemSeen('egg')) {
+      return {
+        title: '달걀 줍기',
+        detail: '닭장 안에 떨어진 달걀을 주워 토스트 재료를 여세요.',
+        progress: 0,
+        max: 1,
+      }
+    }
+    if (!this.itemSeen('toast')) {
+      return {
+        title: '토스트 만들기',
+        detail: '빵과 달걀로 토스트를 만들어 더 높은 가격에 파세요.',
+        progress: Math.min(2, (this.countItem('bread') > 0 ? 1 : 0) + (this.countItem('egg') > 0 ? 1 : 0)),
+        max: 2,
+      }
+    }
+    if (!this.cropUnlocked('strawberry')) {
+      const price = this.catalogPrice('seed_strawberry')
+      return {
+        title: '딸기 재배권 구매하기',
+        detail: '토스트 수익으로 딸기 재배권을 여세요.',
+        progress: Math.min(price, this.state.gold),
+        max: price,
+      }
+    }
+    if (!this.itemSeen('crop_strawberry_normal')) {
+      return {
+        title: '딸기 수확하기',
+        detail: '밭 푯말에서 딸기로 바꾸고 첫 딸기를 수확하세요.',
+        progress: 0,
+        max: 1,
+      }
+    }
+    if (!this.itemSeen('strawberry_jam')) {
+      return {
+        title: '딸기쨈 만들기',
+        detail: '딸기 2개를 졸여 딸기쨈을 만드세요.',
+        progress: Math.min(2, this.countItem('crop_strawberry_normal')),
+        max: 2,
+      }
+    }
+    if (!this.flagEnabled('unlock:dairy')) {
+      const price = this.catalogPrice('permit_dairy')
+      return {
+        title: '젖소 농장 구매하기',
+        detail: '우유와 버터가 열리면 딸기쨈 토스트를 만들 수 있습니다.',
+        progress: Math.min(price, this.state.gold),
+        max: price,
+      }
+    }
+    const cowFarm = ANIMAL_FARMS.find((farm) => farm.id === 'cow')
+    if (cowFarm && this.animalCount(cowFarm) <= 0) {
+      const price = this.animalBuyPrice(cowFarm)
+      return {
+        title: '소 구매하기',
+        detail: '상점에서 소를 사서 우유 생산을 시작하세요.',
+        progress: Math.min(price, this.state.gold),
+        max: price,
+      }
+    }
+    if (!this.itemSeen('milk')) {
+      return {
+        title: '우유 줍기',
+        detail: '젖소 농장 바닥에 떨어진 우유를 주우세요.',
+        progress: 0,
+        max: 1,
+      }
+    }
+    if (!this.itemSeen('butter')) {
+      return {
+        title: '버터 만들기',
+        detail: '우유 2개를 버터로 가공하세요.',
+        progress: Math.min(2, this.countItem('milk')),
+        max: 2,
+      }
+    }
+    if (!this.itemSeen('strawberry_jam_toast')) {
+      return {
+        title: '딸기쨈 토스트 만들기',
+        detail: '빵, 버터, 딸기쨈을 조합해 중반 핵심 상품을 만드세요.',
+        progress: Math.min(3,
+          (this.countItem('bread') > 0 ? 1 : 0) +
+          (this.countItem('butter') > 0 ? 1 : 0) +
+          (this.countItem('strawberry_jam') > 0 ? 1 : 0)),
+        max: 3,
+      }
+    }
+    if (!this.cropUnlocked('tomato')) {
+      const price = this.catalogPrice('seed_tomato')
+      return {
+        title: '토마토 재배권 구매하기',
+        detail: '피자 체인을 열어 판매 단가를 한 단계 올리세요.',
+        progress: Math.min(price, this.state.gold),
+        max: price,
+      }
+    }
+    if (!this.itemSeen('crop_tomato_normal')) {
+      return {
+        title: '토마토 수확하기',
+        detail: '밭 푯말에서 토마토로 바꾸고 첫 토마토를 수확하세요.',
+        progress: 0,
+        max: 1,
+      }
+    }
+    if (!this.itemSeen('tomato_sauce')) {
+      return {
+        title: '토마토소스 만들기',
+        detail: '토마토 2개를 졸여 피자 재료를 준비하세요.',
+        progress: Math.min(2, this.countItem('crop_tomato_normal')),
+        max: 2,
+      }
+    }
+    if (!this.itemSeen('cheese')) {
+      return {
+        title: '치즈 만들기',
+        detail: '우유 2개를 숙성해 피자에 들어갈 치즈를 만드세요.',
+        progress: Math.min(2, this.countItem('milk')),
+        max: 2,
+      }
+    }
+    if (!this.itemSeen('pizza')) {
+      return {
+        title: '피자 만들기',
+        detail: '토마토소스, 밀가루, 치즈로 피자를 구우세요.',
+        progress: Math.min(3,
+          (this.countItem('flour') > 0 ? 1 : 0) +
+          (this.countItem('tomato_sauce') > 0 ? 1 : 0) +
+          (this.countItem('cheese') > 0 ? 1 : 0)),
+        max: 3,
+      }
+    }
+    if (!this.cropUnlocked('corn')) {
+      const price = this.catalogPrice('seed_corn')
+      return {
+        title: '옥수수 재배권 구매하기',
+        detail: '옥수수로 후반 피자와 버터옥수수 라인을 여세요.',
+        progress: Math.min(price, this.state.gold),
+        max: price,
+      }
+    }
+    if (!this.itemSeen('crop_corn_normal')) {
+      return {
+        title: '옥수수 수확하기',
+        detail: '밭 푯말에서 옥수수로 바꾸고 첫 옥수수를 수확하세요.',
+        progress: 0,
+        max: 1,
+      }
+    }
+    if (!this.itemSeen('corn_pizza')) {
+      return {
+        title: '콘치즈 피자 만들기',
+        detail: '옥수수와 피자 재료를 조합해 후반 판매품을 만드세요.',
+        progress: Math.min(4,
+          (this.countItem('flour') > 0 ? 1 : 0) +
+          (this.countItem('tomato_sauce') > 0 ? 1 : 0) +
+          (this.countItem('cheese') > 0 ? 1 : 0) +
+          (this.countItem('crop_corn_normal') > 0 ? 1 : 0)),
+        max: 4,
+      }
+    }
+    return {
+      title: '농장 확장하기',
+      detail: '밭, 동물, 화로 업그레이드를 늘려 생산량을 키우세요.',
+      progress: this.state.gold,
+      max: Math.max(1, this.state.gold),
+    }
   }
 
   private animalFarmOwned(farm: AnimalFarmDef): boolean {
@@ -1922,6 +2228,7 @@ export class Game {
   }
 
   private drawCookingFire(S: number) {
+    if (!this.cookingFireBuilt()) return
     const ctx = this.ctx
     const x = this.wx(LOCATIONS.cookingFire.x * T)
     const y = this.wy(LOCATIONS.cookingFire.y * T)
@@ -2151,15 +2458,17 @@ export class Game {
         buildOptions: [], buildPermits: [], fieldPlots: [], cropChoices: [], selectedFieldId: null, cookRecipes: [],
         cookQueue: [],
         cookingFire: {
-          level: 1,
+          built: false,
+          level: 0,
           maxLevel: COOKING_FIRE_MAX_LEVEL,
-          slots: COOKING_FIRE_BASE_SLOTS,
+          slots: 0,
           usedSlots: 0,
-          nextSlots: COOKING_FIRE_BASE_SLOTS + COOKING_FIRE_SLOTS_PER_LEVEL,
+          nextSlots: COOKING_FIRE_BASE_SLOTS,
           costGold: 0,
           costItems: [],
           canUpgrade: false,
         },
+        objective: null,
         contextAction: null, contextActionId: null, nearBed: false, nearStore: false, nearBuild: false, nearCooking: false, exhausted: false,
         muted: this.audio.muted, musicOn: this.audio.musicOn, hasSave: this.hasSavedGame(),
       }
@@ -2284,21 +2593,25 @@ export class Game {
       unlocked: this.cropUnlocked(crop.id),
       lockText: this.cropUnlocked(crop.id) ? null : '상점에서 해금',
     }))
+    const cookingFireBuilt = this.cookingFireBuilt()
     const cookingFireLevel = this.cookingFireLevel()
     const cookingSlots = this.cookingSlots(cookingFireLevel)
     const nextCookingUpgrade = this.nextCookingFireUpgrade()
-    const cookingUpgradeItems = costViews(nextCookingUpgrade?.costItems ?? [])
+    const cookingUpgradeItems = costViews(cookingFireBuilt ? (nextCookingUpgrade?.costItems ?? []) : COOKING_FIRE_BUILD_COST)
     const cookingFire: CookingFireView = {
+      built: cookingFireBuilt,
       level: cookingFireLevel,
       maxLevel: COOKING_FIRE_MAX_LEVEL,
       slots: cookingSlots,
       usedSlots: s.cookQueue.length,
-      nextSlots: nextCookingUpgrade ? this.cookingSlots(nextCookingUpgrade.level) : null,
-      costGold: nextCookingUpgrade?.costGold ?? 0,
+      nextSlots: cookingFireBuilt
+        ? (nextCookingUpgrade ? this.cookingSlots(nextCookingUpgrade.level) : null)
+        : COOKING_FIRE_BASE_SLOTS,
+      costGold: cookingFireBuilt ? (nextCookingUpgrade?.costGold ?? 0) : 0,
       costItems: cookingUpgradeItems,
       canUpgrade:
-        !!nextCookingUpgrade &&
-        s.gold >= nextCookingUpgrade.costGold &&
+        (!cookingFireBuilt || !!nextCookingUpgrade) &&
+        s.gold >= (cookingFireBuilt ? (nextCookingUpgrade?.costGold ?? 0) : 0) &&
         cookingUpgradeItems.every((it) => it.ok),
     }
     const cookQueue: CookJobView[] = s.cookQueue.map((job) => {
@@ -2325,13 +2638,10 @@ export class Game {
         ready: totalRemainingSecs <= 0,
       }
     })
-    const cookRecipes: CookRecipeView[] = RECIPES.map((recipe) => {
+    const visibleRecipeDefs = RECIPES.filter((recipe) => this.recipeUnlocked(recipe))
+    const cookRecipes: CookRecipeView[] = visibleRecipeDefs.map((recipe) => {
       const out = getItem(recipe.output.itemId)
       const inputs = costViews(recipe.inputs)
-      const unlocked = this.flagEnabled(recipe.unlockFlag)
-      const lockText = recipe.unlockFlag?.startsWith('unlock:crop:')
-        ? '상점에서 재배권 필요'
-        : '목장 허가서 필요'
       const maxCookQty = this.recipeMaxCookQty(recipe)
       return {
         id: recipe.id,
@@ -2343,17 +2653,36 @@ export class Game {
         outputQty: recipe.output.qty,
         inputs,
         canCook:
-          unlocked &&
+          cookingFireBuilt &&
           s.cookQueue.length < cookingSlots &&
           maxCookQty > 0,
         maxCookQty,
-        unlocked,
-        lockText: unlocked ? null : lockText,
+        unlocked: true,
+        lockText: null,
         craftSeconds: recipe.craftSeconds,
         difficulty: recipe.difficulty,
         sellPrice: out?.sellPrice ?? 0,
       }
     })
+    if (visibleRecipeDefs.length < RECIPES.length) {
+      cookRecipes.push({
+        id: 'mystery',
+        name: '???',
+        desc: '새 재료를 얻으면 새로운 요리가 떠오를 것 같아요.',
+        outputName: '???',
+        outputSprite: '',
+        outputQty: 1,
+        inputs: [],
+        canCook: false,
+        maxCookQty: 0,
+        unlocked: true,
+        lockText: null,
+        craftSeconds: 0,
+        difficulty: 0,
+        sellPrice: 0,
+        mystery: true,
+      })
+    }
     let contextAction: string | null = null
     let contextActionId: UISnapshot['contextActionId'] = null
     if (this.phase === 'playing') {
@@ -2391,6 +2720,7 @@ export class Game {
       cookRecipes,
       cookQueue,
       cookingFire,
+      objective: this.currentObjective(),
       contextAction,
       contextActionId,
       nearBed: this.nearBed(),
