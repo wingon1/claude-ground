@@ -505,14 +505,14 @@ export function makeGrassTexture(size: number): HTMLCanvasElement {
   return cv
 }
 
-/** Pixel wooden fence around a pen, leaving a gap for the gate on one side. */
-export function drawFence(ctx: CanvasRenderingContext2D, rect: RectT, gate: RectT, gateSide: string) {
+/** Pixel wooden fence around a pen with a centred gate gap on ALL four edges. */
+export function drawFence(ctx: CanvasRenderingContext2D, rect: RectT, gateW: number) {
   const railLo = '#6f421f', rail = '#9c6a3c', railHi = '#bd8651', post = '#5e371d'
   const th = 5
   const x0 = Math.round(rect.x), y0 = Math.round(rect.y)
   const x1 = Math.round(rect.x + rect.w), y1 = Math.round(rect.y + rect.h)
-  const gx0 = Math.round(gate.x), gx1 = Math.round(gate.x + gate.w)
-  const gy0 = Math.round(gate.y), gy1 = Math.round(gate.y + gate.h)
+  const cx = Math.round(rect.x + rect.w / 2), cy = Math.round(rect.y + rect.h / 2)
+  const hg = Math.round(gateW / 2)
   const hRail = (ax: number, bx: number, y: number) => {
     if (bx <= ax) return
     ctx.fillStyle = rail; ctx.fillRect(ax, y, bx - ax, th)
@@ -525,22 +525,19 @@ export function drawFence(ctx: CanvasRenderingContext2D, rect: RectT, gate: Rect
     ctx.fillStyle = railHi; ctx.fillRect(x, ay, 1, by - ay)
     ctx.fillStyle = railLo; ctx.fillRect(x + th - 1, ay, 1, by - ay)
   }
-  // four rails, each split around the gate gap when the gate is on that edge
-  if (gateSide === 'top') { hRail(x0, gx0, y0); hRail(gx1, x1, y0) } else hRail(x0, x1, y0)
-  if (gateSide === 'bottom') { hRail(x0, gx0, y1 - th); hRail(gx1, x1, y1 - th) } else hRail(x0, x1, y1 - th)
-  if (gateSide === 'left') { vRail(y0, gy0, x0); vRail(gy1, y1, x0) } else vRail(y0, y1, x0)
-  if (gateSide === 'right') { vRail(y0, gy0, x1 - th); vRail(gy1, y1, x1 - th) } else vRail(y0, y1, x1 - th)
-  // posts: corners + the two gate posts
+  // each edge split into two segments around its centred gate gap
+  hRail(x0, cx - hg, y0); hRail(cx + hg, x1, y0)
+  hRail(x0, cx - hg, y1 - th); hRail(cx + hg, x1, y1 - th)
+  vRail(y0, cy - hg, x0); vRail(cy + hg, y1, x0)
+  vRail(y0, cy - hg, x1 - th); vRail(cy + hg, y1, x1 - th)
+  // posts: four corners + the two posts flanking each gate
   const drawPost = (px: number, py: number) => {
     ctx.fillStyle = post; ctx.fillRect(px - 2, py - 3, 6, th + 6)
     ctx.fillStyle = railHi; ctx.fillRect(px - 2, py - 3, 6, 1)
   }
   drawPost(x0, y0); drawPost(x1 - th, y0); drawPost(x0, y1 - th); drawPost(x1 - th, y1 - th)
-  if (gateSide === 'top' || gateSide === 'bottom') {
-    const py = gateSide === 'top' ? y0 : y1 - th
-    drawPost(gx0 - 3, py); drawPost(gx1 - 2, py)
-  } else {
-    const px = gateSide === 'left' ? x0 : x1 - th
-    drawPost(px, gy0 - 3); drawPost(px, gy1 - 2)
-  }
+  drawPost(cx - hg - 3, y0); drawPost(cx + hg - 2, y0)
+  drawPost(cx - hg - 3, y1 - th); drawPost(cx + hg - 2, y1 - th)
+  drawPost(x0, cy - hg - 3); drawPost(x0, cy + hg - 2)
+  drawPost(x1 - th, cy - hg - 3); drawPost(x1 - th, cy + hg - 2)
 }

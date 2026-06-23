@@ -46,6 +46,8 @@ export class Game {
 
   private player = { x: 0, y: 0, facing: 1, walk: 0, action: 0, moving: false }
   private movePath: Vec[] = []
+  private moveGoal: Vec | null = null
+  private repathAt = 0
   private tapMarker: { x: number; y: number; t: number } | null = null
   private nodes: WorldNode[] = []
   private mineNodes: WorldNode[] = []
@@ -96,7 +98,7 @@ export class Game {
   private buildWorld() {
     this.layout = buildLayout()
     this.cam.setWorld(this.layout.worldW, this.layout.worldH, this.layout.penW, this.layout.penH)
-    this.grid = buildGrid(this.layout.worldW, this.layout.worldH, 16, (x, y) => layoutWalkable(this.layout, x, y))
+    this.grid = buildGrid(this.layout.worldW, this.layout.worldH, 8, (x, y) => layoutWalkable(this.layout, x, y))
     this.grassTex = makeGrassTexture(96)
     this.nodes = []
     for (const n of this.layout.resourceSpots) {
@@ -132,6 +134,7 @@ export class Game {
     if (this.sleepPhase !== 0) return
     const w = this.cam.screenToWorld(sx, sy)
     this.tapMarker = { x: w.x, y: w.y, t: 0 }
+    this.moveGoal = { x: w.x, y: w.y }
     if (this.mode === 'mine') {
       this.movePath = [{ x: w.x, y: w.y }]
     } else {
@@ -209,11 +212,22 @@ export class Game {
     if (this.mode === 'mine' || this.walkable(nx, ny)) { p.x = nx; p.y = ny }
     else if (this.walkable(nx, p.y)) { p.x = nx }
     else if (this.walkable(p.x, ny)) { p.y = ny }
-    else { this.movePath = []; p.moving = false; p.walk = 0; return }
+    else { if (!this.repath()) { this.movePath = []; p.moving = false; p.walk = 0 }; return }
     p.facing = dx >= 0 ? 1 : -1
     p.moving = true
     p.walk = (p.walk + dt * 2.2) % 1
     if (Math.random() < dt * 8) this.fx.dust(p.x, p.y + 2)
+  }
+
+  /** When wedged against a fence, re-route to the goal through a gate instead of stopping. */
+  private repath(): boolean {
+    if (this.mode === 'mine' || !this.grid || !this.moveGoal) return false
+    if (this.state.gameTime - this.repathAt < 0.25) return false
+    this.repathAt = this.state.gameTime
+    const path = findPath(this.grid, { x: this.player.x, y: this.player.y }, this.moveGoal)
+    if (!path || path.length === 0) return false
+    this.movePath = path
+    return true
   }
 
   /** Land + pen-interior + gate walkable; fences and outer sea block. */
@@ -867,7 +881,7 @@ export class Game {
       if (pen.content === 'home') continue // starting region has no fence
       ctx.fillStyle = 'rgba(60,120,40,0.10)'
       ctx.fillRect(pen.interior.x, pen.interior.y, pen.interior.w, pen.interior.h)
-      drawFence(ctx, pen.rect, pen.gate, pen.gateSide)
+      drawFence(ctx, pen.rect, World.gate)
     }
 
     // y-sorted draw list, all in world coordinates
@@ -973,7 +987,7 @@ export class Game {
   getUserZoom(): number { return this.cam.userZoom }
   setUserZoom(f: number) { this.cam.setUserZoom(f); this.followCam(true) }
   nudgeUserZoom(mult: number) { this.cam.setUserZoom(this.cam.userZoom * mult); this.followCam(true) }
-  cancelMove() { this.movePath = []; this.player.moving = false; this.tapMarker = null }
+  cancelMove() { this.movePath = []; this.moveGoal = null; this.player.moving = false; this.tapMarker = null }
 
   // ---------- snapshot for UI ----------
   getMode(): Mode { return this.mode }

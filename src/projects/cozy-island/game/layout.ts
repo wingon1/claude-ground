@@ -6,7 +6,6 @@
 import { World } from '../content'
 import type { Vec } from '../types'
 
-export type GateSide = 'top' | 'bottom' | 'left' | 'right'
 export type Rect = { x: number; y: number; w: number; h: number }
 export type Pen = {
   id: string
@@ -15,8 +14,7 @@ export type Pen = {
   building?: string
   rect: Rect
   interior: Rect
-  gate: Rect
-  gateSide: GateSide
+  gates: Rect[] // openings in all four fence edges
 }
 export type Layout = {
   worldW: number
@@ -59,12 +57,6 @@ function spiralCells(n: number): { col: number; row: number }[] {
   return cells.slice(0, n)
 }
 
-/** Gate sits on the pen edge that faces the home (toward 0,0). */
-function gateSideFor(col: number, row: number): GateSide {
-  if (Math.abs(row) >= Math.abs(col)) return row > 0 ? 'top' : 'bottom'
-  return col > 0 ? 'left' : 'right'
-}
-
 export function buildLayout(): Layout {
   const water = World.water
   const gap = World.gap
@@ -96,14 +88,18 @@ export function buildLayout(): Layout {
       w: penW, h: penH,
     }
     const interior: Rect = { x: rect.x + fence, y: rect.y + fence, w: rect.w - 2 * fence, h: rect.h - 2 * fence }
-    const gateSide = gateSideFor(cell.col, cell.row)
+    // A gate on every edge (top/bottom/left/right). Each opening is centred and
+    // overlaps both sides of the fence band so the pathfinding grid reads it as
+    // continuously walkable (no jamming against the fence).
     const cx = rect.x + rect.w / 2, cy = rect.y + rect.h / 2
-    let gate: Rect
-    if (gateSide === 'top') gate = { x: cx - gateW / 2, y: rect.y - 4, w: gateW, h: fence + 8 }
-    else if (gateSide === 'bottom') gate = { x: cx - gateW / 2, y: rect.y + rect.h - fence - 4, w: gateW, h: fence + 8 }
-    else if (gateSide === 'left') gate = { x: rect.x - 4, y: cy - gateW / 2, w: fence + 8, h: gateW }
-    else gate = { x: rect.x + rect.w - fence - 4, y: cy - gateW / 2, w: fence + 8, h: gateW }
-    return { id: p.id, content: p.content, cropId: p.cropId, building: p.building, rect, interior, gate, gateSide }
+    const gd = fence + 12
+    const gates: Rect[] = [
+      { x: cx - gateW / 2, y: rect.y - 6, w: gateW, h: gd },
+      { x: cx - gateW / 2, y: rect.y + rect.h - fence - 6, w: gateW, h: gd },
+      { x: rect.x - 6, y: cy - gateW / 2, w: gd, h: gateW },
+      { x: rect.x + rect.w - fence - 6, y: cy - gateW / 2, w: gd, h: gateW },
+    ]
+    return { id: p.id, content: p.content, cropId: p.cropId, building: p.building, rect, interior, gates }
   })
 
   const center = (r: Rect): Vec => ({ x: r.x + r.w / 2, y: r.y + r.h / 2 })
@@ -161,7 +157,7 @@ export function layoutWalkable(L: Layout, x: number, y: number): boolean {
   for (const pen of L.pens) {
     if (pen.content === 'home') { if (rectInside(x, y, pen.rect)) return true; continue }
     if (rectInside(x, y, pen.interior)) return true
-    if (rectInside(x, y, pen.gate)) return true
+    for (const g of pen.gates) if (rectInside(x, y, g)) return true
   }
   // fence band of a non-home pen blocks; everything else is open grass
   for (const pen of L.pens) {
