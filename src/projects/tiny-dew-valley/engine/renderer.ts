@@ -906,13 +906,15 @@ export class GameRenderer {
     const sx = this.wx(x)
     const sy = this.wy(y)
     ctx.save()
-    ctx.font = `700 ${Math.max(13, 10 * S)}px sans-serif`
+    ctx.font = `900 ${Math.max(15, 11 * S)}px sans-serif`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.fillStyle = 'rgba(65, 28, 24, 0.35)'
-    ctx.fillText('!', sx + 1 * S, sy + 1 * S)
+    ctx.fillText('!', sx + 1.5 * S, sy + 1.5 * S)
     ctx.fillStyle = '#d9362e'
+    ctx.fillText('!', sx - 0.6 * S, sy)
     ctx.fillText('!', sx, sy)
+    ctx.fillText('!', sx + 0.6 * S, sy)
     ctx.restore()
   }
 
