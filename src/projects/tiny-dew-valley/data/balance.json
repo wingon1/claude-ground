@@ -1004,21 +1004,21 @@
       "stone": 2,
       "copper_ore": 10,
       "iron_ore": 24,
-      "flour": 18,
+      "flour": 16,
       "egg": 24,
       "milk": 38,
       "bacon": 120,
-      "butter": 105,
-      "cheese": 125,
+      "butter": 58,
+      "cheese": 68,
       "bread": 55,
       "toast": 135,
-      "pastry": 210,
-      "strawberry_jam": 230,
-      "strawberry_milk": 220,
+      "pastry": 190,
+      "strawberry_jam": 125,
+      "strawberry_milk": 170,
       "strawberry_jam_toast": 560,
-      "tomato_sauce": 280,
+      "tomato_sauce": 115,
       "pizza": 950,
-      "butter_corn": 680,
+      "butter_corn": 420,
       "corn_pizza": 1450,
       "bacon_toast": 860,
       "herbal_tea": 45
@@ -1095,8 +1095,8 @@
     ],
     "moneyCurve": {
       "early": "빵/토스트는 반복 자금용이라 낮은 단가와 낮은 해금 비용 구간입니다.",
-      "mid": "딸기쨈 토스트 전까지 토마토를 살 수 없고, 토마토 가격은 딸기쨈 토스트 반복 판매를 요구합니다.",
-      "late": "피자 이후 옥수수/돼지농장은 큰 금액 차이를 둔 후반 목표입니다."
+      "mid": "딸기쨈, 버터, 치즈, 토마토소스는 판매용보다 완성품 재료 역할이 강한 낮은 단가입니다.",
+      "late": "완성품인 딸기쨈 토스트, 피자, 콘피자에서 큰 수익 차이가 나도록 유지합니다."
     }
   }
 }
