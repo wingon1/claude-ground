@@ -2965,6 +2965,7 @@ export class Game {
       animalFarmOwned: (farm) => this.animalFarmOwned(farm),
       animalCount: (farm) => this.animalCount(farm),
       currentOrder: () => this.currentOrder(),
+      currentWeather: () => this.currentWeather(),
     })
   }
   // ---------------- UI snapshot ----------------

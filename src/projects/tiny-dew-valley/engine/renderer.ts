@@ -9,7 +9,7 @@ import { idx, inBounds, LOCATIONS, WORLD_H, WORLD_W } from './world'
 import { bakeItemIcon, T, type Sprites } from './sprites'
 import type { Firefly, MineMonster, Particle, Period } from './gameTypes'
 import type { UpgradeableToolId } from '../data/toolUpgrades'
-import type { OrderView, UIPhase } from './uiSnapshot'
+import type { OrderView, UIPhase, WeatherView } from './uiSnapshot'
 
 const ORDER_NPC = { x: LOCATIONS.storeStand.x, y: LOCATIONS.storeStand.y }
 const BLACKSMITH_NPC = { x: LOCATIONS.blacksmithNpc.x, y: LOCATIONS.blacksmithNpc.y }
@@ -42,6 +42,7 @@ export interface RenderHost {
   animalFarmOwned: (farm: AnimalFarmDef) => boolean
   animalCount: (farm: AnimalFarmDef) => number
   currentOrder: () => OrderView | null
+  currentWeather: () => WeatherView | null
 }
 
 export class GameRenderer {
@@ -77,6 +78,7 @@ export class GameRenderer {
   private animalFarmOwned(farm: AnimalFarmDef): boolean { return this.host.animalFarmOwned(farm) }
   private animalCount(farm: AnimalFarmDef): number { return this.host.animalCount(farm) }
   private currentOrder(): OrderView | null { return this.host.currentOrder() }
+  private currentWeather(): WeatherView | null { return this.host.currentWeather() }
   private wx(worldX: number): number {
     return Math.round((worldX - this.cam.x) * this.scale)
   }
@@ -164,6 +166,7 @@ export class GameRenderer {
     this.drawWorkHighlight(S)
     this.drawParticles(S)
     if (this.area === 'farm') this.drawLighting(S, bw, bh)
+    if (this.area === 'farm') this.drawWeatherEffects(S, bw, bh)
     if (this.fade > 0) {
       ctx.fillStyle = `rgba(0,0,0,${this.fade})`
       ctx.fillRect(0, 0, bw, bh)
@@ -1011,6 +1014,88 @@ export class GameRenderer {
       }
       ctx.globalCompositeOperation = 'source-over'
     }
+  }
+
+  private drawWeatherEffects(S: number, bw: number, bh: number) {
+    const weather = this.currentWeather()
+    if (!weather) return
+    if (weather.id === 'rain') this.drawRain(S, bw, bh)
+    else if (weather.id === 'wind') this.drawWindLeaves(S, bw, bh)
+    else if (weather.id === 'lucky') this.drawLuckySparkles(S, bw, bh)
+  }
+
+  private drawRain(S: number, bw: number, bh: number) {
+    const ctx = this.ctx
+    const t = this.nowSecs()
+    ctx.save()
+    ctx.fillStyle = 'rgba(40,68,92,0.12)'
+    ctx.fillRect(0, 0, bw, bh)
+    ctx.strokeStyle = 'rgba(166,212,236,0.62)'
+    ctx.lineWidth = Math.max(1, S * 0.42)
+    const count = Math.max(42, Math.floor((bw * bh) / 14000))
+    const fall = (t * 460) % (bh + 70 * S)
+    for (let i = 0; i < count; i++) {
+      const seed = i * 97.13
+      const x = ((seed * 19 + t * 52) % (bw + 90 * S)) - 45 * S
+      const y = (seed * 37 + fall) % (bh + 70 * S) - 35 * S
+      ctx.beginPath()
+      ctx.moveTo(Math.round(x), Math.round(y))
+      ctx.lineTo(Math.round(x - 5 * S), Math.round(y + 13 * S))
+      ctx.stroke()
+    }
+    ctx.restore()
+  }
+
+  private drawWindLeaves(S: number, bw: number, bh: number) {
+    const ctx = this.ctx
+    const t = this.nowSecs()
+    ctx.save()
+    const count = Math.max(16, Math.floor(bw / 46))
+    for (let i = 0; i < count; i++) {
+      const seed = i * 53.7
+      const x = (seed * 29 + t * 54) % (bw + 60 * S) - 30 * S
+      const y = (seed * 41 + Math.sin(t * 1.6 + i) * 18 * S) % Math.max(1, bh)
+      const spin = t * 5 + i
+      const size = (2.2 + (i % 3) * 0.45) * S
+      ctx.globalAlpha = 0.34 + (i % 4) * 0.08
+      ctx.fillStyle = i % 2 === 0 ? '#79b85a' : '#d5a94f'
+      ctx.save()
+      ctx.translate(Math.round(x), Math.round(y))
+      ctx.rotate(spin)
+      ctx.beginPath()
+      ctx.moveTo(0, -size)
+      ctx.lineTo(size * 0.75, 0)
+      ctx.lineTo(0, size)
+      ctx.lineTo(-size * 0.75, 0)
+      ctx.closePath()
+      ctx.fill()
+      ctx.restore()
+    }
+    ctx.globalAlpha = 1
+    ctx.restore()
+  }
+
+  private drawLuckySparkles(S: number, bw: number, bh: number) {
+    const ctx = this.ctx
+    const t = this.nowSecs()
+    ctx.save()
+    const count = Math.max(14, Math.floor((bw * bh) / 42000))
+    for (let i = 0; i < count; i++) {
+      const seed = i * 89.3
+      const pulse = (Math.sin(t * 2.7 + i * 1.8) + 1) / 2
+      if (pulse < 0.22) continue
+      const x = (seed * 17 + Math.sin(t * 0.35 + i) * 18 * S) % Math.max(1, bw)
+      const y = (seed * 31 + Math.cos(t * 0.28 + i) * 12 * S) % Math.max(1, bh)
+      const r = (1.1 + pulse * 1.6) * S
+      ctx.globalAlpha = 0.16 + pulse * 0.5
+      ctx.fillStyle = '#ffe78a'
+      ctx.fillRect(Math.round(x - r / 2), Math.round(y - r * 2), Math.max(1, S), Math.round(r * 4))
+      ctx.fillRect(Math.round(x - r * 2), Math.round(y - r / 2), Math.round(r * 4), Math.max(1, S))
+      ctx.fillStyle = '#fff8c8'
+      ctx.fillRect(Math.round(x), Math.round(y), Math.max(1, S), Math.max(1, S))
+    }
+    ctx.globalAlpha = 1
+    ctx.restore()
   }
 
   private glowRect(wx: number, wy: number, color: string, S: number) {
