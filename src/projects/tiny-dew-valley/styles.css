@@ -600,7 +600,7 @@
 .tdv-toasts {
   position: absolute;
   left: 14px;
-  bottom: 78px;
+  bottom: 104px;
   display: flex;
   flex-direction: column;
   gap: 5px;
