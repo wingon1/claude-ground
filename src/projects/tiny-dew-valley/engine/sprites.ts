@@ -231,6 +231,55 @@ function bakeFence(): HTMLCanvasElement {
   return c
 }
 
+// Small animal-pen fence — a single low rail with two end posts, sitting in
+// the TOP half of the tile (canonical = top edge of the pen). The rail spans
+// the full width so straight runs join seamlessly; rotated 90°/180°/270° for
+// the other three sides.
+function bakeFenceSmall(): HTMLCanvasElement {
+  const c = cv(T, T)
+  const g = ctxOf(c)
+  // Horizontal rail near the top, full width.
+  px(g, 0, 4, T, 2, '#9a6a3a')
+  px(g, 0, 4, T, 1, '#b3824a') // highlight
+  px(g, 0, 6, T, 1, 'rgba(60,40,24,0.4)') // underside shadow
+  // Two short posts at the ends.
+  for (const pxn of [2, 11]) {
+    px(g, pxn, 1, 3, 8, '#7a5230')
+    px(g, pxn, 1, 1, 8, '#92663c') // lit edge
+    px(g, pxn + 2, 1, 1, 8, 'rgba(50,34,20,0.5)') // shaded edge
+    px(g, pxn - 1, 1, 5, 1, '#a07b48') // cap
+  }
+  return c
+}
+
+// Corner piece for the animal pen (canonical = top-left corner): a corner post
+// with a rail running right (top edge) and a rail running down (left edge), so
+// it bridges two perpendicular straight runs. Rotated for the four corners.
+function bakeFenceCorner(): HTMLCanvasElement {
+  const c = cv(T, T)
+  const g = ctxOf(c)
+  // Top rail running right from the corner (canonical = top-left corner).
+  px(g, 4, 4, T - 4, 2, '#9a6a3a')
+  px(g, 4, 4, T - 4, 1, '#b3824a')
+  px(g, 4, 6, T - 4, 1, 'rgba(60,40,24,0.4)')
+  // Left rail running down from the corner.
+  px(g, 4, 4, 2, T - 4, '#9a6a3a')
+  px(g, 4, 4, 1, T - 4, '#b3824a')
+  px(g, 6, 4, 1, T - 4, 'rgba(60,40,24,0.4)')
+  // No post at the bend itself — posts sit on each arm flanking the corner.
+  // Post on the top arm (vertical stake straddling the rail).
+  px(g, 9, 1, 3, 8, '#7a5230')
+  px(g, 9, 1, 1, 8, '#92663c')
+  px(g, 11, 1, 1, 8, 'rgba(50,34,20,0.5)')
+  px(g, 8, 1, 5, 1, '#a07b48') // cap
+  // Post on the left arm (horizontal stake straddling the rail).
+  px(g, 1, 9, 8, 3, '#7a5230')
+  px(g, 1, 9, 8, 1, '#92663c')
+  px(g, 1, 11, 8, 1, 'rgba(50,34,20,0.5)')
+  px(g, 1, 8, 1, 5, '#a07b48') // cap
+  return c
+}
+
 // ---------------- Obstacles ----------------
 function bakeTree(): HTMLCanvasElement {
   const c = cv(T, T + 16)
@@ -818,6 +867,8 @@ export interface Sprites {
   water: HTMLCanvasElement[]
   path: HTMLCanvasElement
   fence: HTMLCanvasElement
+  fenceSmall: HTMLCanvasElement
+  fenceCorner: HTMLCanvasElement
   tree: HTMLCanvasElement
   stump: HTMLCanvasElement
   largeStump: HTMLCanvasElement
@@ -883,6 +934,8 @@ export function buildSprites(
     water: [bakeWater(0), bakeWater(1), bakeWater(2), bakeWater(3)],
     path: bakePath(),
     fence: bakeFence(),
+    fenceSmall: bakeFenceSmall(),
+    fenceCorner: bakeFenceCorner(),
     tree: bakeTree(),
     stump: bakeStump(),
     largeStump: bakeLargeStump(),
