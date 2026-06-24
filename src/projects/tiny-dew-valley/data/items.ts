@@ -223,6 +223,18 @@ const base: ItemDef[] = [
     giftValue: 0,
     sprite: 'fertilizer_deluxe',
   },
+  {
+    id: 'sword',
+    name: '검',
+    type: 'misc',
+    stackable: true,
+    maxStack: 1,
+    sellPrice: 0,
+    description: '광산 깊은 곳을 대비해 대장간에서 파는 기본 검입니다.',
+    usable: false,
+    giftValue: 0,
+    sprite: 'sword',
+  },
   // ---- Materials ----
   {
     id: 'wood',

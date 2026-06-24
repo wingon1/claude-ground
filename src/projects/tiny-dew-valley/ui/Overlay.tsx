@@ -23,6 +23,7 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
     ui.phase === 'shop' ||
     ui.phase === 'build' ||
     ui.phase === 'blacksmith' ||
+    ui.phase === 'blacksmithBuy' ||
     ui.phase === 'cook' ||
     ui.phase === 'seed' ||
     ui.phase === 'order' ||
@@ -98,7 +99,8 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
                 else if (action.id === 'shop') game.openShop()
                 else if (action.id === 'cook') game.openCooking()
                 else if (action.id === 'order') game.openOrder()
-                else if (action.id === 'blacksmith' || action.id === 'blacksmithBuy') game.openBlacksmith()
+                else if (action.id === 'blacksmith') game.openBlacksmith()
+                else if (action.id === 'blacksmithBuy') game.openBlacksmithBuy()
                 else if (action.id === 'mineEnter') game.enterMine()
                 else if (action.id === 'mineExit') game.exitMine()
                 else if (action.id === 'mineDown') game.descendMine()
@@ -152,6 +154,7 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
       {/* Modals */}
       {ui.phase === 'shop' && <ShopModal game={game} ui={ui} />}
       {ui.phase === 'build' && <BuildModal game={game} ui={ui} />}
+      {ui.phase === 'blacksmithBuy' && <BlacksmithBuyModal game={game} ui={ui} />}
       {ui.phase === 'blacksmith' && <BlacksmithModal game={game} ui={ui} />}
       {ui.phase === 'cook' && <CookingModal game={game} ui={ui} />}
       {ui.phase === 'seed' && <SeedModal game={game} ui={ui} />}
@@ -634,6 +637,37 @@ function OrderModal({ game, ui }: { game: Game; ui: UISnapshot }) {
 }
 
 // ---------------- Blacksmith ----------------
+function BlacksmithBuyModal({ game, ui }: { game: Game; ui: UISnapshot }) {
+  return (
+    <div className="tdv-modal-bg" onClick={() => game.closeModal()}>
+      <div className="tdv-modal" style={{ width: 'min(420px, 92vw)' }} onClick={(e) => e.stopPropagation()}>
+        <h2><Ic k="sword" /> 대장간 구매</h2>
+        <div className="sub">광산 탐험에 필요한 장비를 살 수 있어요. 도구 강화는 별도 메뉴에서 진행합니다.</div>
+        <div className="tdv-grid">
+          {ui.blacksmithBuy.map((b) => (
+            <div className={`tdv-card${b.owned ? ' locked' : ''}`} key={b.itemId}>
+              <img src={iconURL(b.sprite, b.color)} alt={b.name} />
+              <div className="nm">{b.name}</div>
+              <div className="ds">{b.desc}</div>
+              <div className="price">{b.price}G</div>
+              {b.owned ? (
+                <span className="owned">보유중</span>
+              ) : (
+                <button className="tdv-btn sm" disabled={!b.affordable} onClick={() => game.buyBlacksmithItem(b.itemId)}>
+                  구매
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+        <div className="tdv-row">
+          <button className="tdv-btn ghost" onClick={() => game.closeModal()}>닫기</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function BlacksmithModal({ game, ui }: { game: Game; ui: UISnapshot }) {
   return (
     <div className="tdv-modal-bg" onClick={() => game.closeModal()}>

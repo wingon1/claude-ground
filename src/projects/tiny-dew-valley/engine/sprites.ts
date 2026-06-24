@@ -1041,6 +1041,15 @@ function bakeToolIcon(tool: string): HTMLCanvasElement {
       px(g, 2, 3, 7, 1, '#eef0f6')
       px(g, 3, 8, 2, 1, '#aeb2bc')
       break
+    case 'sword':
+      px(g, 7, 2, 2, 8, '#dfe3ec')
+      px(g, 8, 1, 1, 1, '#eef0f6')
+      px(g, 6, 4, 1, 5, '#aeb2bc')
+      px(g, 9, 4, 1, 5, '#ffffff')
+      px(g, 4, 10, 8, 1, '#caa066')
+      px(g, 7, 11, 2, 3, '#6e4426')
+      px(g, 6, 13, 4, 1, '#9a6a3a')
+      break
     case 'hand':
       // an open hand
       px(g, 5, 7, 6, 5, '#f6cfa0')
@@ -1186,7 +1195,7 @@ export function iconURL(key: string, color?: string): string {
   let canvas: HTMLCanvasElement
   if (UI_ICONS.has(key)) {
     canvas = bakeUIIcon(key)
-  } else if (['hoe', 'watering_can', 'axe', 'pickaxe', 'scythe', 'hand', 'backpack'].includes(key)) {
+  } else if (['hoe', 'watering_can', 'axe', 'pickaxe', 'scythe', 'sword', 'hand', 'backpack'].includes(key)) {
     canvas = bakeToolIcon(key)
   } else {
     canvas = bakeItemIcon(key, color)

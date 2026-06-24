@@ -204,7 +204,7 @@ export function stampMine(tiles: Tile[], active = false) {
 }
 
 export function stampBlacksmith(tiles: Tile[], active = false) {
-  rect(tiles, 44, 15, 51, 21, (t) => {
+  const clearBlacksmithTile = (t: Tile) => {
     t.terrain = 'grass'
     clearObstacle(t)
     t.cropId = null
@@ -213,9 +213,11 @@ export function stampBlacksmith(tiles: Tile[], active = false) {
     delete t.metadata.blacksmithBlock
     delete t.metadata.blacksmithFloor
     delete t.metadata.invisibleBlock
-  })
+  }
+  rect(tiles, 37, 5, 43, 11, clearBlacksmithTile)
+  rect(tiles, 44, 15, 51, 21, clearBlacksmithTile)
   if (!active) return
-  rect(tiles, 45, 16, 49, 18, (t) => {
+  rect(tiles, 45, 16, 49, 19, (t) => {
     t.terrain = 'blocked'
     clearObstacle(t)
     t.cropId = null
@@ -224,7 +226,7 @@ export function stampBlacksmith(tiles: Tile[], active = false) {
     t.metadata.blacksmithBlock = true
     t.metadata.invisibleBlock = true
   })
-  rect(tiles, 46, 19, 49, 20, (t) => {
+  rect(tiles, 46, 20, 49, 20, (t) => {
     t.terrain = 'grass'
     clearObstacle(t)
     t.cropId = null

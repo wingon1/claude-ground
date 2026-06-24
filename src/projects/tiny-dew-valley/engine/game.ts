@@ -142,7 +142,7 @@ const TOOL_UPGRADES: Record<UpgradeableToolId, {
 }
 
 // ---------- UI snapshot ----------
-export type UIPhase = 'title' | 'playing' | 'shop' | 'build' | 'blacksmith' | 'cook' | 'seed' | 'order' | 'sleepConfirm'
+export type UIPhase = 'title' | 'playing' | 'shop' | 'build' | 'blacksmith' | 'blacksmithBuy' | 'cook' | 'seed' | 'order' | 'sleepConfirm'
 
 export interface ToastMsg {
   id: number
@@ -316,6 +316,7 @@ export interface UISnapshot {
   inventory: InvSlotView[]
   toasts: ToastMsg[]
   shopBuy: ShopBuyView[]
+  blacksmithBuy: ShopBuyView[]
   buildOptions: BuildOptionView[]
   buildPermits: BuildPermitView[]
   toolUpgrades: ToolUpgradeView[]
@@ -451,9 +452,9 @@ export class Game {
     this.applyInitialUnlocks()
     this.applyGroundCleanup()
     this.applyFieldRows()
-    this.applyAnimalFarms()
     this.applyFieldExpansions()
     this.applyMineState()
+    this.applyAnimalFarms()
     stampFarmhouse(this.state.tiles)
     stampCookingFire(this.state.tiles, this.cookingFireBuilt())
     this.initRuntime()
@@ -728,19 +729,18 @@ export class Game {
     const tiles: Tile[] = []
     for (let y = 0; y < WORLD_H; y++) {
       for (let x = 0; x < WORLD_W; x++) {
-        const inside = x >= 13 && x <= 44 && y >= 6 && y <= 29
-        const wall = !inside || x === 13 || x === 44 || y === 6 || y === 29
+        const inside = x >= 20 && x <= 37 && y >= 10 && y <= 24
+        const wall = !inside || x === 20 || x === 37 || y === 10 || y === 24
         tiles.push(this.makeRuntimeTile(x, y, wall ? 'blocked' : 'grass'))
       }
     }
-    const exit = tiles[idx(27, 27)]
+    const exit = tiles[idx(27, 22)]
     exit.metadata.mineExit = true
-    const stairs = tiles[idx(29, 27)]
+    const stairs = tiles[idx(29, 22)]
     stairs.metadata.mineDown = true
     const spots: [number, number][] = [
-      [18, 10], [23, 9], [34, 9], [39, 12], [17, 15], [27, 14],
-      [36, 16], [21, 20], [31, 21], [40, 23], [18, 25], [35, 26],
-      [24, 26], [30, 11], [42, 18], [15, 22],
+      [23, 12], [27, 12], [33, 12], [35, 15], [22, 16], [28, 16],
+      [32, 18], [24, 20], [35, 21], [22, 22], [31, 22],
     ]
     const copperCount = Math.min(7, 2 + floor)
     const ironCount = Math.max(0, Math.min(5, floor - 1))
@@ -1132,6 +1132,24 @@ export class Game {
     this.emit()
   }
 
+  openBlacksmithBuy() {
+    if (this.phase !== 'playing') return
+    if (!this.mineUnlocked() || !this.nearBlacksmith()) {
+      this.toast('대장간 근처에서만 구매할 수 있어요.', 'bad')
+      this.audio.sfx('reject')
+      return
+    }
+    if (!this.flagEnabled('talk:blacksmith:intro')) {
+      this.state.flags['talk:blacksmith:intro'] = true
+      this.autosave()
+    }
+    this.phase = 'blacksmithBuy'
+    this.target = null
+    this.audio.resume()
+    this.audio.sfx('select')
+    this.emit()
+  }
+
   enterMine() {
     if (this.phase !== 'playing' || !this.mineUnlocked() || !this.nearMineEntrance()) return
     const p = this.state.player
@@ -1140,7 +1158,7 @@ export class Game {
     this.mineFloor = 1
     this.mineTiles = this.buildMineTiles(this.mineFloor)
     p.x = 28 * T + T / 2
-    p.y = 28 * T
+    p.y = 23 * T
     p.dir = 'up'
     p.moving = false
     this.target = null
@@ -1176,7 +1194,7 @@ export class Game {
     this.mineTiles = this.buildMineTiles(this.mineFloor)
     const p = this.state.player
     p.x = 28 * T + T / 2
-    p.y = 28 * T
+    p.y = 23 * T
     p.dir = 'up'
     p.moving = false
     this.target = null
@@ -1302,7 +1320,7 @@ export class Game {
   }
 
   closeModal() {
-    if (this.phase === 'shop' || this.phase === 'build' || this.phase === 'blacksmith' || this.phase === 'cook' || this.phase === 'seed' || this.phase === 'order') {
+    if (this.phase === 'shop' || this.phase === 'build' || this.phase === 'blacksmith' || this.phase === 'blacksmithBuy' || this.phase === 'cook' || this.phase === 'seed' || this.phase === 'order') {
       this.phase = 'playing'
       this.emit()
     }
@@ -1571,6 +1589,33 @@ export class Game {
     } else {
       this.giveItem(itemId, 1)
     }
+    this.audio.sfx('coin')
+    this.autosave()
+    this.emit()
+  }
+
+  buyBlacksmithItem(itemId: string) {
+    if (this.phase !== 'blacksmithBuy') return
+    if (itemId !== 'sword') return
+    const price = 500
+    const s = this.state
+    if (this.countItem(itemId) > 0) {
+      this.toast('이미 가지고 있어요.', 'info')
+      return
+    }
+    if (s.gold < price) {
+      this.toast('골드가 부족해요.', 'bad')
+      this.audio.sfx('reject')
+      return
+    }
+    if (!this.canAccept(itemId, 1)) {
+      this.toast('가방이 가득 찼어요.', 'bad')
+      this.audio.sfx('reject')
+      return
+    }
+    s.gold -= price
+    this.giveItem(itemId, 1)
+    this.toast('검을 샀어요.', 'good')
     this.audio.sfx('coin')
     this.autosave()
     this.emit()
@@ -1847,7 +1892,7 @@ export class Game {
 
   private applyMineState(force = false) {
     const active = this.mineUnlocked()
-    const key = 'mine:stampedActive:v3'
+    const key = 'mine:stampedActive:v4'
     if (!force && this.state.flags[key] === active && this.mineStampMatches(active)) return
     stampMine(this.state.tiles, active)
     stampBlacksmith(this.state.tiles, active)
@@ -1860,8 +1905,11 @@ export class Game {
     for (const t of this.state.tiles) {
       if (t.metadata.mineBoard === true) hasBoard = true
       if (t.metadata.mineNode === true) hasNode = true
+      if (t.x >= 43 && t.x <= 54 && t.y >= 4 && t.y <= 14 && this.isMineResource(t.obstacle)) {
+        hasNode = true
+      }
     }
-    return active ? hasNode && !hasBoard : hasBoard && !hasNode
+    return active ? !hasBoard && !hasNode : hasBoard && !hasNode
   }
 
   private migrateSeenItems() {
@@ -3509,7 +3557,7 @@ export class Game {
     if (!s) {
       return {
         phase: this.phase, day: 1, clock: '오전 6:00', period: '아침', periodKey: 'morning',
-        gold: 0, stamina: 0, maxStamina: 0, inventory: [], toasts: [...this.toasts], shopBuy: [],
+        gold: 0, stamina: 0, maxStamina: 0, inventory: [], toasts: [...this.toasts], shopBuy: [], blacksmithBuy: [],
         buildOptions: [], buildPermits: [], toolUpgrades: [], fieldPlots: [], cropChoices: [], selectedFieldId: null, cookRecipes: [],
         cookQueue: [],
         cookingFire: {
@@ -3576,6 +3624,17 @@ export class Game {
         owned: !!upgrade && this.animalUpgradeLevel(upgrade) >= upgrade.maxLevel,
       }
     })
+    const swordDef = getItem('sword')
+    const swordPrice = 500
+    const blacksmithBuy: ShopBuyView[] = swordDef ? [{
+      itemId: 'sword',
+      name: swordDef.name,
+      price: swordPrice,
+      affordable: s.gold >= swordPrice && this.countItem('sword') <= 0,
+      sprite: swordDef.sprite,
+      desc: swordDef.description,
+      owned: this.countItem('sword') > 0,
+    }] : []
     const costViews = (items: { itemId: string; qty: number }[]): CostItemView[] =>
       items.map((it) => {
         const have = this.countItem(it.itemId)
@@ -3824,6 +3883,7 @@ export class Game {
       inventory,
       toasts: [...this.toasts],
       shopBuy,
+      blacksmithBuy,
       buildOptions,
       buildPermits,
       toolUpgrades,
