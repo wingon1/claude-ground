@@ -25,6 +25,7 @@ import {
   inBounds,
   LOCATIONS,
   setObstacle,
+  stampBlacksmith,
   stampCookingFire,
   stampFarmhouse,
   stampMine,
@@ -46,6 +47,7 @@ const COOK_BATCH_MAX = 20
 const COOKING_FIRE_BUILT_FLAG = 'build:cookingFire'
 const COOKING_FIRE_BUILD_COST = [{ itemId: 'wood', qty: 5 }]
 const ORDER_NPC = { x: LOCATIONS.storeStand.x, y: LOCATIONS.storeStand.y }
+const BLACKSMITH_NPC = { x: LOCATIONS.blacksmithNpc.x, y: LOCATIONS.blacksmithNpc.y }
 
 const TUTORIAL_REWARDS = [
   {
@@ -140,7 +142,7 @@ const TOOL_UPGRADES: Record<UpgradeableToolId, {
 }
 
 // ---------- UI snapshot ----------
-export type UIPhase = 'title' | 'playing' | 'shop' | 'build' | 'cook' | 'seed' | 'order' | 'sleepConfirm'
+export type UIPhase = 'title' | 'playing' | 'shop' | 'build' | 'blacksmith' | 'cook' | 'seed' | 'order' | 'sleepConfirm'
 
 export interface ToastMsg {
   id: number
@@ -299,7 +301,7 @@ export interface OrderView {
   canComplete: boolean
 }
 export interface ContextActionView {
-  id: 'sleep' | 'animal' | 'seed' | 'shop' | 'cook' | 'order'
+  id: 'sleep' | 'animal' | 'seed' | 'shop' | 'cook' | 'order' | 'blacksmith'
   label: string
 }
 export interface UISnapshot {
@@ -327,7 +329,7 @@ export interface UISnapshot {
   objectives: ObjectiveTaskView[]
   order: OrderView | null
   contextAction: string | null
-  contextActionId: 'sleep' | 'animal' | 'seed' | 'shop' | 'cook' | 'order' | null
+  contextActionId: 'sleep' | 'animal' | 'seed' | 'shop' | 'cook' | 'order' | 'blacksmith' | null
   contextActions: ContextActionView[]
   nearBed: boolean
   nearStore: boolean
@@ -802,6 +804,11 @@ export class Game {
       if (!at || t.obstacle) continue
       if (now >= at) {
         const kind = (t.metadata.respawnKind as string) || 'tree'
+        if (this.isMineResource(kind) && t.metadata.mineNode !== true) {
+          delete t.metadata.respawnAt
+          delete t.metadata.respawnKind
+          continue
+        }
         setObstacle(t, kind as Exclude<Tile['obstacle'], null>)
         delete t.metadata.respawnAt
         delete t.metadata.respawnKind
@@ -1032,6 +1039,20 @@ export class Game {
     this.emit()
   }
 
+  openBlacksmith() {
+    if (this.phase !== 'playing') return
+    if (!this.mineUnlocked() || !this.nearBlacksmith()) {
+      this.toast('광산 옆 대장장이 근처에서만 도구를 강화할 수 있어요.', 'bad')
+      this.audio.sfx('reject')
+      return
+    }
+    this.phase = 'blacksmith'
+    this.target = null
+    this.audio.resume()
+    this.audio.sfx('select')
+    this.emit()
+  }
+
   closeOrder() {
     if (this.phase === 'order') {
       this.phase = 'playing'
@@ -1146,7 +1167,7 @@ export class Game {
   }
 
   closeModal() {
-    if (this.phase === 'shop' || this.phase === 'build' || this.phase === 'cook' || this.phase === 'seed' || this.phase === 'order') {
+    if (this.phase === 'shop' || this.phase === 'build' || this.phase === 'blacksmith' || this.phase === 'cook' || this.phase === 'seed' || this.phase === 'order') {
       this.phase = 'playing'
       this.emit()
     }
@@ -1326,7 +1347,12 @@ export class Game {
   }
 
   upgradeTool(toolId: UpgradeableToolId) {
-    if (this.phase !== 'build') return
+    if (this.phase !== 'blacksmith') return
+    if (!this.mineUnlocked() || !this.nearBlacksmith()) {
+      this.toast('대장장이 앞에서만 도구를 강화할 수 있어요.', 'bad')
+      this.audio.sfx('reject')
+      return
+    }
     const upgrade = this.nextToolUpgrade(toolId)
     if (!upgrade) {
       this.toast('이미 최대 등급 도구예요.', 'info')
@@ -1546,6 +1572,12 @@ export class Game {
     return Math.abs(p.x - ORDER_NPC.x) <= 1 && Math.abs(p.y - ORDER_NPC.y) <= 1
   }
 
+  private nearBlacksmith(): boolean {
+    if (!this.mineUnlocked()) return false
+    const p = this.playerTile()
+    return Math.abs(p.x - BLACKSMITH_NPC.x) <= 1 && Math.abs(p.y - BLACKSMITH_NPC.y) <= 1
+  }
+
   private nearBuild(): boolean {
     return true
   }
@@ -1663,10 +1695,21 @@ export class Game {
 
   private applyMineState(force = false) {
     const active = this.mineUnlocked()
-    const key = 'mine:stampedActive'
-    if (!force && this.state.flags[key] === active) return
+    const key = 'mine:stampedActive:v3'
+    if (!force && this.state.flags[key] === active && this.mineStampMatches(active)) return
     stampMine(this.state.tiles, active)
+    stampBlacksmith(this.state.tiles, active)
     this.state.flags[key] = active
+  }
+
+  private mineStampMatches(active: boolean): boolean {
+    let hasBoard = false
+    let hasNode = false
+    for (const t of this.state.tiles) {
+      if (t.metadata.mineBoard === true) hasBoard = true
+      if (t.metadata.mineNode === true) hasNode = true
+    }
+    return active ? hasNode && !hasBoard : hasBoard && !hasNode
   }
 
   private migrateSeenItems() {
@@ -1947,7 +1990,7 @@ export class Game {
       const copper = Math.min(8, this.countItem('copper_ore'))
       return {
         title: '구리 곡괭이 강화하기',
-        detail: '건설탭에서 돌 20개와 구리광석 8개로 곡괭이를 강화하세요.',
+        detail: '광산 옆 대장간에서 돌 20개와 구리광석 8개로 곡괭이를 강화하세요.',
         progress: stone + copper,
         max: 28,
       }
@@ -2354,6 +2397,15 @@ export class Game {
     for (const t of this.state.tiles) {
       if (t.terrain === 'path') t.terrain = 'grass'
       delete t.metadata.shrine
+      if (this.isMineResource(t.obstacle) && t.metadata.mineNode !== true) {
+        t.obstacle = null
+        t.hp = undefined
+      }
+      const respawnKind = t.metadata.respawnKind
+      if (typeof respawnKind === 'string' && this.isMineResource(respawnKind) && t.metadata.mineNode !== true) {
+        delete t.metadata.respawnAt
+        delete t.metadata.respawnKind
+      }
     }
     for (let y = 2; y <= 4; y++) {
       for (let x = 19; x <= 21; x++) {
@@ -2365,6 +2417,10 @@ export class Game {
         t.hp = undefined
       }
     }
+  }
+
+  private isMineResource(kind: unknown): kind is 'rock' | 'copper_ore' | 'iron_ore' {
+    return kind === 'rock' || kind === 'copper_ore' || kind === 'iron_ore'
   }
 
   private applyAnimalFarms() {
@@ -2622,6 +2678,7 @@ export class Game {
     this.drawFieldSigns(S)
     this.drawCookingFire(S)
     this.drawMineEntrance(S)
+    this.drawBlacksmith(S)
 
     type Draw = { y: number; fn: () => void }
     const draws: Draw[] = []
@@ -2635,6 +2692,10 @@ export class Game {
       }
     }
     draws.push({ y: this.orderNpcPosition().y, fn: () => this.drawOrderNpc(S) })
+    if (this.mineUnlocked()) {
+      const smith = this.blacksmithNpcPosition()
+      draws.push({ y: smith.y, fn: () => this.drawBlacksmithNpc(S) })
+    }
     draws.push({ y: p.y, fn: () => this.drawHuman(this.sprites.farmer, p.x, p.y, p.dir, p.moving, p.exhausted, p.animTime) })
     draws.sort((a, b) => a.y - b.y)
     for (const d of draws) d.fn()
@@ -2759,6 +2820,34 @@ export class Game {
     ctx.textAlign = 'center'
     ctx.fillText('!', sx, sy + 3 * S)
     ctx.textAlign = 'left'
+  }
+
+  private blacksmithNpcPosition(): { x: number; y: number; dir: Direction } {
+    const t = this.nowSecs()
+    const dx = Math.sin(t * 0.18 + 0.6) * 4
+    const dy = Math.sin(t * 0.15 + 2.2) * 3
+    const dir: Direction = Math.abs(dx) > Math.abs(dy)
+      ? (dx >= 0 ? 'right' : 'left')
+      : (dy >= 0 ? 'down' : 'up')
+    return {
+      x: BLACKSMITH_NPC.x * T + T / 2 + dx,
+      y: BLACKSMITH_NPC.y * T + T + dy,
+      dir,
+    }
+  }
+
+  private drawBlacksmithNpc(S: number) {
+    const npc = this.blacksmithNpcPosition()
+    this.drawHuman(this.sprites.barnaby, npc.x, npc.y, npc.dir, true, false, this.nowSecs() + 1.4, false)
+    const ctx = this.ctx
+    const sx = this.wx(npc.x + 5)
+    const sy = this.wy(npc.y - 17)
+    ctx.fillStyle = '#4c3a33'
+    ctx.fillRect(sx, sy, 6 * S, 6 * S)
+    ctx.fillStyle = '#d6d0c2'
+    ctx.fillRect(sx + 1 * S, sy + 1 * S, 4 * S, 2 * S)
+    ctx.fillStyle = '#2a2a30'
+    ctx.fillRect(sx + 2 * S, sy + 3 * S, 2 * S, 2 * S)
   }
 
   private drawAnimalFarms(S: number) {
@@ -2941,6 +3030,41 @@ export class Game {
       ctx.fillStyle = '#52331d'
       ctx.fillRect(x + 49 * S, y + 33 * S, 4 * S, 20 * S)
     }
+  }
+
+  private drawBlacksmith(S: number) {
+    if (!this.mineUnlocked()) return
+    const ctx = this.ctx
+    const x = this.wx(LOCATIONS.blacksmith.x * T)
+    const y = this.wy(LOCATIONS.blacksmith.y * T - 14)
+    ctx.fillStyle = 'rgba(0,0,0,0.17)'
+    ctx.fillRect(x + 5 * S, y + 58 * S, 70 * S, 7 * S)
+    ctx.fillStyle = '#5b4b42'
+    ctx.fillRect(x + 5 * S, y + 23 * S, 70 * S, 38 * S)
+    ctx.fillStyle = '#746055'
+    ctx.fillRect(x + 8 * S, y + 26 * S, 64 * S, 5 * S)
+    ctx.fillStyle = '#3d3330'
+    ctx.fillRect(x + 19 * S, y + 38 * S, 16 * S, 23 * S)
+    ctx.fillStyle = '#242026'
+    ctx.fillRect(x + 23 * S, y + 43 * S, 8 * S, 18 * S)
+    ctx.fillStyle = '#a95432'
+    ctx.fillRect(x + 46 * S, y + 40 * S, 17 * S, 13 * S)
+    ctx.fillStyle = '#f0912e'
+    ctx.fillRect(x + 49 * S, y + 43 * S, 11 * S, 7 * S)
+    ctx.fillStyle = '#ffd05c'
+    ctx.fillRect(x + 52 * S, y + 44 * S, 5 * S, 5 * S)
+    ctx.fillStyle = '#3f3532'
+    ctx.fillRect(x + 56 * S, y + 7 * S, 10 * S, 23 * S)
+    ctx.fillStyle = '#211c20'
+    ctx.fillRect(x + 58 * S, y + 5 * S, 6 * S, 4 * S)
+    ctx.fillStyle = '#4d403b'
+    ctx.fillRect(x + 2 * S, y + 20 * S, 76 * S, 7 * S)
+    ctx.fillStyle = '#6d5a50'
+    ctx.fillRect(x + 8 * S, y + 14 * S, 64 * S, 8 * S)
+    ctx.fillStyle = '#8b6a4d'
+    ctx.fillRect(x + 16 * S, y + 10 * S, 48 * S, 7 * S)
+    ctx.fillStyle = '#2e2930'
+    ctx.fillRect(x + 48 * S, y + 57 * S, 16 * S, 4 * S)
   }
 
   private drawHuman(
@@ -3241,7 +3365,12 @@ export class Game {
         nextDamage: next?.damage ?? null,
         costGold: next?.costGold ?? 0,
         costItems,
-        canUpgrade: !!next && s.gold >= next.costGold && costItems.every((it) => it.ok),
+        canUpgrade:
+          this.phase === 'blacksmith' &&
+          this.nearBlacksmith() &&
+          !!next &&
+          s.gold >= next.costGold &&
+          costItems.every((it) => it.ok),
         maxed: !next,
         sprite: toolId,
       }
@@ -3411,6 +3540,8 @@ export class Game {
       } else if (this.nearOrderNpc()) {
         contextActions.push({ id: 'order', label: '주문' })
         if (this.nearStore()) contextActions.push({ id: 'shop', label: '상점' })
+      } else if (this.nearBlacksmith()) {
+        contextActions.push({ id: 'blacksmith', label: '대장간' })
       } else {
         if (this.nearStore()) contextActions.push({ id: 'shop', label: '상점' })
         if (this.nearCooking()) contextActions.push({ id: 'cook', label: '요리' })

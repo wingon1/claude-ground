@@ -22,6 +22,7 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
   const modalOpen =
     ui.phase === 'shop' ||
     ui.phase === 'build' ||
+    ui.phase === 'blacksmith' ||
     ui.phase === 'cook' ||
     ui.phase === 'seed' ||
     ui.phase === 'order' ||
@@ -99,6 +100,7 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
                 else if (action.id === 'shop') game.openShop()
                 else if (action.id === 'cook') game.openCooking()
                 else if (action.id === 'order') game.openOrder()
+                else if (action.id === 'blacksmith') game.openBlacksmith()
               }}
             >
               {action.label}
@@ -149,6 +151,7 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
       {/* Modals */}
       {ui.phase === 'shop' && <ShopModal game={game} ui={ui} />}
       {ui.phase === 'build' && <BuildModal game={game} ui={ui} />}
+      {ui.phase === 'blacksmith' && <BlacksmithModal game={game} ui={ui} />}
       {ui.phase === 'cook' && <CookingModal game={game} ui={ui} />}
       {ui.phase === 'seed' && <SeedModal game={game} ui={ui} />}
       {ui.phase === 'order' && <OrderModal game={game} ui={ui} />}
@@ -486,32 +489,6 @@ function BuildModal({ game, ui }: { game: Game; ui: UISnapshot }) {
               )}
             </div>
           </div>
-          {ui.toolUpgrades.map((tool) => (
-            <div className={`tdv-craft${tool.maxed ? ' locked' : ''}`} key={tool.toolId}>
-              <img src={iconURL(tool.sprite)} alt={tool.name} />
-              <div className="info">
-                <div className="nm">{tool.name}</div>
-                <div className="ds">
-                  현재 타격력 {tool.damage}{tool.nextName ? ` · ${tool.nextName} 타격력 ${tool.nextDamage}` : ' · 최대 등급'}
-                </div>
-                <div className="mats">
-                  {!tool.maxed && <span className={`mat${ui.gold >= tool.costGold ? '' : ' miss'}`}>골드 {ui.gold}/{tool.costGold}</span>}
-                  {tool.costItems.map((it) => (
-                    <span className={`mat${it.ok ? '' : ' miss'}`} key={it.itemId}>{it.name} {it.have}/{it.need}</span>
-                  ))}
-                </div>
-              </div>
-              <div className="act">
-                {tool.maxed ? (
-                  <span className="owned">완료</span>
-                ) : (
-                  <button className="tdv-btn gold sm" disabled={!tool.canUpgrade} onClick={() => game.upgradeTool(tool.toolId)}>
-                    강화
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
           {ui.buildPermits.map((permit) => (
             <div className={`tdv-craft${permit.locked ? ' locked' : ''}`} key={permit.itemId}>
               <img src={iconURL(permit.sprite)} alt={permit.name} />
@@ -649,6 +626,49 @@ function OrderModal({ game, ui }: { game: Game; ui: UISnapshot }) {
         )}
         <div className="tdv-row">
           <button className="tdv-btn ghost" onClick={() => game.closeOrder()}>닫기</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ---------------- Blacksmith ----------------
+function BlacksmithModal({ game, ui }: { game: Game; ui: UISnapshot }) {
+  return (
+    <div className="tdv-modal-bg" onClick={() => game.closeModal()}>
+      <div className="tdv-modal" style={{ width: 'min(420px, 92vw)' }} onClick={(e) => e.stopPropagation()}>
+        <h2><Ic k="pickaxe" /> 대장간</h2>
+        <div className="sub">광산에서 얻은 돌과 광석으로 낫과 곡괭이를 강화합니다.</div>
+        <div className="tdv-craftlist">
+          {ui.toolUpgrades.map((tool) => (
+            <div className={`tdv-craft${tool.maxed ? ' locked' : ''}`} key={tool.toolId}>
+              <img src={iconURL(tool.sprite)} alt={tool.name} />
+              <div className="info">
+                <div className="nm">{tool.name}</div>
+                <div className="ds">
+                  현재 타격력 {tool.damage}{tool.nextName ? ` · ${tool.nextName} 타격력 ${tool.nextDamage}` : ' · 최대 등급'}
+                </div>
+                <div className="mats">
+                  {!tool.maxed && <span className={`mat${ui.gold >= tool.costGold ? '' : ' miss'}`}>골드 {ui.gold}/{tool.costGold}</span>}
+                  {tool.costItems.map((it) => (
+                    <span className={`mat${it.ok ? '' : ' miss'}`} key={it.itemId}>{it.name} {it.have}/{it.need}</span>
+                  ))}
+                </div>
+              </div>
+              <div className="act">
+                {tool.maxed ? (
+                  <span className="owned">완료</span>
+                ) : (
+                  <button className="tdv-btn gold sm" disabled={!tool.canUpgrade} onClick={() => game.upgradeTool(tool.toolId)}>
+                    강화
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="tdv-row">
+          <button className="tdv-btn ghost" onClick={() => game.closeModal()}>닫기</button>
         </div>
       </div>
     </div>

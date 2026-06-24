@@ -13,6 +13,8 @@ export interface WorldLocations {
   buildBoard: { x: number; y: number }
   cookingFire: { x: number; y: number }
   mine: { x: number; y: number }
+  blacksmith: { x: number; y: number }
+  blacksmithNpc: { x: number; y: number }
   pond: { x: number; y: number }
   woods: { x: number; y: number; w: number; h: number }
   square: { x: number; y: number } // village square center
@@ -66,6 +68,8 @@ export const LOCATIONS: WorldLocations = {
   buildBoard: { x: 32, y: 12 },
   cookingFire: { x: 33, y: 11 },
   mine: { x: 47, y: 8 },
+  blacksmith: { x: 38, y: 6 },
+  blacksmithNpc: { x: 42, y: 10 },
   pond: { x: 25, y: 15 },
   woods: { x: 1, y: 8, w: 9, h: 20 },
   square: { x: 16, y: 31 },
@@ -211,6 +215,36 @@ export function stampMine(tiles: Tile[], active = false) {
   }
 }
 
+export function stampBlacksmith(tiles: Tile[], active = false) {
+  rect(tiles, 37, 5, 43, 11, (t) => {
+    t.terrain = 'grass'
+    clearObstacle(t)
+    t.cropId = null
+    t.growthStage = 0
+    delete t.metadata.blacksmith
+    delete t.metadata.blacksmithBlock
+    delete t.metadata.blacksmithFloor
+    delete t.metadata.invisibleBlock
+  })
+  if (!active) return
+  rect(tiles, 38, 6, 42, 8, (t) => {
+    t.terrain = 'blocked'
+    clearObstacle(t)
+    t.cropId = null
+    t.growthStage = 0
+    t.metadata.blacksmith = true
+    t.metadata.blacksmithBlock = true
+    t.metadata.invisibleBlock = true
+  })
+  rect(tiles, 39, 9, 42, 10, (t) => {
+    t.terrain = 'grass'
+    clearObstacle(t)
+    t.cropId = null
+    t.growthStage = 0
+    t.metadata.blacksmithFloor = true
+  })
+}
+
 function stampFields(tiles: Tile[]) {
   for (const plot of FIELD_PLOTS) {
     for (let y = plot.y; y < plot.y + FIELD_SIZE; y++) {
@@ -254,6 +288,7 @@ export function generateWorld(): Tile[] {
 
   stampCookingFire(tiles, false)
   stampMine(tiles, false)
+  stampBlacksmith(tiles, false)
 
   // ---- Western woods: trees, stumps, daffodils, weeds ----
   const w = LOCATIONS.woods
@@ -290,9 +325,8 @@ export function generateWorld(): Tile[] {
       if (t.terrain !== 'grass' || t.obstacle) continue
       const r = Math.random()
       if (r < 0.05) setObstacle(t, 'weed')
-      else if (r < 0.075) setObstacle(t, 'rock')
-      else if (r < 0.085) setObstacle(t, 'stump')
-      else if (r < 0.092) setObstacle(t, 'tree')
+      else if (r < 0.065) setObstacle(t, 'stump')
+      else if (r < 0.072) setObstacle(t, 'tree')
     }
   }
   // Keep the spawn & near-house area clear.
