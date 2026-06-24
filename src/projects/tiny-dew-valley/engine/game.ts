@@ -1,4 +1,4 @@
-import type { CookJob, Direction, GameState, InventorySlot, Tile } from '../types'
+﻿import type { CookJob, Direction, GameState, InventorySlot, Tile } from '../types'
 import { CROPS, CROP_LIST } from '../data/crops'
 import { cropItemId, getItem } from '../data/items'
 import { SHOP_CATALOG } from '../data/shopCatalog'
@@ -31,9 +31,7 @@ import {
   PASSIVES,
   PASSIVE_RARITIES,
   PASSIVE_RARITY_LABEL,
-  PASSIVE_RARITY_WEIGHT,
   passiveDef,
-  passiveValueText,
   type PassiveId,
   type PassiveRarity,
 } from '../data/passives'
@@ -67,28 +65,15 @@ import {
 import { bakeItemIcon, buildSprites, T, type Sprites } from './sprites'
 import { AudioEngine } from './audio'
 import { deleteSave, loadGame, saveGame, SAVE_VERSION } from './save'
-import { TOOL_BASE, TOOL_UPGRADES, UPGRADEABLE_TOOLS, type UpgradeableToolId } from '../data/toolUpgrades'
+import { TOOL_BASE, TOOL_UPGRADES, type UpgradeableToolId } from '../data/toolUpgrades'
 import type { Firefly, MineMonster, Particle, Period, WorkKind } from './gameTypes'
 import { buildMineMonsters, buildMineTiles } from './mineRuntime'
+import { buildUISnapshot } from './snapshotBuilder'
 import type {
-  BuildOptionView,
-  BuildPermitView,
-  ContextActionView,
-  CookJobView,
-  CookRecipeView,
-  CookingFireView,
-  CostItemView,
-  CropChoiceView,
-  FieldPlotView,
-  InvSlotView,
   ObjectiveTaskView,
   ObjectiveView,
   OrderView,
-  PassiveSlotView,
-  PassiveView,
-  ShopBuyView,
   ToastMsg,
-  ToolUpgradeView,
   UIPhase,
   UISnapshot,
 } from './uiSnapshot'
@@ -3845,402 +3830,63 @@ export class Game {
   }
 
   private buildSnapshot(): UISnapshot {
-    const s = this.state
-    if (!s) {
-      return {
-        phase: this.phase, day: 1, clock: '오전 6:00', period: '아침', periodKey: 'morning',
-        gold: 0, stamina: 0, maxStamina: 0, inventory: [], toasts: [...this.toasts], shopBuy: [], blacksmithBuy: [],
-        buildOptions: [], buildPermits: [], toolUpgrades: [], passives: [], passiveSlots: [], passiveSlotCount: 0, fieldPlots: [], cropChoices: [], selectedFieldId: null, cookRecipes: [],
-        cookQueue: [],
-        cookingFire: {
-          built: false,
-          level: 0,
-          maxLevel: COOKING_FIRE_MAX_LEVEL,
-          slots: 0,
-          usedSlots: 0,
-          nextSlots: COOKING_FIRE_BASE_SLOTS,
-          costGold: 0,
-          costItems: [],
-          canUpgrade: false,
-        },
-        objective: null,
-        objectives: [],
-        order: null,
-        contextAction: null, contextActionId: null, contextActions: [], nearBed: false, nearStore: false, nearBuild: false, nearCooking: false, exhausted: false,
-        muted: this.audio.muted, musicOn: this.audio.musicOn, hasSave: this.hasSavedGame(),
-      }
-    }
-    const inventory: InvSlotView[] = s.inventory.map((sl, i) => {
-      const def = sl.itemId ? getItem(sl.itemId) : null
-      return {
-        index: i,
-        itemId: sl.itemId || null,
-        qty: sl.qty,
-        name: def?.name ?? '',
-        sprite: def?.sprite ?? '',
-        color: def?.cropId ? CROPS[def.cropId].color : undefined,
-        sellPrice: def?.sellPrice ?? 0,
-        type: def?.type ?? '',
-        desc: def?.description ?? '',
-      }
-    })
-    const shopBuy: ShopBuyView[] = SHOP_CATALOG.filter((e) => {
-      if (!this.flagEnabled(e.requiresFlag)) return false
-      if (this.isAnimalPermitEntry(e)) return false
-      if (e.grantsFlag && this.flagEnabled(e.grantsFlag)) return false
-      if (e.animalUpgradeId) {
-        const upgrade = ANIMAL_UPGRADES.find((u) => u.id === e.animalUpgradeId)
-        if (!upgrade || this.animalUpgradeLevel(upgrade) >= upgrade.maxLevel) return false
-      }
-      return true
-    }).map((e) => {
-      const def = getItem(e.itemId)!
-      const farm = e.animalFarmId ? ANIMAL_FARMS.find((f) => f.id === e.animalFarmId) : null
-      const upgrade = e.animalUpgradeId ? ANIMAL_UPGRADES.find((u) => u.id === e.animalUpgradeId) : null
-      const price = farm ? this.animalBuyPrice(farm) : upgrade ? this.animalUpgradePrice(upgrade) : (e.buyPrice ?? 0)
-      const animalCount = farm ? this.animalCount(farm) : 0
-      const ownedText = farm
-        ? ` 보유 ${animalCount}/${ANIMAL_FARM_MAX_ANIMALS}마리 · ${this.animalDropSeconds(farm)}초마다 생산`
-        : ''
-      const upgradeText = upgrade
-        ? ` ${upgrade.levelDesc} · Lv.${this.animalUpgradeLevel(upgrade)}/${upgrade.maxLevel}`
-        : ''
-      return {
-        itemId: e.itemId,
-        name: def.name,
-        price,
-        affordable: s.gold >= price && (!farm || animalCount < ANIMAL_FARM_MAX_ANIMALS),
-        sprite: def.sprite,
-        color: def.cropId ? CROPS[def.cropId].color : undefined,
-        desc: `${def.description}${ownedText}${upgradeText}`,
-        owned: !!upgrade && this.animalUpgradeLevel(upgrade) >= upgrade.maxLevel,
-      }
-    })
-    const swordDef = getItem('sword')
-    const swordPrice = 500
-    const blacksmithBuy: ShopBuyView[] = swordDef ? [{
-      itemId: 'sword',
-      name: swordDef.name,
-      price: swordPrice,
-      affordable: s.gold >= swordPrice && this.countItem('sword') <= 0,
-      sprite: swordDef.sprite,
-      desc: swordDef.description,
-      owned: this.countItem('sword') > 0,
-    }] : []
-    const equippedPassiveKeys = new Set<string>()
-    for (let i = 0; i < this.passiveSlotCount(); i++) {
-      const parsed = this.parsePassiveKey(s.flags[this.passiveEquipKey(i)])
-      if (parsed) equippedPassiveKeys.add(this.passiveKey(parsed.id, parsed.rarity))
-    }
-    const makePassiveView = (id: PassiveId, rarity: PassiveRarity): PassiveView | null => {
-      const def = passiveDef(id)
-      if (!def) return null
-      const key = this.passiveKey(id, rarity)
-      return {
-        id,
-        rarity,
-        key,
-        name: def.name,
-        rarityLabel: PASSIVE_RARITY_LABEL[rarity],
-        effectText: passiveValueText(def, rarity),
-        desc: def.description,
-        qty: this.passiveCount(id, rarity),
-        equipped: equippedPassiveKeys.has(key),
-      }
-    }
-    const passives: PassiveView[] = PASSIVES.flatMap((passive) =>
-      PASSIVE_RARITIES.map((rarity) => makePassiveView(passive.id, rarity)).filter((view): view is PassiveView =>
-        !!view && view.qty > 0,
-      ),
-    ).sort((a, b) =>
-      PASSIVE_RARITY_WEIGHT[b.rarity] - PASSIVE_RARITY_WEIGHT[a.rarity] || a.name.localeCompare(b.name),
-    )
-    const passiveSlotCount = this.passiveSlotCount()
-    const passiveSlots: PassiveSlotView[] = Array.from({ length: 3 }, (_, index) => {
-      const parsed = this.parsePassiveKey(s.flags[this.passiveEquipKey(index)])
-      return {
-        index,
-        unlocked: index < passiveSlotCount,
-        passive: parsed ? makePassiveView(parsed.id, parsed.rarity) : null,
-      }
-    })
-    const costViews = (items: { itemId: string; qty: number }[]): CostItemView[] =>
-      items.map((it) => {
-        const have = this.countItem(it.itemId)
-        return {
-          itemId: it.itemId,
-          name: getItem(it.itemId)?.name ?? it.itemId,
-          have,
-          need: it.qty,
-          ok: have >= it.qty,
-        }
-      })
-    const buildPermits: BuildPermitView[] = SHOP_CATALOG.filter((e) =>
-      this.isAnimalPermitEntry(e),
-    ).map((e) => {
-      const def = getItem(e.itemId)!
-      const built = this.flagEnabled(e.grantsFlag)
-      const locked = !this.flagEnabled(e.requiresFlag)
-      const price = e.buyPrice ?? 0
-      const costItems = costViews(e.costItems ?? [])
-      return {
-        itemId: e.itemId,
-        name: def.name,
-        desc: def.description,
-        price,
-        costItems,
-        affordable: !built && !locked && s.gold >= price && costItems.every((it) => it.ok),
-        sprite: def.sprite,
-        built,
-        locked,
-      }
-    })
-    const toolUpgrades: ToolUpgradeView[] = UPGRADEABLE_TOOLS.map((toolId) => {
-      const next = this.nextToolUpgrade(toolId)
-      const costItems = costViews(next?.costItems ?? [])
-      const owned = toolId !== 'sword' || this.countItem('sword') > 0
-      return {
-        toolId,
-        name: this.toolName(toolId),
-        level: this.toolLevel(toolId),
-        damage: this.toolDamage(toolId),
-        nextName: next?.name ?? null,
-        nextDamage: next?.damage ?? null,
-        costGold: next?.costGold ?? 0,
-        costItems,
-        canUpgrade:
-          this.phase === 'blacksmith' &&
-          this.nearBlacksmith() &&
-          owned &&
-          !!next &&
-          s.gold >= next.costGold &&
-          costItems.every((it) => it.ok),
-        maxed: !next,
-        sprite: toolId,
-      }
-    })
-    const fieldLevel = this.fieldExpansionLevel()
-    const buildOptions: BuildOptionView[] = BUILD_OPTIONS.map((option) => {
-      const costItems = costViews(option.costItems)
-      const built = fieldLevel >= option.level
-      const locked = option.level > fieldLevel + 1
-      return {
-        id: option.id,
-        name: option.name,
-        desc: option.description,
-        costGold: option.costGold,
-        costItems,
-        canBuild:
-          !built &&
-          !locked &&
-          s.gold >= option.costGold &&
-          costItems.every((it) => it.ok),
-        built,
-        locked,
-      }
-    })
-    const selectedFieldId = this.selectedFieldId()
-    const nextFieldId = this.nextUnlockFieldId()
-    const rowCostGold = this.fieldRowCostGold()
-    const rowCostItems = costViews([{ itemId: 'wood', qty: this.fieldRowCostWood() }])
-    const fieldPlots: FieldPlotView[] = FIELD_PLOTS.map((plot) => {
-      const rows = this.fieldRows(plot.id)
-      const cropId = this.fieldCrop(plot.id) ?? DEFAULT_FIELD_CROP
-      const crop = CROPS[cropId] ?? CROPS[DEFAULT_FIELD_CROP]
-      const nextToUnlock = nextFieldId === plot.id
-      return {
-        id: plot.id,
-        name: plot.name,
-        rows,
-        selectedCropId: crop.id,
-        selectedCropName: crop.name,
-        selected: selectedFieldId === plot.id,
-        nextToUnlock,
-        canBuyRow:
-          rows < FIELD_SIZE &&
-          nextToUnlock &&
-          s.gold >= rowCostGold &&
-          rowCostItems.every((it) => it.ok),
-        costGold: rowCostGold,
-        costItems: rowCostItems,
-      }
-    })
-    const selectedCropId = selectedFieldId ? (this.fieldCrop(selectedFieldId) ?? DEFAULT_FIELD_CROP) : DEFAULT_FIELD_CROP
-    const cropChoices: CropChoiceView[] = CROP_LIST.map((crop) => ({
-      id: crop.id,
-      name: crop.name,
-      color: crop.color,
-      selected: crop.id === selectedCropId,
-      unlocked: this.cropUnlocked(crop.id),
-      lockText: this.cropUnlocked(crop.id) ? null : '상점에서 해금',
-    }))
-    const cookingFireBuilt = this.cookingFireBuilt()
-    const cookingFireLevel = this.cookingFireLevel()
-    const cookingSlots = this.cookingSlots(cookingFireLevel)
-    const nextCookingUpgrade = this.nextCookingFireUpgrade()
-    const cookingUpgradeItems = costViews(cookingFireBuilt ? (nextCookingUpgrade?.costItems ?? []) : COOKING_FIRE_BUILD_COST)
-    const cookingFire: CookingFireView = {
-      built: cookingFireBuilt,
-      level: cookingFireLevel,
-      maxLevel: COOKING_FIRE_MAX_LEVEL,
-      slots: cookingSlots,
-      usedSlots: s.cookQueue.length,
-      nextSlots: cookingFireBuilt
-        ? (nextCookingUpgrade ? this.cookingSlots(nextCookingUpgrade.level) : null)
-        : COOKING_FIRE_BASE_SLOTS,
-      costGold: cookingFireBuilt ? (nextCookingUpgrade?.costGold ?? 0) : 0,
-      costItems: cookingUpgradeItems,
-      canUpgrade:
-        (!cookingFireBuilt || !!nextCookingUpgrade) &&
-        s.gold >= (cookingFireBuilt ? (nextCookingUpgrade?.costGold ?? 0) : 0) &&
-        cookingUpgradeItems.every((it) => it.ok),
-    }
-    const cookQueue: CookJobView[] = s.cookQueue.map((job) => {
-      const recipe = RECIPES.find((r) => r.id === job.recipeId)
-      const out = recipe ? getItem(recipe.output.itemId) : undefined
-      const perItemSecs = Math.max(1, (recipe?.craftSeconds ?? job.remainingSecs) * (1 - this.passiveEffect('cook_speed')))
-      const remainingQty = Math.max(1, Math.floor(job.remainingQty ?? job.totalQty ?? 1))
-      const totalQty = Math.max(1, Math.floor(job.totalQty ?? remainingQty))
-      const remainingSecs = Math.max(0, job.remainingSecs)
-      const totalSecs = totalQty * perItemSecs
-      const totalRemainingSecs = (remainingQty - 1) * perItemSecs + remainingSecs
-      return {
-        id: job.id,
-        recipeName: recipe?.name ?? job.recipeId,
-        outputName: out?.name ?? recipe?.output.itemId ?? job.recipeId,
-        outputSprite: out?.sprite ?? '',
-        outputColor: out?.cropId ? CROPS[out.cropId].color : undefined,
-        remainingSecs,
-        remainingQty,
-        totalQty,
-        totalRemainingSecs,
-        totalSecs,
-        progress: Math.max(0, Math.min(1, 1 - totalRemainingSecs / totalSecs)),
-        ready: totalRemainingSecs <= 0,
-      }
-    })
-    const visibleRecipeDefs = RECIPES.filter((recipe) => this.recipeUnlocked(recipe))
-    const cookRecipes: CookRecipeView[] = visibleRecipeDefs.map((recipe) => {
-      const out = getItem(recipe.output.itemId)
-      const inputs = costViews(recipe.inputs)
-      const maxCookQty = this.recipeMaxCookQty(recipe)
-      return {
-        id: recipe.id,
-        name: recipe.name,
-        desc: recipe.description,
-        outputName: out?.name ?? recipe.output.itemId,
-        outputSprite: out?.sprite ?? '',
-        outputColor: out?.cropId ? CROPS[out.cropId].color : undefined,
-        outputQty: recipe.output.qty,
-        inputs,
-        canCook:
-          cookingFireBuilt &&
-          s.cookQueue.length < cookingSlots &&
-          maxCookQty > 0,
-        maxCookQty,
-        unlocked: true,
-        lockText: null,
-        craftSeconds: recipe.craftSeconds,
-        difficulty: recipe.difficulty,
-        sellPrice: out?.sellPrice ?? 0,
-      }
-    })
-    if (visibleRecipeDefs.length < RECIPES.length) {
-      cookRecipes.push({
-        id: 'mystery',
-        name: '???',
-        desc: '새 재료를 얻으면 새로운 요리가 떠오를 것 같아요.',
-        outputName: '???',
-        outputSprite: '',
-        outputQty: 1,
-        inputs: [],
-        canCook: false,
-        maxCookQty: 0,
-        unlocked: true,
-        lockText: null,
-        craftSeconds: 0,
-        difficulty: 0,
-        sellPrice: 0,
-        mystery: true,
-      })
-    }
-    const objective = this.currentObjective()
-    let contextAction: string | null = null
-    let contextActionId: UISnapshot['contextActionId'] = null
-    const contextActions: ContextActionView[] = []
-    if (this.phase === 'playing') {
-      if (this.area === 'mine') {
-        if (this.nearMineExit()) contextActions.push({ id: 'mineExit', label: '나가기' })
-        if (this.nearMineDown()) contextActions.push({ id: 'mineDown', label: '아래층' })
-      } else {
-        const animalFarm = this.selectedAnimalFarm()
-        if (this.nearBed() && this.canSleep()) {
-        contextAction = '잠자기'
-        contextActionId = 'sleep'
-        contextActions.push({ id: 'sleep', label: '잠자기' })
-      } else if (this.selectedFieldId()) {
-        contextAction = '씨앗 변경'
-        contextActionId = 'seed'
-        contextActions.push({ id: 'seed', label: '씨앗 변경' })
-      } else if (animalFarm) {
-        contextAction = null
-        contextActionId = null
-      } else if (this.nearOrderNpc()) {
-        contextActions.push({ id: 'order', label: '주문' })
-        if (this.nearStore()) contextActions.push({ id: 'shop', label: '상점' })
-      } else if (this.nearBlacksmith()) {
-        contextActions.push({ id: 'blacksmithBuy', label: '구매' })
-        contextActions.push({ id: 'blacksmith', label: '도구 업그레이드' })
-      } else {
-        if (this.nearMineEntrance()) contextActions.push({ id: 'mineEnter', label: '광산 들어가기' })
-        if (this.nearStore()) contextActions.push({ id: 'shop', label: '상점' })
-        if (this.nearCooking()) contextActions.push({ id: 'cook', label: '요리' })
-      }
-      }
-      if (contextActions.length > 0 && contextActionId == null) {
-        contextAction = contextActions[0].label
-        contextActionId = contextActions[0].id
-      }
-    }
-    return {
+    return buildUISnapshot({
       phase: this.phase,
-      day: s.day,
-      clock: this.clockString(),
-      period: this.periodLabel(),
-      periodKey: this.period(),
-      gold: s.gold,
-      stamina: Math.round(s.stamina),
-      maxStamina: s.maxStamina,
-      inventory,
-      toasts: [...this.toasts],
-      shopBuy,
-      blacksmithBuy,
-      buildOptions,
-      buildPermits,
-      toolUpgrades,
-      passives,
-      passiveSlots,
-      passiveSlotCount,
-      fieldPlots,
-      cropChoices,
-      selectedFieldId,
-      cookRecipes,
-      cookQueue,
-      cookingFire,
-      objective,
-      objectives: this.objectiveTasks(objective),
-      order: this.currentOrder(),
-      contextAction,
-      contextActionId,
-      contextActions,
-      nearBed: this.nearBed(),
-      nearStore: this.nearStore(),
-      nearBuild: this.nearBuild(),
-      nearCooking: this.nearCooking(),
-      exhausted: s.player.exhausted,
-      muted: this.audio.muted,
-      musicOn: this.audio.musicOn,
-      hasSave: this.hasSavedGame(),
-    }
+      area: this.area,
+      state: this.state,
+      toasts: this.toasts,
+      audioMuted: this.audio.muted,
+      audioMusicOn: this.audio.musicOn,
+      hasSavedGame: () => this.hasSavedGame(),
+      clockString: () => this.clockString(),
+      periodLabel: () => this.periodLabel(),
+      period: () => this.period(),
+      countItem: (itemId) => this.countItem(itemId),
+      flagEnabled: (flag) => this.flagEnabled(flag),
+      isAnimalPermitEntry: (entry) => this.isAnimalPermitEntry(entry),
+      animalUpgradeLevel: (upgrade) => this.animalUpgradeLevel(upgrade),
+      animalUpgradePrice: (upgrade) => this.animalUpgradePrice(upgrade),
+      animalBuyPrice: (farm) => this.animalBuyPrice(farm),
+      animalCount: (farm) => this.animalCount(farm),
+      animalDropSeconds: (farm) => this.animalDropSeconds(farm),
+      passiveSlotCount: () => this.passiveSlotCount(),
+      parsePassiveKey: (key) => this.parsePassiveKey(key),
+      passiveEquipKey: (slot) => this.passiveEquipKey(slot),
+      passiveKey: (id, rarity) => this.passiveKey(id, rarity),
+      passiveCount: (id, rarity) => this.passiveCount(id, rarity),
+      nextToolUpgrade: (toolId) => this.nextToolUpgrade(toolId),
+      toolName: (toolId) => this.toolName(toolId),
+      toolLevel: (toolId) => this.toolLevel(toolId),
+      toolDamage: (toolId) => this.toolDamage(toolId),
+      nearBlacksmith: () => this.nearBlacksmith(),
+      fieldExpansionLevel: () => this.fieldExpansionLevel(),
+      selectedFieldId: () => this.selectedFieldId(),
+      nextUnlockFieldId: () => this.nextUnlockFieldId(),
+      fieldRows: (fieldId) => this.fieldRows(fieldId),
+      fieldCrop: (fieldId) => this.fieldCrop(fieldId),
+      fieldRowCostGold: () => this.fieldRowCostGold(),
+      fieldRowCostWood: () => this.fieldRowCostWood(),
+      cropUnlocked: (cropId) => this.cropUnlocked(cropId),
+      cookingFireBuilt: () => this.cookingFireBuilt(),
+      cookingFireLevel: () => this.cookingFireLevel(),
+      cookingSlots: (level) => this.cookingSlots(level),
+      nextCookingFireUpgrade: () => this.nextCookingFireUpgrade(),
+      recipeMaxCookQty: (recipe) => this.recipeMaxCookQty(recipe),
+      recipeUnlocked: (recipe) => this.recipeUnlocked(recipe),
+      passiveEffect: (id) => this.passiveEffect(id),
+      currentObjective: () => this.currentObjective(),
+      objectiveTasks: (current) => this.objectiveTasks(current),
+      currentOrder: () => this.currentOrder(),
+      nearMineExit: () => this.nearMineExit(),
+      nearMineDown: () => this.nearMineDown(),
+      selectedAnimalFarm: () => this.selectedAnimalFarm(),
+      nearBed: () => this.nearBed(),
+      canSleep: () => this.canSleep(),
+      nearStore: () => this.nearStore(),
+      nearOrderNpc: () => this.nearOrderNpc(),
+      nearMineEntrance: () => this.nearMineEntrance(),
+      nearCooking: () => this.nearCooking(),
+      nearBuild: () => this.nearBuild(),
+    })
   }
 }
