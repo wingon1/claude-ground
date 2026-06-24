@@ -20,6 +20,14 @@ export interface Firefly {
   speed: number
 }
 
+export type SpeechSpeaker = 'player' | 'shop' | 'blacksmith'
+
+export interface SpeechBubble {
+  speaker: SpeechSpeaker
+  text: string
+  until: number
+}
+
 export type Period = 'morning' | 'afternoon' | 'golden' | 'night'
 
 export type WorkKind = 'pickup' | 'harvest' | 'chop' | 'plant'

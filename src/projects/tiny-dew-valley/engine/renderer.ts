@@ -7,7 +7,7 @@ import { FIELD_PLOTS } from '../data/fields'
 import { OBSTACLE_HP } from '../data/tiles'
 import { idx, inBounds, LOCATIONS, WORLD_H, WORLD_W } from './world'
 import { bakeItemIcon, T, type Sprites } from './sprites'
-import type { Firefly, MineMonster, Particle, Period } from './gameTypes'
+import type { Firefly, MineMonster, Particle, Period, SpeechBubble, SpeechSpeaker } from './gameTypes'
 import type { UpgradeableToolId } from '../data/toolUpgrades'
 import type { OrderView, UIPhase, WeatherView } from './uiSnapshot'
 
@@ -28,6 +28,7 @@ export interface RenderHost {
   fade: number
   particles: Particle[]
   fireflies: Firefly[]
+  speechBubbles: SpeechBubble[]
   jumpT: number
   workAnimT: number
   workTile: { x: number; y: number } | null
@@ -62,6 +63,7 @@ export class GameRenderer {
   private get fade() { return this.host.fade }
   private get particles() { return this.host.particles }
   private get fireflies() { return this.host.fireflies }
+  private get speechBubbles() { return this.host.speechBubbles }
   private get jumpT() { return this.host.jumpT }
   private get workAnimT() { return this.host.workAnimT }
   private get workTile() { return this.host.workTile }
@@ -167,6 +169,7 @@ export class GameRenderer {
     this.drawParticles(S)
     if (this.area === 'farm') this.drawLighting(S, bw, bh)
     if (this.area === 'farm') this.drawWeatherEffects(S, bw, bh)
+    this.drawSpeechBubbles(S)
     if (this.fade > 0) {
       ctx.fillStyle = `rgba(0,0,0,${this.fade})`
       ctx.fillRect(0, 0, bw, bh)
@@ -333,21 +336,7 @@ export class GameRenderer {
     this.drawHuman(this.sprites.barnaby, x, y, npc.dir, true, false, this.nowSecs(), false, 0.35)
     const order = this.currentOrder()
     if (!order || order.completed) return
-    const ctx = this.ctx
-    const sx = this.wx(x - 4)
-    const sy = this.wy(y - 30)
-    ctx.fillStyle = '#fff4c8'
-    ctx.strokeStyle = '#8a5a32'
-    ctx.lineWidth = Math.max(1, S)
-    ctx.beginPath()
-    ctx.arc(sx, sy, 5 * S, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.stroke()
-    ctx.fillStyle = '#a6791f'
-    ctx.font = `${7 * S}px monospace`
-    ctx.textAlign = 'center'
-    ctx.fillText('!', sx, sy + 3 * S)
-    ctx.textAlign = 'left'
+    this.drawQuestMarker(x - 4, y - 30, S)
   }
 
   private blacksmithNpcPosition(): { x: number; y: number; dir: Direction } {
@@ -379,29 +368,8 @@ export class GameRenderer {
     ctx.fillStyle = '#2a2a30'
     ctx.fillRect(sx + 2 * S, sy + 3 * S, 2 * S, 2 * S)
     if (!this.flagEnabled('talk:blacksmith:intro')) {
-      const text = '도구 업그레이드가 필요하면 나에게로와'
-      const bx = this.wx(npc.x - 68)
-      const by = this.wy(npc.y - 54)
-      const bw = 136 * S
-      const bh = 16 * S
-      ctx.fillStyle = '#fff4d6'
-      ctx.fillRect(bx, by, bw, bh)
-      ctx.beginPath()
-      ctx.moveTo(this.wx(npc.x) - 4 * S, by + bh - 1 * S)
-      ctx.lineTo(this.wx(npc.x) + 4 * S, by + bh - 1 * S)
-      ctx.lineTo(this.wx(npc.x), by + bh + 5 * S)
-      ctx.closePath()
-      ctx.fill()
-      ctx.fillStyle = '#4b3427'
-      ctx.font = `${Math.max(10, 6 * S)}px sans-serif`
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.fillText(text, bx + bw / 2, by + bh / 2 + 0.5 * S)
-      ctx.fillStyle = '#f5d85c'
-      ctx.fillRect(this.wx(npc.x - 2), this.wy(npc.y - 34), 4 * S, 8 * S)
-      ctx.fillStyle = '#8a5a32'
-      ctx.fillRect(this.wx(npc.x - 1), this.wy(npc.y - 24), 2 * S, 2 * S)
-      ctx.textAlign = 'left'
+      this.drawSpeechBubble(npc.x, npc.y - 36, '도구 업그레이드가 필요하면 나에게로 와.', S)
+      this.drawQuestMarker(npc.x, npc.y - 31, S)
     }
   }
 
@@ -858,6 +826,98 @@ export class GameRenderer {
     R(10, 21, 5, 3, '#9a7a2a')
   }
 
+  private drawSpeechBubbles(S: number) {
+    for (const bubble of this.speechBubbles) {
+      const anchor = this.speechAnchor(bubble.speaker)
+      if (!anchor) continue
+      this.drawSpeechBubble(anchor.x, anchor.y, bubble.text, S)
+    }
+  }
+
+  private speechAnchor(speaker: SpeechSpeaker): { x: number; y: number } | null {
+    if (speaker === 'player') {
+      const p = this.state?.player
+      return p ? { x: p.x, y: p.y - 34 } : null
+    }
+    if (speaker === 'shop') {
+      const npc = this.orderNpcPosition()
+      return { x: npc.x, y: npc.y - 34 }
+    }
+    if (speaker === 'blacksmith') {
+      if (!this.mineUnlocked()) return null
+      const npc = this.blacksmithNpcPosition()
+      return { x: npc.x, y: npc.y - 34 }
+    }
+    return null
+  }
+
+  private drawSpeechBubble(x: number, y: number, text: string, S: number) {
+    const ctx = this.ctx
+    ctx.save()
+    ctx.font = `${Math.max(10, 6 * S)}px sans-serif`
+    ctx.textBaseline = 'middle'
+    ctx.textAlign = 'left'
+    const maxWidth = 150 * S
+    const padX = 7 * S
+    const padY = 5 * S
+    const lineHeight = Math.max(11, 9 * S)
+    const lines = this.wrapSpeech(text, maxWidth, ctx)
+    const textWidth = Math.max(...lines.map((line) => ctx.measureText(line).width), 16 * S)
+    const w = Math.min(this.canvas.width - 8 * S, Math.ceil(textWidth + padX * 2))
+    const h = Math.ceil(lines.length * lineHeight + padY * 2)
+    const anchorX = this.wx(x)
+    const sx = Math.max(4 * S, Math.min(this.canvas.width - w - 4 * S, anchorX - w / 2))
+    const sy = Math.max(4 * S, this.wy(y) - h)
+    ctx.fillStyle = 'rgba(255, 246, 218, 0.94)'
+    ctx.fillRect(sx, sy, w, h)
+    const tailX = Math.max(sx + 10 * S, Math.min(sx + w - 10 * S, anchorX))
+    ctx.beginPath()
+    ctx.moveTo(tailX - 5 * S, sy + h - 1 * S)
+    ctx.lineTo(tailX + 5 * S, sy + h - 1 * S)
+    ctx.lineTo(tailX, sy + h + 6 * S)
+    ctx.closePath()
+    ctx.fill()
+    ctx.fillStyle = '#4b3427'
+    for (let i = 0; i < lines.length; i++) {
+      ctx.fillText(lines[i], sx + padX, sy + padY + lineHeight * i + lineHeight / 2)
+    }
+    ctx.restore()
+  }
+
+  private wrapSpeech(text: string, maxWidth: number, ctx: CanvasRenderingContext2D): string[] {
+    const words = text.split(' ')
+    const lines: string[] = []
+    let line = ''
+    for (const word of words) {
+      const next = line ? `${line} ${word}` : word
+      if (ctx.measureText(next).width <= maxWidth || !line) {
+        line = next
+      } else {
+        lines.push(line)
+        line = word
+      }
+    }
+    if (line) lines.push(line)
+    return lines.length > 0 ? lines.slice(0, 3) : ['']
+  }
+
+  private drawQuestMarker(x: number, y: number, S: number) {
+    const ctx = this.ctx
+    const sx = this.wx(x)
+    const sy = this.wy(y)
+    ctx.save()
+    ctx.fillStyle = 'rgba(255, 244, 200, 0.96)'
+    ctx.beginPath()
+    ctx.arc(sx, sy, 6 * S, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = '#9a6a22'
+    ctx.font = `${Math.max(10, 8 * S)}px sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText('!', sx, sy + 0.5 * S)
+    ctx.restore()
+  }
+
   private drawHuman(
     sheet: Record<string, HTMLCanvasElement>,
     x: number,
@@ -888,28 +948,7 @@ export class GameRenderer {
   }
 
   private drawExhaustBubble(x: number, y: number, S: number) {
-    const ctx = this.ctx
-    const text = '피곤해.. 잠을 자야해'
-    ctx.save()
-    ctx.font = `${Math.max(10, 7 * S)}px sans-serif`
-    ctx.textBaseline = 'middle'
-    const padX = 6 * S
-    const w = Math.ceil(ctx.measureText(text).width + padX * 2)
-    const h = 16 * S
-    const sx = Math.max(4 * S, Math.min(this.canvas.width - w - 4 * S, this.wx(x) - w / 2))
-    const sy = Math.max(4 * S, this.wy(y - 24) - h)
-    ctx.fillStyle = '#fff4d6'
-    ctx.fillRect(sx, sy, w, h)
-    const tailX = Math.max(sx + 10 * S, Math.min(sx + w - 10 * S, this.wx(x)))
-    ctx.beginPath()
-    ctx.moveTo(tailX - 4 * S, sy + h - 1 * S)
-    ctx.lineTo(tailX + 4 * S, sy + h - 1 * S)
-    ctx.lineTo(tailX, sy + h + 5 * S)
-    ctx.closePath()
-    ctx.fill()
-    ctx.fillStyle = '#4b3427'
-    ctx.fillText(text, sx + padX, sy + h / 2 + 0.5 * S)
-    ctx.restore()
+    this.drawSpeechBubble(x, y - 24, '피곤해.. 잠을 자야해', S)
   }
 
   private currentWorkTool(): UpgradeableToolId | 'sword' {

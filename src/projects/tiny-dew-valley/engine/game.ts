@@ -1,4 +1,5 @@
 ﻿import type { CookJob, Direction, GameState, InventorySlot, Tile } from '../types'
+import type { ShopEntry } from '../types'
 import { CROPS, CROP_LIST } from '../data/crops'
 import { cropItemId, getItem } from '../data/items'
 import { SHOP_CATALOG } from '../data/shopCatalog'
@@ -43,6 +44,14 @@ import {
   FIELD_SIZE,
 } from '../data/fields'
 import {
+  BLACKSMITH_NPC_LINES,
+  PLAYER_AMBIENT_LINES,
+  PLAYER_LOCKED_MINE_LINES,
+  PLAYER_WEAK_TOOL_LINES,
+  SHOP_NPC_LINES,
+  SHOP_NPC_NEW_STOCK_LINES,
+} from '../data/speechLines'
+import {
   COOKING_FIRE_BASE_SLOTS,
   COOKING_FIRE_MAX_LEVEL,
   COOKING_FIRE_SLOTS_PER_LEVEL,
@@ -68,7 +77,7 @@ import { buildSprites, T, type Sprites } from './sprites'
 import { AudioEngine } from './audio'
 import { deleteSave, loadGame, saveGame, SAVE_VERSION } from './save'
 import { TOOL_BASE, TOOL_UPGRADES, type UpgradeableToolId } from '../data/toolUpgrades'
-import type { Firefly, MineMonster, Particle, Period, WorkKind } from './gameTypes'
+import type { Firefly, MineMonster, Particle, Period, SpeechBubble, SpeechSpeaker, WorkKind } from './gameTypes'
 import { buildMineMonsters, buildMineTiles } from './mineRuntime'
 import { buildUISnapshot } from './snapshotBuilder'
 import { GameRenderer } from './renderer'
@@ -100,6 +109,7 @@ export class Game {
   private cam = { x: 0, y: 0 }
   private particles: Particle[] = []
   private fireflies: Firefly[] = []
+  private speechBubbles: SpeechBubble[] = []
   private toasts: ToastMsg[] = []
   private toastId = 1
   private phase: UIPhase = 'title'
@@ -116,6 +126,13 @@ export class Game {
   private jumpT = 0
   private workAnimT = 0
   private awardingTutorialReward = false
+  private nextSpeechAt: Record<SpeechSpeaker | 'weakTool' | 'lockedMine', number> = {
+    player: 0,
+    shop: 0,
+    blacksmith: 0,
+    weakTool: 0,
+    lockedMine: 0,
+  }
   private area: 'farm' | 'mine' = 'farm'
   private mineTiles: Tile[] = []
   private mineFloor = 1
@@ -299,6 +316,7 @@ export class Game {
     }
     this.collectMagnetItems()
     if (!s.player.moving) this.tryAutoWork()
+    this.updateSpeech()
   }
 
   private movePlayer(dt: number) {
@@ -606,6 +624,7 @@ export class Game {
     const cy = work.t.y * T + T / 2
     if (Math.abs(cx - p.x) > Math.abs(cy - p.y)) p.dir = cx > p.x ? 'right' : 'left'
     else if (Math.abs(cy - p.y) > 2) p.dir = cy > p.y ? 'down' : 'up'
+    this.maybeSayWeakTool(work)
     if (this.workCooldown > 0) return
     this.workCooldown = WORK_INTERVAL
     if (work.kind !== 'pickup' && (this.state.stamina < 1 || this.state.player.exhausted)) {
@@ -1800,6 +1819,112 @@ export class Game {
     return false
   }
 
+  private activeSpeechBubbles(): SpeechBubble[] {
+    const now = this.nowSecs()
+    return this.speechBubbles.filter((bubble) => bubble.until > now)
+  }
+
+  private say(speaker: SpeechSpeaker, text: string, seconds = 3.2) {
+    const now = this.nowSecs()
+    this.speechBubbles = this.speechBubbles.filter((bubble) => bubble.until > now && bubble.speaker !== speaker)
+    this.speechBubbles.push({ speaker, text, until: now + seconds })
+  }
+
+  private pickLine(lines: string[]): string {
+    return lines[Math.floor(Math.random() * lines.length)] ?? ''
+  }
+
+  private hasSpeech(speaker: SpeechSpeaker): boolean {
+    const now = this.nowSecs()
+    return this.speechBubbles.some((bubble) => bubble.speaker === speaker && bubble.until > now)
+  }
+
+  private updateSpeech() {
+    const now = this.nowSecs()
+    this.speechBubbles = this.speechBubbles.filter((bubble) => bubble.until > now)
+    if (this.phase !== 'playing') return
+    if (this.area === 'farm') {
+      this.updateNpcSpeech(now)
+      this.updateLockedMineSpeech(now)
+    }
+    this.updatePlayerAmbientSpeech(now)
+  }
+
+  private updateNpcSpeech(now: number) {
+    if (this.nearStore() || this.nearOrderNpc()) {
+      if (this.trySayNewShopStock()) {
+        this.nextSpeechAt.shop = now + 7
+      } else if (now >= this.nextSpeechAt.shop && !this.hasSpeech('shop')) {
+        this.nextSpeechAt.shop = now + 7 + Math.random() * 5
+        if (Math.random() < 0.45) this.say('shop', this.pickLine(SHOP_NPC_LINES))
+      }
+    }
+    if (this.nearBlacksmith() && now >= this.nextSpeechAt.blacksmith && !this.hasSpeech('blacksmith')) {
+      this.nextSpeechAt.blacksmith = now + 8 + Math.random() * 6
+      if (Math.random() < 0.45) this.say('blacksmith', this.pickLine(BLACKSMITH_NPC_LINES))
+    }
+  }
+
+  private updateLockedMineSpeech(now: number) {
+    if (this.mineUnlocked()) return
+    if (!this.nearTileMetadata('mineEntrance') && !this.nearTileMetadata('mineBoard')) return
+    if (now < this.nextSpeechAt.lockedMine) return
+    this.nextSpeechAt.lockedMine = now + 7
+    this.say('player', this.pickLine(PLAYER_LOCKED_MINE_LINES), 2.8)
+  }
+
+  private updatePlayerAmbientSpeech(now: number) {
+    if (now < this.nextSpeechAt.player || this.hasSpeech('player')) return
+    this.nextSpeechAt.player = now + 16 + Math.random() * 18
+    if (Math.random() < 0.22) this.say('player', this.pickLine(PLAYER_AMBIENT_LINES), 2.8)
+  }
+
+  private trySayNewShopStock(): boolean {
+    const entry = SHOP_CATALOG.find((candidate) =>
+      candidate.requiresFlag &&
+      this.shopEntryVisible(candidate) &&
+      this.state.flags[this.shopStockSpeechKey(candidate.itemId)] !== true,
+    )
+    if (!entry) return false
+    this.state.flags[this.shopStockSpeechKey(entry.itemId)] = true
+    this.say('shop', this.pickLine(SHOP_NPC_NEW_STOCK_LINES), 3.4)
+    return true
+  }
+
+  private shopStockSpeechKey(itemId: string): string {
+    return `speech:shopStock:${itemId}`
+  }
+
+  private shopEntryVisible(entry: ShopEntry): boolean {
+    if (!this.flagEnabled(entry.requiresFlag)) return false
+    if (this.isAnimalPermitEntry(entry)) return false
+    if (entry.grantsFlag && this.flagEnabled(entry.grantsFlag)) return false
+    if (entry.animalUpgradeId) {
+      const upgrade = ANIMAL_UPGRADES.find((candidate) => candidate.id === entry.animalUpgradeId)
+      if (!upgrade || this.animalUpgradeLevel(upgrade) >= upgrade.maxLevel) return false
+    }
+    return true
+  }
+
+  private maybeSayWeakTool(work: { t: Tile; kind: WorkKind }) {
+    if (work.kind !== 'chop' && work.kind !== 'harvest') return
+    const now = this.nowSecs()
+    if (now < this.nextSpeechAt.weakTool || this.hasSpeech('player')) return
+    let needed = 0
+    let damage = 1
+    if (work.kind === 'harvest' && work.t.cropId) {
+      needed = this.cropHarvestHp(work.t.cropId)
+      damage = this.toolDamage('scythe')
+    } else if (work.t.obstacle) {
+      needed = OBSTACLE_HP[work.t.obstacle]
+      const mining = work.t.obstacle === 'rock' || work.t.obstacle === 'copper_ore' || work.t.obstacle === 'iron_ore'
+      damage = mining ? this.toolDamage('pickaxe') : 1
+    }
+    if (needed <= 0 || needed / Math.max(1, damage) < 4) return
+    this.nextSpeechAt.weakTool = now + 18
+    if (Math.random() < 0.45) this.say('player', this.pickLine(PLAYER_WEAK_TOOL_LINES), 2.8)
+  }
+
   private selectedFieldId(): string | null {
     if (this.area !== 'farm') return null
     const pt = this.playerTile()
@@ -2951,6 +3076,7 @@ export class Game {
       fade: this.fade,
       particles: this.particles,
       fireflies: this.fireflies,
+      speechBubbles: this.activeSpeechBubbles(),
       jumpT: this.jumpT,
       workAnimT: this.workAnimT,
       workTile: this.workTile,
