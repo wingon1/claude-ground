@@ -110,6 +110,12 @@ const PLAYER_FAINT_WAKE_SAFE_LINES = [
   '너무 강한 상대를 만났군. 장비를 더 챙겨야겠어.',
   '간신히 돌아왔어. 다음엔 무리하지 말자.',
 ]
+const PLAYER_BLACKSMITH_SITE_LINES = [
+  '여긴 뭐가 생기는 거지?',
+  '통나무랑 상자가 잔뜩 있네.',
+  '누가 여기에 뭔가 지으려나 봐.',
+  '공사 준비 중인 자리인가?',
+]
 
 export class Game {
   private canvas: HTMLCanvasElement
@@ -146,12 +152,13 @@ export class Game {
   private playerFaintT = 0
   private nextNoSwordToastAt = 0
   private awardingTutorialReward = false
-  private nextSpeechAt: Record<SpeechSpeaker | 'weakTool' | 'lockedMine', number> = {
+  private nextSpeechAt: Record<SpeechSpeaker | 'weakTool' | 'lockedMine' | 'blacksmithSite', number> = {
     player: 0,
     shop: 0,
     blacksmith: 0,
     weakTool: 0,
     lockedMine: 0,
+    blacksmithSite: 0,
   }
   private area: 'farm' | 'mine' = 'farm'
   private mineTiles: Tile[] = []
@@ -1917,6 +1924,13 @@ export class Game {
     return Math.abs(p.x - BLACKSMITH_NPC.x) <= 1 && Math.abs(p.y - BLACKSMITH_NPC.y) <= 1
   }
 
+  private nearBlacksmithSite(): boolean {
+    if (this.area !== 'farm' || this.mineUnlocked()) return false
+    const p = this.playerTile()
+    const site = LOCATIONS.blacksmith
+    return p.x >= site.x - 1 && p.x <= site.x + 5 && p.y >= site.y - 1 && p.y <= site.y + 5
+  }
+
   private nearBuild(): boolean {
     return this.area === 'farm'
   }
@@ -1989,6 +2003,7 @@ export class Game {
     if (this.area === 'farm') {
       this.updateNpcSpeech(now)
       this.updateLockedMineSpeech(now)
+      this.updateBlacksmithSiteSpeech(now)
     }
     this.updatePlayerAmbientSpeech(now)
   }
@@ -2015,6 +2030,14 @@ export class Game {
     if (now < this.nextSpeechAt.lockedMine) return
     this.nextSpeechAt.lockedMine = now + 7
     this.say('player', this.pickLine(PLAYER_LOCKED_MINE_LINES), 3.8)
+  }
+
+  private updateBlacksmithSiteSpeech(now: number) {
+    if (this.state.player.exhausted) return
+    if (!this.nearBlacksmithSite()) return
+    if (now < this.nextSpeechAt.blacksmithSite || this.hasSpeech('player')) return
+    this.nextSpeechAt.blacksmithSite = now + 8
+    this.say('player', this.pickLine(PLAYER_BLACKSMITH_SITE_LINES), 3.8)
   }
 
   private updatePlayerAmbientSpeech(now: number) {

@@ -156,6 +156,9 @@ export class GameRenderer {
       }
     }
     if (this.area === 'farm') draws.push({ y: this.orderNpcPosition().y, fn: () => this.drawOrderNpc(S) })
+    if (this.area === 'farm' && !this.mineUnlocked()) {
+      draws.push({ y: (LOCATIONS.blacksmith.y + 4) * T, fn: () => this.drawBlacksmithConstruction(S) })
+    }
     if (this.area === 'farm' && this.mineUnlocked()) {
       const smith = this.blacksmithNpcPosition()
       draws.push({ y: smith.y, fn: () => this.drawBlacksmithNpc(S) })
@@ -843,6 +846,57 @@ export class GameRenderer {
     R(12, 16, 1, 6, '#3a3026')
     R(8, 21, 9, 3, '#caa23a')
     R(10, 21, 5, 3, '#9a7a2a')
+  }
+
+  private drawBlacksmithConstruction(S: number) {
+    const ctx = this.ctx
+    const x = this.wx(LOCATIONS.blacksmith.x * T)
+    const y = this.wy(LOCATIONS.blacksmith.y * T)
+    const R = (px: number, py: number, w: number, h: number, c: string) => {
+      ctx.fillStyle = c
+      ctx.fillRect(x + px * S, y + py * S, w * S, h * S)
+    }
+    ctx.fillStyle = 'rgba(0,0,0,0.16)'
+    ctx.fillRect(x + 2 * S, y + 48 * S, 60 * S, 5 * S)
+
+    // Foundation stones.
+    R(4, 36, 52, 8, '#8b8f99')
+    R(4, 36, 52, 2, '#a7abb5')
+    R(8, 40, 10, 1, '#6e727c')
+    R(24, 40, 12, 1, '#6e727c')
+    R(42, 40, 9, 1, '#6e727c')
+
+    // Stacked logs hinting at future construction.
+    const logs: [number, number, number][] = [
+      [7, 26, 0], [10, 22, 1], [13, 18, 0], [18, 27, 1], [21, 23, 0],
+    ]
+    for (const [lx, ly, shade] of logs) {
+      R(lx, ly, 28, 4, shade ? '#8a5a32' : '#9a6a3a')
+      R(lx, ly, 28, 1, '#b98248')
+      R(lx, ly + 3, 28, 1, '#6e4426')
+      R(lx, ly, 3, 4, '#d0a067')
+      R(lx + 25, ly, 3, 4, '#6e4426')
+      R(lx + 1, ly + 1, 1, 1, '#8a5a32')
+    }
+
+    // Supply crates.
+    R(42, 23, 12, 12, '#9a6a3a')
+    R(42, 23, 12, 2, '#c08a4b')
+    R(42, 33, 12, 2, '#6e4426')
+    R(47, 23, 2, 12, '#7a5230')
+    R(43, 28, 10, 2, '#7a5230')
+    R(51, 31, 9, 9, '#8a5a32')
+    R(51, 31, 9, 2, '#b98248')
+    R(55, 31, 1, 9, '#6e4426')
+    R(51, 35, 9, 1, '#6e4426')
+
+    // Leaning tools and a small marker stake.
+    R(30, 9, 2, 28, '#7a5230')
+    R(27, 8, 8, 2, '#aeb2bc')
+    R(26, 8, 2, 2, '#e6ebf2')
+    R(58, 18, 2, 24, '#7a5230')
+    R(55, 18, 8, 2, '#d6aa63')
+    R(56, 21, 6, 1, '#8f6230')
   }
 
   private drawSpeechBubbles(S: number) {
