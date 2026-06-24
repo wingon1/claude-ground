@@ -23,6 +23,7 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
     ui.phase === 'seed' ||
     ui.phase === 'order' ||
     ui.phase === 'sleepConfirm' ||
+    menuOpen ||
     invOpen ||
     objectiveOpen
   const hasContextAction = ui.contextActions.length > 0
@@ -74,24 +75,6 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
           <div className={`tdv-toast ${t.kind}`} key={t.id}>{t.text}</div>
         ))}
       </div>
-
-      {menuOpen && (
-        <div className="tdv-menu">
-          <button className="tdv-btn" onClick={() => { game.saveNow(); setMenuOpen(false) }}><Ic k="ui_save" cls="sm" /> 저장</button>
-          <button className="tdv-btn ghost" onClick={() => game.toggleMute()}><Ic k={ui.muted ? 'ui_mute' : 'ui_sound'} cls="sm" /> {ui.muted ? '음소거 해제' : '음소거'}</button>
-          <button className="tdv-btn ghost" onClick={() => game.toggleMusic()}><Ic k="ui_music" cls="sm" /> {ui.musicOn ? '음악 켜짐' : '음악 꺼짐'}</button>
-          <button
-            className="tdv-btn red"
-            onClick={() => {
-              if (confirm('저장을 삭제하고 타이틀로 돌아갈까요? 되돌릴 수 없어요.')) {
-                game.deleteSaveData()
-                location.reload()
-              }
-            }}
-          ><Ic k="ui_trash" cls="sm" /> 저장 삭제</button>
-          <button className="tdv-btn ghost" onClick={() => setMenuOpen(false)}>닫기</button>
-        </div>
-      )}
 
       {/* Help hint */}
       {!modalOpen && !hasContextAction && (
@@ -145,6 +128,14 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
           <span><Ic k="ui_target" /></span>
           <small>목표</small>
         </button>
+        <button
+          className="tdv-navbtn"
+          title="설정 열기"
+          onClick={() => { setMenuOpen(true); setInvOpen(false); setObjectiveOpen(false) }}
+        >
+          <span><Ic k="ui_settings" /></span>
+          <small>설정</small>
+        </button>
       </nav>
 
       {/* Modals */}
@@ -154,6 +145,9 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
       {ui.phase === 'seed' && <SeedModal game={game} ui={ui} />}
       {ui.phase === 'order' && <OrderModal game={game} ui={ui} />}
       {ui.phase === 'sleepConfirm' && <SleepConfirm game={game} ui={ui} />}
+      {menuOpen && ui.phase === 'playing' && (
+        <SettingsModal game={game} ui={ui} onClose={() => setMenuOpen(false)} />
+      )}
       {invOpen && ui.phase === 'playing' && (
         <InventoryModal ui={ui} sel={invSel} setSel={setInvSel} onClose={() => setInvOpen(false)} />
       )}
@@ -239,6 +233,43 @@ function ObjectiveModal({
         ) : !ui.objective && (
           <div className="sub">진행 중인 목표가 없어요.</div>
         )}
+        <div className="tdv-row">
+          <button className="tdv-btn ghost" onClick={onClose}>닫기</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function SettingsModal({
+  game,
+  ui,
+  onClose,
+}: {
+  game: Game
+  ui: UISnapshot
+  onClose: () => void
+}) {
+  return (
+    <div className="tdv-modal-bg" onClick={onClose}>
+      <div className="tdv-modal" style={{ width: 'min(360px, 92vw)' }} onClick={(e) => e.stopPropagation()}>
+        <h2><Ic k="ui_settings" /> 설정</h2>
+        <div className="sub">저장, 소리, 이동 복구를 관리합니다.</div>
+        <div className="tdv-settings-list">
+          <button className="tdv-btn" onClick={() => { game.saveNow(); onClose() }}><Ic k="ui_save" cls="sm" /> 저장</button>
+          <button className="tdv-btn ghost" onClick={() => game.toggleMute()}><Ic k={ui.muted ? 'ui_mute' : 'ui_sound'} cls="sm" /> {ui.muted ? '음소거 해제' : '음소거'}</button>
+          <button className="tdv-btn ghost" onClick={() => game.toggleMusic()}><Ic k="ui_music" cls="sm" /> {ui.musicOn ? '음악 켜짐' : '음악 꺼짐'}</button>
+          <button className="tdv-btn gold" onClick={() => { game.unstuckPlayer(); onClose() }}>벗어나기</button>
+          <button
+            className="tdv-btn red"
+            onClick={() => {
+              if (confirm('저장을 삭제하고 타이틀로 돌아갈까요? 되돌릴 수 없어요.')) {
+                game.deleteSaveData()
+                location.reload()
+              }
+            }}
+          ><Ic k="ui_trash" cls="sm" /> 저장 삭제</button>
+        </div>
         <div className="tdv-row">
           <button className="tdv-btn ghost" onClick={onClose}>닫기</button>
         </div>

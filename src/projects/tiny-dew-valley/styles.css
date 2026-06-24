@@ -656,6 +656,10 @@
   min-height: 22px;
 }
 .tdv-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   background: var(--accent);
   border: 2px solid #5a8a32;
   border-radius: 2px;
@@ -706,6 +710,14 @@
   justify-content: center;
   flex-wrap: wrap;
   margin-top: 12px;
+}
+.tdv-settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tdv-settings-list .tdv-btn {
+  justify-content: center;
 }
 .tdv-tabs {
   display: flex;

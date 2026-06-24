@@ -2482,6 +2482,19 @@ export class Game {
     this.audio.toggleMusic()
     this.emit()
   }
+  unstuckPlayer() {
+    if (this.phase !== 'playing') return
+    this.state.player.x = LOCATIONS.spawn.x * T + T / 2
+    this.state.player.y = LOCATIONS.spawn.y * T + T
+    this.state.player.moving = false
+    this.target = null
+    this.workTile = null
+    this.stuckT = 0
+    this.jumpT = 0
+    this.toast('안전한 위치로 이동했어요.', 'good')
+    this.autosave()
+    this.emit()
+  }
 
   // ---------------- particles ----------------
   private dirtPuff(x: number, y: number, color: string) {

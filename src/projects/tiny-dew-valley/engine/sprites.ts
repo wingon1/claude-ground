@@ -1151,6 +1151,13 @@ export function bakeUIIcon(key: string): HTMLCanvasElement {
       for (let i = 6; i < 12; i += 2) px(g, i, 6, 1, 6, '#6e727c')
       px(g, 3, 3, 10, 2, '#6e727c'); px(g, 6, 2, 4, 1, '#8b8f99') // lid + handle
       break
+    case 'ui_settings':
+      px(g, 6, 2, 4, 12, '#8a8f9a')
+      px(g, 2, 6, 12, 4, '#8a8f9a')
+      px(g, 4, 4, 8, 8, '#c2c6cf')
+      px(g, 6, 6, 4, 4, '#5a606b')
+      px(g, 7, 7, 2, 2, '#dfe3ec')
+      break
     case 'ui_wheat':
       for (const [x, hy] of [[5, 3], [9, 3]] as [number, number][]) {
         px(g, x, hy + 3, 1, 8, '#caa24a')
@@ -1167,7 +1174,7 @@ export function bakeUIIcon(key: string): HTMLCanvasElement {
 const UI_ICONS = new Set([
   'ui_coin', 'ui_bolt', 'ui_hammer', 'ui_target', 'ui_basket', 'ui_sprout',
   'ui_receipt', 'ui_pan', 'ui_bed', 'ui_fire', 'ui_save', 'ui_sound',
-  'ui_mute', 'ui_music', 'ui_trash', 'ui_wheat',
+  'ui_mute', 'ui_music', 'ui_trash', 'ui_settings', 'ui_wheat',
 ])
 
 const iconCache = new Map<string, string>()
