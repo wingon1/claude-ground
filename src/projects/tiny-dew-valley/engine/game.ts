@@ -3371,29 +3371,61 @@ export class Game {
     const ctx = this.ctx
     const dx = this.wx(t.x * T)
     const dy = this.wy(t.y * T)
-    const sz = T * S
+    const seed = (((t.x + 7) * 928371 + (t.y + 13) * 1237) >>> 0)
+    const r = (px: number, py: number, w: number, h: number, c: string) => {
+      ctx.fillStyle = c
+      ctx.fillRect(dx + px * S, dy + py * S, w * S, h * S)
+    }
     if (t.terrain === 'blocked') {
-      ctx.fillStyle = '#25252c'
-      ctx.fillRect(dx, dy, sz, sz)
-      ctx.fillStyle = (t.x + t.y) % 3 === 0 ? '#303039' : '#2b2b33'
-      ctx.fillRect(dx + 1 * S, dy + 1 * S, sz - 2 * S, sz - 2 * S)
+      // Rocky cave wall: chunky facets, cracks, a rim light up top, occasional ore vein.
+      r(0, 0, 16, 16, '#201f27')
+      r(1, 0, 14, 15, '#2a2933')
+      r(2, 2, 5, 5, seed & 1 ? '#33323d' : '#2f2e38')
+      r(8, 3, 5, 4, seed & 2 ? '#34333e' : '#302f39')
+      r(3, 9, 6, 5, seed & 4 ? '#2c2b35' : '#2a2933')
+      r(9, 9, 4, 5, '#26252e')
+      r(1, 0, 14, 1, '#43424f') // torch-lit top rim
+      r(1, 1, 2, 2, '#3a3946')
+      r(7, 2, 1, 6, '#1b1a21') // cracks
+      r(5, 8, 4, 1, '#1b1a21')
+      r(11, 6, 1, 5, '#1b1a21')
+      r(1, 13, 14, 2, '#181820') // bottom shadow
+      if ((seed & 7) === 0) {
+        r(4, 5, 2, 2, '#c8753a') // copper vein glint
+        r(5, 6, 1, 1, '#e8a060')
+      } else if ((seed & 7) === 3) {
+        r(10, 4, 2, 2, '#aeb4c0') // iron vein glint
+        r(11, 5, 1, 1, '#e6ebf2')
+      }
       return
     }
-    ctx.fillStyle = '#3a332e'
-    ctx.fillRect(dx, dy, sz, sz)
-    ctx.fillStyle = (t.x * 5 + t.y * 7) % 4 === 0 ? '#4a4038' : '#403832'
-    ctx.fillRect(dx + 1 * S, dy + 1 * S, sz - 2 * S, sz - 2 * S)
+    // Dirt / gravel floor with scattered pebbles and a hairline crack.
+    r(0, 0, 16, 16, '#352e29')
+    r(1, 1, 14, 14, (t.x * 5 + t.y * 7) % 4 === 0 ? '#473d34' : '#3d342d')
+    r(3 + (seed & 3), 4 + ((seed >> 2) & 3), 2, 2, '#4c4239')
+    r(9 + ((seed >> 4) & 2), 9 + ((seed >> 5) & 3), 2, 1, '#2f2823')
+    r(6 + ((seed >> 3) & 3), 11, 1, 1, '#534637')
+    r(4, 7 + ((seed >> 2) & 2), 5, 1, '#2c251f')
     if (t.metadata.mineExit === true) {
-      ctx.fillStyle = '#1d1b20'
-      ctx.fillRect(dx + 3 * S, dy + 2 * S, 10 * S, 12 * S)
-      ctx.fillStyle = '#6b6254'
-      ctx.fillRect(dx + 2 * S, dy + 2 * S, 12 * S, 2 * S)
+      // Ladder up toward daylight (recognisable exit).
+      r(3, 2, 10, 12, '#1a1820')
+      r(2, 1, 12, 2, '#6b6254')
+      r(5, 2, 1, 12, '#7a4c2a')
+      r(10, 2, 1, 12, '#7a4c2a')
+      r(5, 4, 6, 1, '#9a6a3a')
+      r(5, 7, 6, 1, '#9a6a3a')
+      r(5, 10, 6, 1, '#9a6a3a')
+      r(5, 2, 6, 1, '#cdbf8e') // light spilling from above
     } else if (t.metadata.mineDown === true) {
-      ctx.fillStyle = '#221d20'
-      ctx.fillRect(dx + 2 * S, dy + 3 * S, 12 * S, 10 * S)
-      ctx.fillStyle = '#6b4a32'
-      ctx.fillRect(dx + 4 * S, dy + 5 * S, 8 * S, 2 * S)
-      ctx.fillRect(dx + 5 * S, dy + 9 * S, 7 * S, 2 * S)
+      // Pit with a ladder descending into darkness (go deeper).
+      r(2, 3, 12, 11, '#0e0c11')
+      r(2, 3, 12, 1, '#5a5048')
+      r(3, 4, 1, 9, '#241f15')
+      r(6, 4, 1, 9, '#6b4a32')
+      r(10, 4, 1, 9, '#6b4a32')
+      r(6, 6, 5, 1, '#3f2c1e')
+      r(6, 9, 5, 1, '#3f2c1e')
+      r(6, 12, 5, 1, '#3f2c1e')
     }
   }
 
@@ -3664,45 +3696,149 @@ export class Game {
   private drawMonster(monster: MineMonster, S: number) {
     const def = MONSTERS[monster.id]
     const ctx = this.ctx
+    const hit = monster.hitT > 0
     const x = this.wx(monster.x - 8)
-    const y = this.wy(monster.y - 17 + (monster.hitT > 0 ? -2 : 0))
+    const y = this.wy(monster.y - 17 + (hit ? -2 : 0))
+    const tt = performance.now() / 1000
+    const ph = monster.x * 0.7 + monster.y * 0.3 // de-sync animation per monster
+    const r = (px: number, py: number, w: number, h: number, c: string) => {
+      ctx.fillStyle = c
+      ctx.fillRect(x + px * S, y + py * S, w * S, h * S)
+    }
+    // contact shadow
     ctx.fillStyle = 'rgba(0,0,0,0.22)'
     ctx.fillRect(this.wx(monster.x - 6), this.wy(monster.y - 3), 12 * S, 3 * S)
-    ctx.fillStyle = def.color
-    if (monster.id === 'mine_guardian') {
-      ctx.fillRect(x + 2 * S, y + 2 * S, 12 * S, 14 * S)
-      ctx.fillRect(x + 0 * S, y + 6 * S, 3 * S, 8 * S)
-      ctx.fillRect(x + 13 * S, y + 6 * S, 3 * S, 8 * S)
-      ctx.fillStyle = def.accent
-      ctx.fillRect(x + 4 * S, y + 0 * S, 8 * S, 2 * S)
-      ctx.fillRect(x + 6 * S, y + 3 * S, 4 * S, 2 * S)
-      ctx.fillStyle = '#302040'
-      ctx.fillRect(x + 5 * S, y + 7 * S, 2 * S, 2 * S)
-      ctx.fillRect(x + 10 * S, y + 7 * S, 2 * S, 2 * S)
-      ctx.fillRect(x + 6 * S, y + 12 * S, 5 * S, 1 * S)
-      if (monster.hp < monster.maxHp) {
-        this.drawWorldHpBar(monster.x - 8, monster.y - 26, monster.hp, monster.maxHp, S)
-      }
-      return
+
+    if (monster.id === 'slime') {
+      // Gooey blob: rounded dome, glossy highlight, jiggling base, drip.
+      const sDark = '#3f9a4a'
+      const squash = Math.sin(tt * 6 + ph) > 0.3 ? 1 : 0
+      r(2 - squash, 11, 12 + squash * 2, 3, def.color) // wobbling base
+      r(3, 8, 10, 4, def.color)
+      r(4, 6, 8, 3, def.color)
+      r(5, 5, 6, 1, def.color)
+      r(2 - squash, 13, 12 + squash * 2, 1, sDark) // base shade
+      r(5, 6, 3, 2, def.accent) // glossy highlight
+      r(6, 5, 2, 1, def.accent)
+      r(6, 8, 2, 2, '#15301a') // eyes
+      r(10, 8, 2, 2, '#15301a')
+      r(6, 8, 1, 1, '#e8ffe8')
+      r(10, 8, 1, 1, '#e8ffe8')
+      r(7, 11, 1, 1, '#15301a') // smile
+      r(8, 12, 2, 1, '#15301a')
+      r(10, 11, 1, 1, '#15301a')
+      r(12, 9, 1, 3, def.color) // side drip
     } else if (monster.id === 'bat') {
-      ctx.fillRect(x + 2 * S, y + 7 * S, 12 * S, 6 * S)
-      ctx.fillRect(x - 3 * S, y + 8 * S, 5 * S, 4 * S)
-      ctx.fillRect(x + 14 * S, y + 8 * S, 5 * S, 4 * S)
+      // Flapping bat: pointed ears, membrane wings with finger struts, fangs, glowing eyes.
+      const bDark = '#3d3450'
+      const wy = Math.round(Math.sin(tt * 9 + ph) * 2)
+      r(-3, 7 + wy, 3, 1, def.color) // left wing
+      r(-2, 8 + wy, 7, 1, def.color)
+      r(-1, 9 + wy, 6, 2, def.color)
+      r(0, 11 + wy, 5, 1, def.color)
+      r(0, 8 + wy, 1, 3, bDark)
+      r(2, 8 + wy, 1, 3, bDark)
+      r(13, 7 + wy, 3, 1, def.color) // right wing
+      r(11, 8 + wy, 7, 1, def.color)
+      r(11, 9 + wy, 6, 2, def.color)
+      r(11, 11 + wy, 5, 1, def.color)
+      r(15, 8 + wy, 1, 3, bDark)
+      r(13, 8 + wy, 1, 3, bDark)
+      r(5, 7, 6, 5, def.color) // body
+      r(6, 6, 4, 1, def.color)
+      r(5, 3, 2, 3, def.color) // ears
+      r(9, 3, 2, 3, def.color)
+      r(5, 3, 1, 2, bDark)
+      r(10, 3, 1, 2, bDark)
+      r(6, 8, 2, 2, def.accent) // glowing eyes
+      r(8, 8, 2, 2, def.accent)
+      r(6, 8, 1, 1, '#fff2a0')
+      r(9, 8, 1, 1, '#fff2a0')
+      r(6, 11, 1, 1, '#ffffff') // fangs
+      r(9, 11, 1, 1, '#ffffff')
+    } else if (monster.id === 'mine_rat') {
+      // Rodent: hunched body, big round ear, long tail, snout with buck teeth & whiskers.
+      const pink = '#e2899a'
+      const sniff = Math.sin(tt * 10 + ph) > 0.4 ? 1 : 0
+      r(0, 12, 4, 1, def.accent) // tail
+      r(1, 10, 1, 2, def.accent)
+      r(2, 9, 2, 1, def.accent)
+      r(4, 8, 9, 5, def.color) // body
+      r(5, 7, 6, 1, def.color)
+      r(4, 9, 3, 4, def.color) // haunch
+      r(5, 8, 6, 1, def.accent) // back highlight
+      r(11, 8, 4, 4, def.color) // head
+      r(14, 9, 2, 2, def.color) // snout
+      r(11, 5, 3, 3, def.color) // ear
+      r(12, 6, 1, 1, pink)
+      r(12, 9, 1, 1, '#1c130d') // eye
+      r(15 + sniff, 10, 1, 1, pink) // twitching nose
+      r(14, 11, 1, 1, '#ffffff') // buck teeth
+      r(6, 12, 1, 1, pink) // feet
+      r(9, 12, 1, 1, pink)
     } else if (monster.id === 'stone_golem') {
-      ctx.fillRect(x + 3 * S, y + 3 * S, 10 * S, 12 * S)
-      ctx.fillRect(x + 1 * S, y + 7 * S, 3 * S, 6 * S)
-      ctx.fillRect(x + 12 * S, y + 7 * S, 3 * S, 6 * S)
+      // Walking boulder: cracked rock body, heavy arms, mossy crown, glowing core & eyes.
+      const gDark = '#5d5d64'
+      const moss = '#5f8a4a'
+      const pulse = 0.5 + 0.5 * Math.sin(tt * 3 + ph)
+      r(4, 13, 3, 3, gDark) // legs
+      r(9, 13, 3, 3, gDark)
+      r(2, 4, 12, 10, def.color) // torso
+      r(3, 3, 10, 1, def.color)
+      r(2, 11, 12, 3, gDark) // lower shade
+      r(2, 4, 2, 10, gDark) // left edge shade
+      r(0, 6, 3, 6, def.color) // arms
+      r(13, 6, 3, 6, def.color)
+      r(0, 10, 3, 2, gDark)
+      r(13, 10, 3, 2, gDark)
+      r(5, 1, 6, 3, def.color) // brow / head ridge
+      r(6, 5, 1, 4, gDark) // cracks
+      r(7, 7, 3, 1, gDark)
+      r(9, 9, 1, 3, gDark)
+      r(4, 5, 1, 1, def.accent) // mineral specks
+      r(11, 6, 1, 1, def.accent)
+      r(4, 1, 2, 1, moss) // moss
+      r(9, 1, 2, 1, moss)
+      ctx.fillStyle = `rgba(127,208,255,${0.55 + 0.45 * pulse})`
+      ctx.fillRect(x + 5 * S, y + 2 * S, 2 * S, 1 * S) // glowing eyes
+      ctx.fillRect(x + 9 * S, y + 2 * S, 2 * S, 1 * S)
+      ctx.fillStyle = `rgba(140,215,255,${0.5 + 0.5 * pulse})`
+      ctx.fillRect(x + 7 * S, y + 8 * S, 2 * S, 2 * S) // glowing chest core
     } else {
-      ctx.fillRect(x + 3 * S, y + 5 * S, 10 * S, 9 * S)
-      ctx.fillRect(x + 4 * S, y + 3 * S, 8 * S, 3 * S)
+      // mine_guardian — boss: armored crystalline sentinel with crown spikes, gem core, aura.
+      const gDark = '#4a3266'
+      const gem = def.accent
+      const pulse = 0.5 + 0.5 * Math.sin(tt * 2.5 + ph)
+      ctx.fillStyle = `rgba(240,208,106,${0.1 + 0.12 * pulse})` // pulsing aura
+      ctx.beginPath()
+      ctx.arc(x + 8 * S, y + 8 * S, 14 * S, 0, Math.PI * 2)
+      ctx.fill()
+      r(2, 2, 12, 15, def.color) // body
+      r(0, 5, 3, 9, def.color) // shoulders/arms
+      r(13, 5, 3, 9, def.color)
+      r(2, 12, 12, 5, gDark) // lower armor shade
+      r(4, 6, 8, 6, gDark) // chest plate
+      r(4, -1, 8, 4, def.color) // helmet
+      r(3, -3, 2, 3, gem) // crown spikes
+      r(11, -3, 2, 3, gem)
+      r(7, -4, 2, 3, gem)
+      r(0, 4, 2, 2, gem) // shoulder spikes
+      r(14, 4, 2, 2, gem)
+      r(0, 12, 3, 3, gDark) // fists
+      r(13, 12, 3, 3, gDark)
+      r(4, 13, 1, 2, gem) // crystal accents
+      r(11, 13, 1, 2, gem)
+      ctx.fillStyle = `rgba(255,225,120,${0.6 + 0.4 * pulse})`
+      ctx.fillRect(x + 5 * S, y + 1 * S, 2 * S, 1 * S) // glowing visor eyes
+      ctx.fillRect(x + 9 * S, y + 1 * S, 2 * S, 1 * S)
+      ctx.fillStyle = `rgba(255,232,150,${0.55 + 0.45 * pulse})`
+      ctx.fillRect(x + 6 * S, y + 7 * S, 4 * S, 4 * S) // gem core
+      r(7, 8, 2, 2, '#fff7d0')
     }
-    ctx.fillStyle = def.accent
-    ctx.fillRect(x + 5 * S, y + 6 * S, 2 * S, 2 * S)
-    ctx.fillRect(x + 10 * S, y + 6 * S, 2 * S, 2 * S)
-    ctx.fillStyle = '#282028'
-    ctx.fillRect(x + 6 * S, y + 11 * S, 5 * S, 1 * S)
+
     if (monster.hp < monster.maxHp) {
-      this.drawWorldHpBar(monster.x - 8, monster.y - 24, monster.hp, monster.maxHp, S)
+      const barY = monster.id === 'mine_guardian' ? monster.y - 28 : monster.y - 24
+      this.drawWorldHpBar(monster.x - 8, barY, monster.hp, monster.maxHp, S)
     }
   }
 
@@ -3745,28 +3881,64 @@ export class Game {
     const ctx = this.ctx
     const x = this.wx(45 * T)
     const y = this.wy(4 * T)
+    const R = (px: number, py: number, w: number, h: number, c: string) => {
+      ctx.fillStyle = c
+      ctx.fillRect(x + px * S, y + py * S, w * S, h * S)
+    }
     ctx.fillStyle = 'rgba(0,0,0,0.18)'
-    ctx.fillRect(x + 4 * S, y + 48 * S, 104 * S, 8 * S)
-    ctx.fillStyle = '#6f6b60'
-    ctx.fillRect(x + 4 * S, y + 20 * S, 104 * S, 36 * S)
-    ctx.fillStyle = '#8b8678'
-    ctx.fillRect(x + 10 * S, y + 12 * S, 92 * S, 14 * S)
-    ctx.fillStyle = '#3a3432'
-    ctx.fillRect(x + 34 * S, y + 24 * S, 40 * S, 32 * S)
-    ctx.fillStyle = '#201c20'
-    ctx.fillRect(x + 42 * S, y + 32 * S, 24 * S, 24 * S)
-    ctx.fillStyle = '#a59b86'
-    ctx.fillRect(x + 14 * S, y + 24 * S, 10 * S, 6 * S)
-    ctx.fillRect(x + 86 * S, y + 30 * S, 9 * S, 5 * S)
+    ctx.fillRect(x + 4 * S, y + 50 * S, 104 * S, 8 * S)
+    // Rocky mountainside with peak.
+    R(2, 14, 108, 42, '#5f5b52')
+    R(6, 8, 96, 12, '#6f6b60')
+    R(14, 3, 76, 8, '#7c7868')
+    R(2, 40, 108, 16, '#4f4b44') // lower shade
+    R(2, 14, 5, 42, '#534f48') // left edge
+    R(103, 14, 7, 42, '#534f48') // right edge
+    R(20, 6, 18, 3, '#8e8a79') // highlights
+    R(60, 9, 20, 3, '#888473')
+    // Timber A-frame portal supports.
+    R(28, 16, 56, 3, '#855c36') // top beam highlight
+    R(30, 18, 52, 4, '#6e4a2a') // top beam
+    R(30, 18, 6, 38, '#5c3c22') // posts
+    R(76, 18, 6, 38, '#5c3c22')
+    R(31, 18, 2, 38, '#7a4c2a')
+    R(77, 18, 2, 38, '#7a4c2a')
+    R(32, 26, 2, 1, '#4a3018') // plank grain
+    R(32, 36, 2, 1, '#4a3018')
+    R(78, 26, 2, 1, '#4a3018')
+    R(78, 36, 2, 1, '#4a3018')
+    // Tunnel mouth with receding darkness.
+    R(36, 22, 40, 34, '#2a2622')
+    R(40, 26, 32, 30, '#1a1620')
+    R(46, 32, 20, 24, '#0d0a12')
+    R(40, 24, 32, 2, '#3a2a1c') // inner support arch
+    // Hanging lantern.
+    R(54, 17, 1, 5, '#3a3026')
+    R(51, 20, 6, 1, '#7a5e22')
+    R(51, 21, 6, 6, '#caa23a')
+    R(52, 22, 4, 4, '#ffd86a')
+    // Minecart rails leading out.
+    R(40, 54, 8, 2, '#6b5a4a')
+    R(64, 54, 8, 2, '#6b5a4a')
+    R(43, 52, 2, 8, '#9aa0aa')
+    R(67, 52, 2, 8, '#9aa0aa')
     if (!this.mineUnlocked()) {
-      ctx.fillStyle = '#6e4426'
-      ctx.fillRect(x + 38 * S, y + 35 * S, 32 * S, 5 * S)
-      ctx.fillRect(x + 36 * S, y + 45 * S, 36 * S, 5 * S)
-      ctx.fillStyle = '#9a6a3a'
-      ctx.fillRect(x + 38 * S, y + 35 * S, 32 * S, 2 * S)
-      ctx.fillRect(x + 36 * S, y + 45 * S, 36 * S, 2 * S)
-      ctx.fillStyle = '#52331d'
-      ctx.fillRect(x + 49 * S, y + 33 * S, 4 * S, 20 * S)
+      // Boarded shut with a padlock until unlocked.
+      R(36, 26, 40, 5, '#7a4c2a')
+      R(34, 34, 44, 5, '#7a4c2a')
+      R(36, 42, 40, 5, '#7a4c2a')
+      R(36, 26, 40, 2, '#9a6a3a')
+      R(34, 34, 44, 2, '#9a6a3a')
+      R(36, 42, 40, 2, '#9a6a3a')
+      R(50, 24, 4, 26, '#5c3c22') // nailed vertical board
+      R(53, 33, 6, 7, '#3a3a42') // padlock body
+      R(54, 30, 4, 4, '#52525c') // shackle
+      R(55, 35, 2, 2, '#1c1c22') // keyhole
+    } else {
+      // Crossed pickaxe marker once open.
+      R(52, 38, 1, 10, '#6b4a32')
+      R(48, 36, 10, 2, '#aeb4c0')
+      R(48, 36, 2, 2, '#e6ebf2')
     }
   }
 
@@ -3775,34 +3947,73 @@ export class Game {
     const ctx = this.ctx
     const x = this.wx(LOCATIONS.blacksmith.x * T)
     const y = this.wy(LOCATIONS.blacksmith.y * T - 14)
+    const tt = performance.now() / 1000
+    const R = (px: number, py: number, w: number, h: number, c: string) => {
+      ctx.fillStyle = c
+      ctx.fillRect(x + px * S, y + py * S, w * S, h * S)
+    }
     ctx.fillStyle = 'rgba(0,0,0,0.17)'
-    ctx.fillRect(x + 5 * S, y + 58 * S, 70 * S, 7 * S)
-    ctx.fillStyle = '#5b4b42'
-    ctx.fillRect(x + 5 * S, y + 23 * S, 70 * S, 38 * S)
-    ctx.fillStyle = '#746055'
-    ctx.fillRect(x + 8 * S, y + 26 * S, 64 * S, 5 * S)
-    ctx.fillStyle = '#3d3330'
-    ctx.fillRect(x + 19 * S, y + 38 * S, 16 * S, 23 * S)
-    ctx.fillStyle = '#242026'
-    ctx.fillRect(x + 23 * S, y + 43 * S, 8 * S, 18 * S)
-    ctx.fillStyle = '#a95432'
-    ctx.fillRect(x + 46 * S, y + 40 * S, 17 * S, 13 * S)
-    ctx.fillStyle = '#f0912e'
-    ctx.fillRect(x + 49 * S, y + 43 * S, 11 * S, 7 * S)
-    ctx.fillStyle = '#ffd05c'
-    ctx.fillRect(x + 52 * S, y + 44 * S, 5 * S, 5 * S)
-    ctx.fillStyle = '#3f3532'
-    ctx.fillRect(x + 56 * S, y + 7 * S, 10 * S, 23 * S)
-    ctx.fillStyle = '#211c20'
-    ctx.fillRect(x + 58 * S, y + 5 * S, 6 * S, 4 * S)
-    ctx.fillStyle = '#4d403b'
-    ctx.fillRect(x + 2 * S, y + 20 * S, 76 * S, 7 * S)
-    ctx.fillStyle = '#6d5a50'
-    ctx.fillRect(x + 8 * S, y + 14 * S, 64 * S, 8 * S)
-    ctx.fillStyle = '#8b6a4d'
-    ctx.fillRect(x + 16 * S, y + 10 * S, 48 * S, 7 * S)
-    ctx.fillStyle = '#2e2930'
-    ctx.fillRect(x + 48 * S, y + 57 * S, 16 * S, 4 * S)
+    ctx.fillRect(x + 4 * S, y + 58 * S, 72 * S, 7 * S)
+    // Stone walls with block courses.
+    R(4, 24, 72, 37, '#5b4b42')
+    R(4, 24, 72, 4, '#6d5a50')
+    R(4, 32, 72, 1, '#473a33')
+    R(4, 40, 72, 1, '#473a33')
+    R(4, 48, 72, 1, '#473a33')
+    R(20, 28, 1, 33, '#473a33')
+    R(40, 33, 1, 28, '#473a33')
+    R(58, 28, 1, 33, '#473a33')
+    // Timber-framed roof.
+    R(0, 18, 80, 7, '#4d403b')
+    R(2, 12, 76, 8, '#6d5a50')
+    R(10, 7, 60, 7, '#8b6a4d')
+    R(10, 7, 60, 2, '#a07f5e')
+    // Brick chimney + animated smoke.
+    R(56, 2, 11, 18, '#7a4030')
+    R(56, 2, 11, 2, '#995441')
+    R(57, 6, 9, 1, '#5c3024')
+    R(57, 11, 9, 1, '#5c3024')
+    for (let i = 0; i < 3; i++) {
+      const sm = (tt * 8 + i * 4) % 12
+      const a = 0.4 - sm * 0.03
+      if (a <= 0) continue
+      ctx.fillStyle = `rgba(190,190,196,${a})`
+      ctx.fillRect(x + (58 + Math.sin(tt * 2 + i) * 2) * S, y + (2 - sm) * S, 5 * S, 4 * S)
+    }
+    // Forge hood with glowing coals + rising sparks (left interior).
+    R(8, 30, 26, 4, '#3a3330')
+    R(10, 34, 22, 16, '#241f1d')
+    const pulse = 0.6 + 0.4 * Math.sin(tt * 5)
+    ctx.fillStyle = 'rgba(240,120,40,0.85)'
+    ctx.fillRect(x + 13 * S, y + 42 * S, 16 * S, 7 * S)
+    ctx.fillStyle = `rgba(255,170,60,${pulse})`
+    ctx.fillRect(x + 16 * S, y + 43 * S, 10 * S, 5 * S)
+    R(19, 44, 4, 3, '#ffe79a')
+    for (let i = 0; i < 3; i++) {
+      const sp = (tt * 20 + i * 7) % 10
+      ctx.fillStyle = `rgba(255,200,90,${Math.max(0, 0.9 - sp * 0.1)})`
+      ctx.fillRect(x + (17 + i * 3) * S, y + (44 - sp) * S, 1 * S, 1 * S)
+    }
+    // Doorway (right).
+    R(44, 38, 16, 23, '#2e2620')
+    R(46, 40, 12, 21, '#1a1410')
+    R(50, 48, 1, 4, '#caa23a')
+    // Anvil with leaning hammer (out front).
+    R(30, 54, 16, 3, '#2e2930')
+    R(33, 50, 10, 4, '#46434c')
+    R(31, 49, 7, 2, '#56535e')
+    R(42, 49, 4, 2, '#56535e') // horn
+    R(38, 44, 1, 7, '#6b4a32') // hammer handle
+    R(36, 43, 5, 3, '#7c7e88') // hammer head
+    // Water quench barrel.
+    R(64, 46, 10, 15, '#6b4a2e')
+    R(64, 46, 10, 2, '#3a78a0')
+    R(64, 50, 10, 1, '#8a6a42')
+    R(64, 56, 10, 1, '#8a6a42')
+    // Hanging horseshoe sign.
+    R(12, 16, 1, 6, '#3a3026')
+    R(8, 21, 9, 3, '#caa23a')
+    R(10, 21, 5, 3, '#9a7a2a')
   }
 
   private drawHuman(
