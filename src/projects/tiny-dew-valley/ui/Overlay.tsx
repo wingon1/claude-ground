@@ -189,7 +189,18 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
 
 function objectiveProgress(objective: UISnapshot['objective']) {
   if (!objective) return 0
-  return Math.min(100, Math.round((objective.progress / Math.max(1, objective.max)) * 100))
+  const progress = Number.isFinite(objective.progress) ? Math.max(0, objective.progress) : 0
+  const max = Number.isFinite(objective.max) && objective.max > 0 ? objective.max : 1
+  return Math.max(0, Math.min(100, Math.round((progress / max) * 100)))
+}
+
+function ObjectiveProgressBar({ objective }: { objective: UISnapshot['objective'] }) {
+  const progress = objectiveProgress(objective)
+  return (
+    <div className={`bar${progress <= 0 ? ' empty' : ''}`}>
+      <span style={{ transform: `scaleX(${progress / 100})` }} />
+    </div>
+  )
 }
 
 function ObjectiveCard({
@@ -209,9 +220,7 @@ function ObjectiveCard({
           <div className="progress">{objective.progress}/{objective.max}</div>
           <button className="close" onClick={onClose} aria-label="목표 숨기기">×</button>
         </div>
-        <div className="bar">
-          <span style={{ width: `${objectiveProgress(objective)}%` }} />
-        </div>
+        <ObjectiveProgressBar objective={objective} />
       </div>
     )
   }
@@ -222,9 +231,7 @@ function ObjectiveCard({
       </div>
       <div className="title">{objective.title}</div>
       <div className="detail">{objective.detail}</div>
-      <div className="bar">
-        <span style={{ width: `${objectiveProgress(objective)}%` }} />
-      </div>
+      <ObjectiveProgressBar objective={objective} />
     </div>
   )
 }

@@ -2339,8 +2339,8 @@ export class Game {
     return {
       title: '농장 확장하기',
       detail: '밭, 동물, 화로 업그레이드를 늘려 생산량을 키우세요.',
-      progress: this.state.gold,
-      max: Math.max(1, this.state.gold),
+      progress: 0,
+      max: 1,
     }
   }
 
