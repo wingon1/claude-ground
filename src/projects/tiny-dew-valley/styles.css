@@ -65,6 +65,7 @@
   padding: 6px 8px;
 }
 .tdv-clock {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -93,16 +94,46 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  width: 100%;
   margin-top: 4px;
-  padding-top: 3px;
+  padding: 3px 0 0;
   border-top: 1px solid #00000016;
+  border-right: 0;
+  border-bottom: 0;
+  border-left: 0;
+  background: transparent;
   font-size: 10px;
   font-weight: 900;
   color: #5f4b2c;
+  font-family: inherit;
+  text-align: left;
+  appearance: none;
+  cursor: pointer;
+  pointer-events: auto;
 }
 .tdv-weather span {
   font-size: 12px;
   line-height: 1;
+}
+.tdv-weather-pop {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 6px);
+  width: min(240px, calc(100vw - 18px));
+  z-index: 10;
+  display: grid;
+  gap: 2px;
+  padding: 7px 9px;
+  background: rgba(58, 42, 26, 0.86);
+  color: #fff5d2;
+  border-radius: 3px;
+  box-shadow: 0 3px 0 #0004;
+  font-size: 10px;
+  line-height: 1.35;
+  pointer-events: none;
+}
+.tdv-weather-pop b {
+  font-size: 11px;
 }
 .tdv-objective {
   width: min(320px, calc(100vw - 16px));

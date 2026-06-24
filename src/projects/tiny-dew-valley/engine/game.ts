@@ -723,7 +723,7 @@ export class Game {
 
   private rollPassiveDrop(monster: MonsterDef) {
     const floor = mineFloorDef(this.mineFloor)
-    const dropChance = floor.passiveDropChance + monster.passiveDropBonus
+    const dropChance = Math.min(0.95, floor.passiveDropChance + monster.passiveDropBonus + this.passiveDropChanceBonus())
     if (Math.random() > dropChance) return
     const passive = this.pickWeightedPassive(monster)
     const rarity = this.pickPassiveRarity(monster)
@@ -2081,6 +2081,10 @@ export class Game {
 
   private rareAnimalProductChanceBonus(): number {
     return this.currentWeatherDef()?.rareAnimalProductChanceBonus ?? 0
+  }
+
+  private passiveDropChanceBonus(): number {
+    return this.currentWeatherDef()?.passiveDropChanceBonus ?? 0
   }
 
   private orderDayKey(): string {

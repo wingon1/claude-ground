@@ -619,22 +619,25 @@
         "id": "rain",
         "name": "비",
         "icon": "☂",
-        "desc": "작물이 20% 빠르게 자랍니다.",
-        "cropGrowthMultiplier": 0.8
+        "desc": "작물이 20% 빠르게 자라고, 동물 생산 시간이 10% 늘어납니다.",
+        "cropGrowthMultiplier": 0.8,
+        "animalDropMultiplier": 1.1
       },
       {
         "id": "wind",
         "name": "바람",
         "icon": "≋",
-        "desc": "나무와 광석 채집 시 추가 재료가 나올 수 있습니다.",
-        "resourceBonusChance": 0.25
+        "desc": "나무와 광석 채집 시 추가 재료가 나올 수 있고, 작물이 10% 느리게 자랍니다.",
+        "resourceBonusChance": 0.25,
+        "cropGrowthMultiplier": 1.1
       },
       {
         "id": "lucky",
         "name": "행운",
         "icon": "★",
-        "desc": "희귀 부산물 확률이 조금 오릅니다.",
-        "rareAnimalProductChanceBonus": 0.04
+        "desc": "희귀 동물 부산물과 패시브 획득 확률이 조금 오릅니다.",
+        "rareAnimalProductChanceBonus": 0.04,
+        "passiveDropChanceBonus": 0.05
       }
     ]
   },

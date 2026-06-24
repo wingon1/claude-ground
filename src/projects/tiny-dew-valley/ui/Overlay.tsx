@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { Game } from '../engine/game'
 import type { UISnapshot } from '../engine/uiSnapshot'
 import { iconURL } from '../engine/sprites'
@@ -16,6 +16,8 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
   const [objectiveOpen, setObjectiveOpen] = useState(false)
   const [hiddenObjectiveKey, setHiddenObjectiveKey] = useState<string | null>(null)
   const [settingsTapCount, setSettingsTapCount] = useState(0)
+  const [weatherTipOpen, setWeatherTipOpen] = useState(false)
+  const weatherTipTimer = useRef<number | null>(null)
   const testMode = settingsTapCount >= 5
 
   if (ui.phase === 'title') return <TitleScreen game={game} ui={ui} />
@@ -35,6 +37,12 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
   const hasContextAction = ui.contextActions.length > 0
   const objectiveKey = ui.objective ? `${ui.objective.title}:${ui.objective.detail}` : null
   const objectivePinned = !!ui.objective && hiddenObjectiveKey !== objectiveKey
+  const showWeatherTip = () => {
+    if (!ui.weather) return
+    if (weatherTipTimer.current != null) window.clearTimeout(weatherTipTimer.current)
+    setWeatherTipOpen(true)
+    weatherTipTimer.current = window.setTimeout(() => setWeatherTipOpen(false), 1000)
+  }
 
   return (
     <>
@@ -51,9 +59,24 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
             <span className="tdv-gold">{ui.gold}G</span>
           </div>
           {ui.weather && (
-            <div className="tdv-weather" title={ui.weather.desc}>
+            <button
+              className="tdv-weather"
+              type="button"
+              title={ui.weather.desc}
+              onPointerDown={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                showWeatherTip()
+              }}
+            >
               <span>{ui.weather.icon}</span>
               <b>{ui.weather.name}</b>
+            </button>
+          )}
+          {ui.weather && weatherTipOpen && (
+            <div className="tdv-weather-pop">
+              <b>{ui.weather.name}</b>
+              <span>{ui.weather.desc}</span>
             </div>
           )}
         </div>
