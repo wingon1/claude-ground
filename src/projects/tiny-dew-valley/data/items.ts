@@ -1,4 +1,5 @@
 import type { CropQuality, ItemDef } from '../types'
+import balance from './balance.json'
 import { CROP_LIST } from './crops'
 
 // Quality multipliers applied to a crop's base sell price.
@@ -606,6 +607,8 @@ const base: ItemDef[] = [
   },
 ]
 
+const sellPriceOverrides: Record<string, number> = balance.items.sellPrices
+
 const cropItems: ItemDef[] = []
 for (const crop of CROP_LIST) {
   const qualities: CropQuality[] = crop.rollsQuality
@@ -618,7 +621,7 @@ for (const crop of CROP_LIST) {
       type: 'crop',
       stackable: true,
       maxStack: 99,
-      sellPrice: Math.round(crop.baseSell * QUALITY_MULT[q]),
+      sellPrice: sellPriceOverrides[cropItemId(crop.id, q)] ?? Math.round(crop.baseSell * QUALITY_MULT[q]),
       description: `수확한 ${crop.name}. 생산 체인이나 판매에 사용할 수 있습니다.`,
       usable: true,
       staminaRestore: Math.round(8 + crop.baseSell * 0.08 * QUALITY_MULT[q]),
@@ -631,7 +634,12 @@ for (const crop of CROP_LIST) {
 }
 
 export const ITEMS: Record<string, ItemDef> = {}
-for (const it of [...base, ...cropItems]) ITEMS[it.id] = it
+for (const it of [...base, ...cropItems]) {
+  ITEMS[it.id] = {
+    ...it,
+    sellPrice: sellPriceOverrides[it.id] ?? it.sellPrice,
+  }
+}
 
 export function getItem(id: string): ItemDef | undefined {
   return ITEMS[id]

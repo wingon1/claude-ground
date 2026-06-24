@@ -1,4 +1,7 @@
 import type { CropDef } from '../types'
+import balance from './balance.json'
+
+const cropBalance = balance.crops
 
 // Crop catalogue. Only wheat is unlocked at the start; the rest are opened
 // through shop upgrades so the farm grows one production chain at a time.
@@ -7,9 +10,9 @@ export const CROPS: Record<string, CropDef> = {
     id: 'wheat',
     name: '밀',
     seedItemId: 'seed_wheat',
-    growDays: 1,
+    growDays: cropBalance.wheat.growDays,
     stages: 3,
-    baseSell: 12,
+    baseSell: cropBalance.wheat.baseSell,
     rollsQuality: false,
     color: '#d9b34c',
   },
@@ -17,9 +20,9 @@ export const CROPS: Record<string, CropDef> = {
     id: 'tomato',
     name: '토마토',
     seedItemId: 'seed_tomato',
-    growDays: 2,
+    growDays: cropBalance.tomato.growDays,
     stages: 4,
-    baseSell: 45,
+    baseSell: cropBalance.tomato.baseSell,
     rollsQuality: false,
     color: '#e64b42',
   },
@@ -27,10 +30,10 @@ export const CROPS: Record<string, CropDef> = {
     id: 'strawberry',
     name: '딸기',
     seedItemId: 'seed_strawberry',
-    growDays: 4,
+    growDays: cropBalance.strawberry.growDays,
     stages: 5,
-    baseSell: 80,
-    regrowDays: 2,
+    baseSell: cropBalance.strawberry.baseSell,
+    regrowDays: cropBalance.strawberry.regrowDays,
     rollsQuality: false,
     color: '#e8506e',
   },
@@ -38,10 +41,10 @@ export const CROPS: Record<string, CropDef> = {
     id: 'corn',
     name: '옥수수',
     seedItemId: 'seed_corn',
-    growDays: 5,
+    growDays: cropBalance.corn.growDays,
     stages: 6,
-    baseSell: 120,
-    regrowDays: 3,
+    baseSell: cropBalance.corn.baseSell,
+    regrowDays: cropBalance.corn.regrowDays,
     rollsQuality: false,
     color: '#f0c84b',
   },
