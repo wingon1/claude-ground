@@ -62,6 +62,7 @@ export const projects: Project[] = [
     description:
       '탭으로 이동하고 나무·바위·작물 곁에 서면 자동으로 일하는 포근한 픽셀 섬 키우기. 스태미나를 모두 쓰면 텐트에서 자고, 깨어나면 최대 스태미나가 +1. 농사·동물·요리·상점·건설·퀘스트·광산과 절차적 사운드까지 모두 자체 제작.',
     emoji: '🏝️',
+    enabled: false,
     tags: ['react', 'canvas', 'pixel-art', 'game', 'mobile'],
     kind: 'react',
     load: () => import('./cozy-island'),
@@ -109,6 +110,7 @@ export const projects: Project[] = [
   {
     id: 'car-jam',
     title: '🚗 Car Jam — 3D Parking Puzzle',
+    enabled: false,
     description:
       'Swipe colourful low-poly cars out of a jammed lot. 100 procedurally generated, always-solvable stages. Portrait, mobile-first.',
     emoji: '🚗',
