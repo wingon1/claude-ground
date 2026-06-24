@@ -41,7 +41,7 @@ export function loadGame(): GameState | null {
     ) {
       return null
     }
-    if (typeof data.maxHp !== 'number' || data.maxHp <= 0) data.maxHp = START_MAX_HP
+    data.maxHp = START_MAX_HP
     if (typeof data.hp !== 'number') data.hp = data.maxHp
     data.hp = Math.max(0, Math.min(data.maxHp, data.hp))
     return data

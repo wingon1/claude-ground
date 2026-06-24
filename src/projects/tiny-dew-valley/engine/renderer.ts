@@ -31,6 +31,8 @@ export interface RenderHost {
   speechBubbles: SpeechBubble[]
   jumpT: number
   workAnimT: number
+  playerHurtT: number
+  playerFainting: boolean
   workTile: { x: number; y: number } | null
   workTool: UpgradeableToolId | 'sword' | null
   nowSecs: () => number
@@ -66,6 +68,8 @@ export class GameRenderer {
   private get speechBubbles() { return this.host.speechBubbles }
   private get jumpT() { return this.host.jumpT }
   private get workAnimT() { return this.host.workAnimT }
+  private get playerHurtT() { return this.host.playerHurtT }
+  private get playerFainting() { return this.host.playerFainting }
   private get workTile() { return this.host.workTile }
   private get workTool() { return this.host.workTool }
 
@@ -161,7 +165,22 @@ export class GameRenderer {
         draws.push({ y: monster.y, fn: () => this.drawMonster(monster, S) })
       }
     }
-    draws.push({ y: p.y, fn: () => this.drawHuman(this.sprites.farmer, p.x, p.y, p.dir, p.moving, p.exhausted, p.animTime) })
+    draws.push({
+      y: p.y,
+      fn: () => this.drawHuman(
+        this.sprites.farmer,
+        p.x,
+        p.y,
+        p.dir,
+        p.moving,
+        p.exhausted,
+        p.animTime,
+        true,
+        1,
+        this.playerHurtT,
+        this.playerFainting,
+      ),
+    })
     draws.sort((a, b) => a.y - b.y)
     for (const d of draws) d.fn()
 
@@ -931,16 +950,30 @@ export class GameRenderer {
     animTime: number,
     playerMotion = true,
     walkAnimScale = 1,
+    hurtT = 0,
+    fainting = false,
   ) {
     const S = this.scale
     let frame = 0
     if (moving) frame = Math.floor(animTime * 10 * walkAnimScale) % 2 === 0 ? 1 : 2
     const img = sheet[`${dir}_${frame}`] ?? sheet['down_0']
+    if (playerMotion && fainting) {
+      this.drawFaintedHuman(img, x, y, S)
+      return
+    }
     const walkBob = moving ? Math.abs(Math.sin(animTime * 18 * walkAnimScale)) * (playerMotion ? 1.2 : 0.5) : 0
     const jump = playerMotion && this.jumpT > 0 ? Math.sin((this.jumpT / 0.22) * Math.PI) * 7 : 0
     const work = playerMotion && this.workAnimT > 0 ? Math.sin((this.workAnimT / 0.28) * Math.PI) : 0
+    const hurt = playerMotion && hurtT > 0 ? Math.sin(hurtT * 46) * 1.7 : 0
     const drawY = y - 22 + 2 - walkBob - jump - work * 1.5
-    this.ctx.drawImage(img, this.wx(x - 8), this.wy(drawY), 16 * S, 22 * S)
+    const drawX = x - 8 + hurt
+    this.ctx.drawImage(img, this.wx(drawX), this.wy(drawY), 16 * S, 22 * S)
+    if (playerMotion && hurtT > 0) {
+      this.ctx.globalAlpha = Math.min(0.45, hurtT * 1.3)
+      this.ctx.fillStyle = '#ff5a4f'
+      this.ctx.fillRect(this.wx(drawX), this.wy(drawY), 16 * S, 22 * S)
+      this.ctx.globalAlpha = 1
+    }
     if (playerMotion && work > 0) this.drawWorkPose(x, drawY, dir, work, S, this.currentWorkTool())
     if (exhausted) {
       const t = performance.now() / 300
@@ -1056,6 +1089,19 @@ export class GameRenderer {
       }
       ctx.globalCompositeOperation = 'source-over'
     }
+  }
+
+  private drawFaintedHuman(img: HTMLCanvasElement, x: number, y: number, S: number) {
+    const ctx = this.ctx
+    const sx = this.wx(x)
+    const sy = this.wy(y - 7)
+    ctx.fillStyle = 'rgba(0,0,0,0.22)'
+    ctx.fillRect(this.wx(x - 13), this.wy(y - 2), 24 * S, 4 * S)
+    ctx.save()
+    ctx.translate(sx, sy)
+    ctx.rotate(Math.PI / 2)
+    ctx.drawImage(img, -8 * S, -11 * S, 16 * S, 22 * S)
+    ctx.restore()
   }
 
   private drawWeatherEffects(S: number, bw: number, bh: number) {

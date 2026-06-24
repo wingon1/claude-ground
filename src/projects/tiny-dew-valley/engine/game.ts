@@ -96,6 +96,11 @@ import type {
 const WORK_RANGE = T * 1.5 // how close to a node before auto-working
 const ORDER_NPC = { x: LOCATIONS.storeStand.x, y: LOCATIONS.storeStand.y }
 const BLACKSMITH_NPC = { x: LOCATIONS.blacksmithNpc.x, y: LOCATIONS.blacksmithNpc.y }
+const MINE_DOWN_REVEAL_LINES = [
+  '내려가는 길이 생겼다!',
+  '아래층으로 갈 수 있겠어.',
+  '길이 열렸어. 더 내려가 보자.',
+]
 
 export class Game {
   private canvas: HTMLCanvasElement
@@ -128,6 +133,9 @@ export class Game {
   private workTool: UpgradeableToolId | 'sword' | null = null
   private jumpT = 0
   private workAnimT = 0
+  private playerHurtT = 0
+  private playerFaintT = 0
+  private nextNoSwordToastAt = 0
   private awardingTutorialReward = false
   private nextSpeechAt: Record<SpeechSpeaker | 'weakTool' | 'lockedMine', number> = {
     player: 0,
@@ -307,6 +315,11 @@ export class Game {
     if (this.workCooldown > 0) this.workCooldown -= dt
     if (this.jumpT > 0) this.jumpT = Math.max(0, this.jumpT - dt)
     if (this.workAnimT > 0) this.workAnimT = Math.max(0, this.workAnimT - dt)
+    if (this.playerHurtT > 0) this.playerHurtT = Math.max(0, this.playerHurtT - dt)
+    if (this.playerFaintT > 0) {
+      this.playerFaintT = Math.max(0, this.playerFaintT - dt)
+      if (this.playerFaintT <= 0 && this.pendingFaint && this.fadeDir === 0) this.fadeDir = 1
+    }
   }
 
   // ---------------- update ----------------
@@ -607,23 +620,27 @@ export class Game {
     if (this.fadeDir !== 0) return
     const monster = this.nearestAttackableMonster()
     if (monster) {
-      const p = this.state.player
-      const tx = Math.floor(monster.x / T)
-      const ty = Math.floor((monster.y - 8) / T)
-      this.workTile = { x: tx, y: ty }
-      this.workTool = 'sword'
-      if (Math.abs(monster.x - p.x) > Math.abs(monster.y - p.y)) p.dir = monster.x > p.x ? 'right' : 'left'
-      else p.dir = monster.y > p.y ? 'down' : 'up'
-      if (this.workCooldown > 0) return
-      this.workCooldown = WORK_INTERVAL
       if (this.countItem('sword') <= 0) {
-        this.toast('몬스터를 공격하려면 검이 필요해요.', 'bad')
-        this.audio.sfx('reject')
+        const now = this.nowSecs()
+        if (now >= this.nextNoSwordToastAt) {
+          this.nextNoSwordToastAt = now + 2.5
+          this.toast('몬스터를 공격하려면 검이 필요해요.', 'bad')
+          this.audio.sfx('reject')
+        }
+      } else {
+        const p = this.state.player
+        const tx = Math.floor(monster.x / T)
+        const ty = Math.floor((monster.y - 8) / T)
+        this.workTile = { x: tx, y: ty }
+        this.workTool = 'sword'
+        if (Math.abs(monster.x - p.x) > Math.abs(monster.y - p.y)) p.dir = monster.x > p.x ? 'right' : 'left'
+        else p.dir = monster.y > p.y ? 'down' : 'up'
+        if (this.workCooldown > 0) return
+        this.workCooldown = WORK_INTERVAL
+        this.workAnimT = 0.28
+        this.hitMonster(monster)
         return
       }
-      this.workAnimT = 0.28
-      this.hitMonster(monster)
-      return
     }
     const work = this.findWork()
     if (!work) return
@@ -697,6 +714,7 @@ export class Game {
       }
       if (d <= T * 1.2 && monster.attackT <= 0 && this.state.hp > 0 && !this.pendingFaint) {
         this.state.hp = Math.max(0, this.state.hp - def.attack)
+        this.playerHurtT = 0.36
         monster.attackT = 1.2
         this.toast(`${def.name}에게 맞았어요.`, 'bad')
         this.audio.sfx('reject')
@@ -732,8 +750,39 @@ export class Game {
       this.rollPassiveDrop(def)
       this.toast(`${def.name} 처치`, 'good')
     }
+    if (this.mineMonsters.length === 0) this.revealMineDownNear(monster.x, monster.y)
     this.audio.sfx('sparkle')
     this.emit()
+  }
+
+  private revealMineDownNear(x: number, y: number) {
+    if (this.area !== 'mine' || this.mineFloor >= MINE_MAX_FLOOR || this.mineDownRevealed()) return
+    const origin = {
+      x: Math.max(21, Math.min(36, Math.floor(x / T))),
+      y: Math.max(11, Math.min(23, Math.floor((y - 8) / T))),
+    }
+    const offsets: [number, number][] = [
+      [0, 0], [1, 0], [-1, 0], [0, 1], [0, -1],
+      [1, 1], [-1, 1], [1, -1], [-1, -1],
+      [2, 0], [-2, 0], [0, 2], [0, -2],
+    ]
+    for (const [dx, dy] of offsets) {
+      const tx = origin.x + dx
+      const ty = origin.y + dy
+      if (!inBounds(tx, ty)) continue
+      const t = this.mineTiles[idx(tx, ty)]
+      if (t.terrain === 'blocked' || t.metadata.mineExit || t.obstacle || this.groundItemId(t)) continue
+      t.metadata.mineDown = true
+      t.cropId = null
+      t.hp = undefined
+      this.say('player', this.pickLine(MINE_DOWN_REVEAL_LINES), 3.8)
+      this.toast('아래층으로 내려가는 길이 열렸어요.', 'good')
+      return
+    }
+  }
+
+  private mineDownRevealed(): boolean {
+    return this.mineTiles.some((tile) => tile.metadata.mineDown === true)
   }
 
   private faintPlayer() {
@@ -743,7 +792,9 @@ export class Game {
     this.workTile = null
     this.workTool = null
     this.state.player.moving = false
-    this.fadeDir = 1
+    this.playerHurtT = 0
+    this.playerFaintT = 0.65
+    this.fadeDir = 0
     this.audio.sfx('reject')
     this.emit()
   }
@@ -763,6 +814,8 @@ export class Game {
     this.workTile = null
     this.workTool = null
     this.state.hp = this.state.maxHp
+    this.playerHurtT = 0
+    this.playerFaintT = 0
     this.phase = 'playing'
     this.toast(lost.length ? `기절했어요. 잃어버린 아이템: ${lost.join(', ')}` : '기절했지만 잃어버린 아이템은 없어요.', 'bad')
     this.say('player', this.pickLine(PLAYER_FAINT_WAKE_LINES), 4.4)
@@ -3162,6 +3215,8 @@ export class Game {
       speechBubbles: this.activeSpeechBubbles(),
       jumpT: this.jumpT,
       workAnimT: this.workAnimT,
+      playerHurtT: this.playerHurtT,
+      playerFainting: this.pendingFaint,
       workTile: this.workTile,
       workTool: this.workTool,
       nowSecs: () => this.nowSecs(),

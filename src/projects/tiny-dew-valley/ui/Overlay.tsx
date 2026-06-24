@@ -93,7 +93,6 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
               cls={ui.stamina <= ui.maxStamina * 0.25 ? 'stam low' : 'stam'}
               value={ui.stamina}
               max={ui.maxStamina}
-              iconKey="ui_bolt"
               text={`STA ${ui.stamina}/${ui.maxStamina}`}
             />
           </div>

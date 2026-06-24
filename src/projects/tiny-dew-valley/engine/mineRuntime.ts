@@ -33,8 +33,6 @@ export function buildMineTiles(floor: number): Tile[] {
   }
   const exit = tiles[idx(27, 22)]
   exit.metadata.mineExit = true
-  const stairs = tiles[idx(29, 22)]
-  stairs.metadata.mineDown = true
   const spots: [number, number][] = [
     [23, 12], [27, 12], [33, 12], [35, 15], [22, 16], [28, 16],
     [32, 18], [24, 20], [35, 21], [22, 22], [31, 22],

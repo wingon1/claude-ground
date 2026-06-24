@@ -7,7 +7,7 @@
     "respawnSeconds": 80,
     "cropStageSeconds": 22,
     "cookBatchMax": 20,
-    "startMaxHp": 30,
+    "startMaxHp": 20,
     "startMaxStamina": 20,
     "workCost": {
       "chop": 1,
