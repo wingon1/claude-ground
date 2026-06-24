@@ -258,6 +258,9 @@
       "scythe": {
         "damage": 1
       },
+      "axe": {
+        "damage": 1
+      },
       "sword": {
         "damage": 1
       }
@@ -323,6 +326,42 @@
             {
               "itemId": "stone",
               "qty": 35
+            },
+            {
+              "itemId": "copper_ore",
+              "qty": 12
+            },
+            {
+              "itemId": "iron_ore",
+              "qty": 8
+            }
+          ]
+        }
+      ],
+      "axe": [
+        {
+          "level": 1,
+          "damage": 2,
+          "costGold": 480,
+          "costItems": [
+            {
+              "itemId": "wood",
+              "qty": 24
+            },
+            {
+              "itemId": "copper_ore",
+              "qty": 6
+            }
+          ]
+        },
+        {
+          "level": 2,
+          "damage": 3,
+          "costGold": 1350,
+          "costItems": [
+            {
+              "itemId": "wood",
+              "qty": 50
             },
             {
               "itemId": "copper_ore",

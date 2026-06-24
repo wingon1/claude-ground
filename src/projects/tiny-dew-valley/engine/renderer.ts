@@ -992,7 +992,9 @@ export class GameRenderer {
     const w = this.workTile
     if (!w || !inBounds(w.x, w.y)) return 'scythe'
     const ob = this.activeTiles()[idx(w.x, w.y)].obstacle
-    return ob === 'rock' || ob === 'copper_ore' || ob === 'iron_ore' ? 'pickaxe' : 'scythe'
+    if (ob === 'rock' || ob === 'copper_ore' || ob === 'iron_ore') return 'pickaxe'
+    if (ob === 'tree' || ob === 'stump' || ob === 'large_stump') return 'axe'
+    return 'scythe'
   }
 
   private drawWorkPose(x: number, y: number, dir: string, t: number, S: number, tool: UpgradeableToolId | 'sword') {
@@ -1024,6 +1026,12 @@ export class GameRenderer {
       ctx.fillRect(0, -15 * S, 1 * S, 12 * S)
       ctx.fillStyle = '#caa066'
       ctx.fillRect(-4 * S, -4 * S, 8 * S, 1 * S)
+    } else if (tool === 'axe') {
+      ctx.fillRect(-1 * S, -13 * S, 6 * S, 5 * S)
+      ctx.fillStyle = '#eef0f6'
+      ctx.fillRect(0, -13 * S, 5 * S, 2 * S)
+      ctx.fillStyle = '#aeb2bc'
+      ctx.fillRect(4 * S, -10 * S, 2 * S, 3 * S)
     } else if (tool === 'pickaxe') {
       ctx.fillRect(-5 * S, -12 * S, 10 * S, 2 * S)
       ctx.fillStyle = '#eef0f6'

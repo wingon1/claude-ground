@@ -967,6 +967,7 @@ export class Game {
       return
     }
     const mining = ob === 'rock' || ob === 'copper_ore' || ob === 'iron_ore'
+    const woodcutting = ob === 'tree' || ob === 'stump' || ob === 'large_stump'
     if (mining) {
       const requiredLevel = ob === 'iron_ore' ? 1 : 0
       if (this.toolLevel('pickaxe') < requiredLevel) {
@@ -976,7 +977,7 @@ export class Game {
       }
     }
     if (!this.spendStamina(WORK_COST.chop)) return
-    const damage = mining ? this.toolDamage('pickaxe') : 1
+    const damage = mining ? this.toolDamage('pickaxe') : woodcutting ? this.toolDamage('axe') : 1
     t.hp = (t.hp ?? OBSTACLE_HP[ob]) - damage
     this.audio.sfx(mining ? 'crack' : 'chop')
     if (mining) this.dirtPuff(px, py, ob === 'copper_ore' ? '#c8753a' : ob === 'iron_ore' ? '#c8ccd6' : '#9a9a9a')
@@ -2063,7 +2064,8 @@ export class Game {
     } else if (work.t.obstacle) {
       needed = OBSTACLE_HP[work.t.obstacle]
       const mining = work.t.obstacle === 'rock' || work.t.obstacle === 'copper_ore' || work.t.obstacle === 'iron_ore'
-      damage = mining ? this.toolDamage('pickaxe') : 1
+      const woodcutting = work.t.obstacle === 'tree' || work.t.obstacle === 'stump' || work.t.obstacle === 'large_stump'
+      damage = mining ? this.toolDamage('pickaxe') : woodcutting ? this.toolDamage('axe') : 1
     }
     if (needed <= 0 || needed / Math.max(1, damage) < 4) return
     this.nextSpeechAt.weakTool = now + 18

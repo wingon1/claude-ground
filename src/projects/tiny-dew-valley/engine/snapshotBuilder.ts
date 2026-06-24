@@ -54,6 +54,7 @@ import type {
 type RecipeDef = (typeof RECIPES)[number]
 type CookingFireUpgradeDef = (typeof COOKING_FIRE_UPGRADES)[number]
 const TOOL_USE_TEXT: Record<UpgradeableToolId, string> = {
+  axe: '나무와 그루터기를 벨 때 사용합니다.',
   pickaxe: '광산의 돌과 광석을 캘 때 사용합니다.',
   scythe: '다 자란 작물을 수확할 때 사용합니다.',
   sword: '광산 몬스터와 싸울 때 사용합니다.',
