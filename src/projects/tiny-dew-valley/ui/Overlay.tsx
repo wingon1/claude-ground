@@ -235,8 +235,6 @@ function IntroScreen({ game, ui }: { game: Game; ui: UISnapshot }) {
     <div className={`tdv-intro tdv-intro-${step.kind}`}>
       <button className="tdv-intro-skip" onClick={finish}>스킵</button>
       <div className="tdv-newspaper">
-        <div className="tdv-paper-name">골짜기 조간신문</div>
-        <div className="tdv-paper-date">{step.dateLine}</div>
         <h1>{step.headline}</h1>
         <div className="tdv-paper-grid">
           <div className="tdv-suspect-frame" aria-label={step.suspectLabel}>
@@ -249,12 +247,20 @@ function IntroScreen({ game, ui }: { game: Game; ui: UISnapshot }) {
               <span className="arm left" />
               <span className="arm right" />
             </div>
-            <b>수배 사진</b>
           </div>
           <div className="tdv-paper-copy">
-            <p>{step.articleLead}</p>
+            <div className="tdv-redacted-lines" aria-hidden="true">
+              <span />
+              <span />
+              <span className="short" />
+            </div>
             <p className="tdv-readable-crime">{step.readableCrime}</p>
-            <p>{step.articleTail}</p>
+            <div className="tdv-redacted-lines bottom" aria-hidden="true">
+              <span />
+              <span className="mid" />
+              <span />
+              <span className="short" />
+            </div>
           </div>
         </div>
         <button className="tdv-bigbtn tdv-intro-next" onClick={() => game.startIntroArrival()}>다음</button>
