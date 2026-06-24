@@ -67,7 +67,6 @@ function drawHumanoid(
 ) {
   const legSwing = frame === 1 ? 1 : frame === 2 ? -1 : 0
   const hairLite = pal.hairLite ?? lighten(pal.hair)
-  const brow = pal.brow ?? darken(pal.hair)
   const eyeC = pal.eye ?? '#3a2c34'
   const style = pal.style ?? 'short'
 
@@ -217,16 +216,12 @@ function drawHumanoid(
     }
   }
 
-  // ---- Face ----
+  // ---- Face (slim vertical dot eyes) ----
   if (dir === 'down') {
-    px(g, 5, 6, 2, 1, brow)
-    px(g, 9, 6, 2, 1, brow)
-    px(g, 5, 7, 2, 2, eyeC) // big round eyes
-    px(g, 9, 7, 2, 2, eyeC)
-    dot(g, 5, 7, '#ffffff') // eye sparkle
-    dot(g, 9, 7, '#ffffff')
+    px(g, 6, 7, 1, 2, eyeC) // two tall 1px eyes
+    px(g, 9, 7, 1, 2, eyeC)
     dot(g, 8, 8, pal.skinShade) // nose
-    px(g, 7, 9, 2, 1, '#bd6a60') // mouth
+    px(g, 7, 10, 2, 1, '#bd6a60') // mouth
     if (pal.freckles) {
       dot(g, 5, 9, '#d89a78')
       dot(g, 10, 9, '#d89a78')
@@ -234,18 +229,14 @@ function drawHumanoid(
     dot(g, 4, 8, '#f0a6a6') // blush
     dot(g, 11, 8, '#f0a6a6')
   } else if (dir === 'left') {
-    px(g, 5, 6, 2, 1, brow)
-    px(g, 5, 7, 2, 2, eyeC)
-    dot(g, 5, 7, '#ffffff')
+    px(g, 6, 7, 1, 2, eyeC)
     px(g, 4, 8, 1, 1, pal.skinShade) // nose
-    px(g, 5, 9, 2, 1, '#bd6a60')
+    px(g, 5, 10, 2, 1, '#bd6a60')
     dot(g, 4, 8, '#f0a6a6')
   } else if (dir === 'right') {
-    px(g, 9, 6, 2, 1, brow)
-    px(g, 9, 7, 2, 2, eyeC)
-    dot(g, 9, 7, '#ffffff')
+    px(g, 9, 7, 1, 2, eyeC)
     px(g, 11, 8, 1, 1, pal.skinShade)
-    px(g, 9, 9, 2, 1, '#bd6a60')
+    px(g, 9, 10, 2, 1, '#bd6a60')
     dot(g, 11, 8, '#f0a6a6')
   }
 
