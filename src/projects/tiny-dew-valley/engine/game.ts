@@ -733,11 +733,19 @@ export class Game {
     else if (Math.abs(cy - p.y) > 2) p.dir = cy > p.y ? 'down' : 'up'
     if (this.workCooldown > 0) return
     this.workCooldown = WORK_INTERVAL
-    this.workAnimT = 0.28
-    if (work.kind === 'pickup') this.pickupGroundItem(work.t)
-    else if (work.kind === 'harvest') this.harvestCrop(work.t)
-    else if (work.kind === 'chop') this.chopObstacle(work.t)
-    else if (work.kind === 'plant') this.plantTile(work.t)
+    if (work.kind !== 'pickup' && (this.state.stamina < 1 || this.state.player.exhausted)) {
+      this.state.player.exhausted = true
+      this.workTile = null
+      return
+    }
+    if (work.kind === 'pickup') {
+      this.pickupGroundItem(work.t)
+    } else {
+      this.workAnimT = 0.28
+      if (work.kind === 'harvest') this.harvestCrop(work.t)
+      else if (work.kind === 'chop') this.chopObstacle(work.t)
+      else if (work.kind === 'plant') this.plantTile(work.t)
+    }
   }
 
   private chopObstacle(t: Tile) {
