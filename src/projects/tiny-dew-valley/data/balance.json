@@ -1,0 +1,250 @@
+{
+  "gameplay": {
+    "inventorySize": 24,
+    "walkSpeed": 74,
+    "gameMinutesPerSecond": 5,
+    "workInterval": 0.42,
+    "respawnSeconds": 80,
+    "cropStageSeconds": 22,
+    "cookBatchMax": 20,
+    "startMaxStamina": 20,
+    "workCost": {
+      "chop": 1,
+      "harvest": 1,
+      "plant": 1
+    }
+  },
+  "cookingFire": {
+    "builtFlag": "build:cookingFire",
+    "buildCost": [{ "itemId": "wood", "qty": 5 }],
+    "baseSlots": 2,
+    "slotsPerLevel": 2,
+    "maxLevel": 4,
+    "upgrades": [
+      { "level": 2, "costGold": 180, "costItems": [{ "itemId": "stone", "qty": 12 }] },
+      {
+        "level": 3,
+        "costGold": 420,
+        "costItems": [
+          { "itemId": "stone", "qty": 24 },
+          { "itemId": "wood", "qty": 18 }
+        ]
+      },
+      {
+        "level": 4,
+        "costGold": 760,
+        "costItems": [
+          { "itemId": "stone", "qty": 40 },
+          { "itemId": "hardwood", "qty": 6 }
+        ]
+      }
+    ]
+  },
+  "fields": {
+    "rowBaseGold": 45,
+    "rowGoldStep": 35,
+    "rowBaseWood": 6,
+    "rowWoodStep": 4,
+    "fieldSize": 3,
+    "defaultCrop": "wheat",
+    "buildOptions": [
+      { "id": "field_east", "costGold": 60, "costItems": [{ "itemId": "wood", "qty": 8 }], "level": 1, "rect": { "x": 23, "y": 18, "w": 2, "h": 3 } },
+      {
+        "id": "field_south",
+        "costGold": 120,
+        "costItems": [
+          { "itemId": "wood", "qty": 12 },
+          { "itemId": "stone", "qty": 4 }
+        ],
+        "level": 2,
+        "rect": { "x": 19, "y": 21, "w": 6, "h": 2 }
+      },
+      {
+        "id": "field_far_east",
+        "costGold": 220,
+        "costItems": [
+          { "itemId": "wood", "qty": 18 },
+          { "itemId": "stone", "qty": 10 }
+        ],
+        "level": 3,
+        "rect": { "x": 25, "y": 18, "w": 2, "h": 5 }
+      }
+    ]
+  },
+  "animals": {
+    "maxAnimals": 10,
+    "farms": [
+      { "id": "chicken", "productItemId": "egg", "productQty": 1, "dropSeconds": 5, "animalBasePrice": 120, "animalPriceStep": 60, "x": 36, "y": 6, "w": 7, "h": 6 },
+      { "id": "cow", "productItemId": "milk", "productQty": 1, "dropSeconds": 7, "animalBasePrice": 320, "animalPriceStep": 140, "x": 36, "y": 13, "w": 7, "h": 6 },
+      { "id": "pig", "productItemId": "bacon", "productQty": 1, "dropSeconds": 9, "animalBasePrice": 480, "animalPriceStep": 200, "x": 36, "y": 20, "w": 7, "h": 6 }
+    ],
+    "upgrades": [
+      { "id": "chicken_speed", "itemId": "upgrade_chicken_speed", "farmId": "chicken", "kind": "speed", "maxLevel": 3, "basePrice": 220, "priceStep": 180 },
+      { "id": "chicken_yield", "itemId": "upgrade_chicken_yield", "farmId": "chicken", "kind": "yield", "maxLevel": 3, "basePrice": 280, "priceStep": 220 },
+      { "id": "cow_speed", "itemId": "upgrade_cow_speed", "farmId": "cow", "kind": "speed", "maxLevel": 3, "basePrice": 520, "priceStep": 360 },
+      { "id": "cow_yield", "itemId": "upgrade_cow_yield", "farmId": "cow", "kind": "yield", "maxLevel": 3, "basePrice": 640, "priceStep": 420 },
+      { "id": "pig_speed", "itemId": "upgrade_pig_speed", "farmId": "pig", "kind": "speed", "maxLevel": 3, "basePrice": 900, "priceStep": 520 },
+      { "id": "pig_yield", "itemId": "upgrade_pig_yield", "farmId": "pig", "kind": "yield", "maxLevel": 3, "basePrice": 1080, "priceStep": 620 }
+    ]
+  },
+  "tools": {
+    "base": {
+      "pickaxe": { "damage": 1 },
+      "scythe": { "damage": 1 },
+      "sword": { "damage": 1 }
+    },
+    "upgrades": {
+      "pickaxe": [
+        { "level": 1, "damage": 2, "costGold": 300, "costItems": [{ "itemId": "stone", "qty": 20 }, { "itemId": "copper_ore", "qty": 8 }] },
+        { "level": 2, "damage": 3, "costGold": 900, "costItems": [{ "itemId": "stone", "qty": 50 }, { "itemId": "copper_ore", "qty": 18 }, { "itemId": "iron_ore", "qty": 10 }] }
+      ],
+      "scythe": [
+        { "level": 1, "damage": 2, "costGold": 260, "costItems": [{ "itemId": "stone", "qty": 14 }, { "itemId": "copper_ore", "qty": 6 }] },
+        { "level": 2, "damage": 3, "costGold": 760, "costItems": [{ "itemId": "stone", "qty": 35 }, { "itemId": "copper_ore", "qty": 12 }, { "itemId": "iron_ore", "qty": 8 }] }
+      ],
+      "sword": [
+        { "level": 1, "damage": 2, "costGold": 500, "costItems": [{ "itemId": "stone", "qty": 20 }, { "itemId": "copper_ore", "qty": 12 }] },
+        { "level": 2, "damage": 3, "costGold": 1200, "costItems": [{ "itemId": "stone", "qty": 40 }, { "itemId": "copper_ore", "qty": 15 }, { "itemId": "iron_ore", "qty": 18 }] }
+      ]
+    }
+  },
+  "shop": {
+    "entries": [
+      { "itemId": "permit_chicken", "buyPrice": 300, "costItems": [{ "itemId": "wood", "qty": 10 }], "grantsFlag": "unlock:animal:chicken" },
+      { "itemId": "animal_chicken", "buyPrice": 120, "animalFarmId": "chicken", "requiresFlag": "unlock:animal:chicken" },
+      { "itemId": "seed_strawberry", "buyPrice": 650, "grantsFlag": "unlock:crop:strawberry", "requiresFlag": "seen:item:toast" },
+      { "itemId": "permit_dairy", "buyPrice": 1100, "costItems": [{ "itemId": "wood", "qty": 22 }], "grantsFlag": "unlock:dairy", "requiresFlag": "seen:item:strawberry_jam" },
+      { "itemId": "animal_cow", "buyPrice": 320, "animalFarmId": "cow", "requiresFlag": "unlock:dairy" },
+      { "itemId": "seed_tomato", "buyPrice": 1400, "grantsFlag": "unlock:crop:tomato", "requiresFlag": "seen:item:strawberry_jam_toast" },
+      { "itemId": "seed_corn", "buyPrice": 2200, "grantsFlag": "unlock:crop:corn", "requiresFlag": "seen:item:pizza" },
+      { "itemId": "permit_pig", "buyPrice": 2600, "costItems": [{ "itemId": "wood", "qty": 35 }], "grantsFlag": "unlock:animal:pig", "requiresFlag": "unlock:dairy" },
+      { "itemId": "animal_pig", "buyPrice": 480, "animalFarmId": "pig", "requiresFlag": "unlock:animal:pig" }
+    ]
+  },
+  "recipes": [
+    { "id": "flour", "craftSeconds": 6, "difficulty": 1 },
+    { "id": "bread", "craftSeconds": 12, "difficulty": 1 },
+    { "id": "toast", "craftSeconds": 20, "difficulty": 2 },
+    { "id": "tomato_sauce", "craftSeconds": 18, "difficulty": 2 },
+    { "id": "butter", "craftSeconds": 18, "difficulty": 2 },
+    { "id": "cheese", "craftSeconds": 24, "difficulty": 2 },
+    { "id": "strawberry_milk", "craftSeconds": 22, "difficulty": 2 },
+    { "id": "pizza", "craftSeconds": 40, "difficulty": 3 },
+    { "id": "pastry", "craftSeconds": 42, "difficulty": 4 },
+    { "id": "strawberry_jam", "craftSeconds": 30, "difficulty": 3 },
+    { "id": "strawberry_jam_toast", "craftSeconds": 48, "difficulty": 4 },
+    { "id": "butter_corn", "craftSeconds": 46, "difficulty": 4 },
+    { "id": "corn_pizza", "craftSeconds": 68, "difficulty": 5 },
+    { "id": "bacon_toast", "craftSeconds": 36, "difficulty": 4 },
+    { "id": "herbal_tea", "craftSeconds": 20, "difficulty": 2 }
+  ],
+  "tutorialRewards": [
+    { "id": "wood5", "rewardGold": 20, "rewardItems": [], "rewardText": "20G" },
+    { "id": "build_fire", "rewardGold": 0, "rewardItems": [{ "itemId": "crop_wheat_normal", "qty": 2 }], "rewardText": "밀 2개" },
+    { "id": "first_bread", "rewardGold": 80, "rewardItems": [], "rewardText": "80G" },
+    { "id": "first_toast", "rewardGold": 150, "rewardItems": [], "rewardText": "150G" }
+  ],
+  "orders": {
+    "pool": [
+      { "itemId": "bread", "minQty": 2, "maxQty": 4, "hint": "빵 주문은 닭장 자금을 모으기 좋아요." },
+      { "itemId": "toast", "minQty": 1, "maxQty": 3, "hint": "토스트 수익으로 딸기 재배권을 노려보세요." },
+      { "itemId": "strawberry_jam", "minQty": 1, "maxQty": 3, "hint": "딸기쨈은 다음 목장 확장의 징검다리예요." },
+      { "itemId": "strawberry_milk", "minQty": 1, "maxQty": 2, "hint": "우유 라인을 돌리면 고급 디저트가 빨라져요." },
+      { "itemId": "strawberry_jam_toast", "minQty": 1, "maxQty": 2, "hint": "딸기쨈 토스트 다음은 토마토와 피자예요." },
+      { "itemId": "pizza", "minQty": 1, "maxQty": 2, "hint": "피자 수익으로 옥수수 후반 라인을 열어보세요." },
+      { "itemId": "butter_corn", "minQty": 1, "maxQty": 2, "hint": "옥수수는 후반 요리의 좋은 보조 재료예요." },
+      { "itemId": "corn_pizza", "minQty": 1, "maxQty": 2, "hint": "콘치즈 피자는 후반 주문 보상이 큽니다." },
+      { "itemId": "bacon_toast", "minQty": 1, "maxQty": 2, "hint": "돼지농장까지 열면 베이컨 주문도 준비해보세요." }
+    ]
+  },
+  "mine": {
+    "maxFloor": 10,
+    "monsters": {
+      "slime": {
+        "hp": 7,
+        "attack": 2,
+        "speed": 10,
+        "passiveDropBonus": 0,
+        "passiveWeights": { "magnet": 1.3, "crop_yield": 1.2 },
+        "drops": [
+          { "itemId": "stone", "minQty": 1, "maxQty": 1, "chance": 1 },
+          { "itemId": "copper_ore", "minQty": 1, "maxQty": 1, "chance": 0.18 }
+        ]
+      },
+      "bat": {
+        "hp": 6,
+        "attack": 2,
+        "speed": 18,
+        "passiveDropBonus": 0.01,
+        "passiveWeights": { "move_speed": 1.5, "cook_speed": 1.15 },
+        "drops": [
+          { "itemId": "stone", "minQty": 1, "maxQty": 1, "chance": 0.7 },
+          { "itemId": "iron_ore", "minQty": 1, "maxQty": 1, "chance": 0.12 }
+        ]
+      },
+      "mine_rat": {
+        "hp": 10,
+        "attack": 3,
+        "speed": 14,
+        "passiveDropBonus": 0.02,
+        "passiveWeights": { "magnet": 1.25, "animal_yield": 1.35, "stamina_save": 1.2 },
+        "drops": [
+          { "itemId": "stone", "minQty": 1, "maxQty": 2, "chance": 1 },
+          { "itemId": "iron_ore", "minQty": 1, "maxQty": 1, "chance": 0.2 }
+        ]
+      },
+      "stone_golem": {
+        "hp": 16,
+        "attack": 4,
+        "speed": 7,
+        "passiveDropBonus": 0.03,
+        "passiveWeights": { "attack": 1.45, "ore_bonus": 1.5 },
+        "rarityBonus": { "rare": 0.04, "epic": 0.02 },
+        "drops": [
+          { "itemId": "stone", "minQty": 2, "maxQty": 4, "chance": 1 },
+          { "itemId": "iron_ore", "minQty": 1, "maxQty": 2, "chance": 0.28 }
+        ]
+      },
+      "mine_guardian": {
+        "hp": 32,
+        "attack": 6,
+        "speed": 8,
+        "passiveDropBonus": 0.35,
+        "passiveWeights": { "attack": 1.5, "ore_bonus": 1.4, "stamina_save": 1.2 },
+        "rarityBonus": { "rare": 0.2, "epic": 0.15 },
+        "drops": [
+          { "itemId": "stone", "minQty": 6, "maxQty": 10, "chance": 1 },
+          { "itemId": "iron_ore", "minQty": 3, "maxQty": 5, "chance": 1 },
+          { "itemId": "copper_ore", "minQty": 2, "maxQty": 4, "chance": 0.75 }
+        ]
+      }
+    },
+    "floors": [
+      { "floor": 1, "ores": { "rock": 8, "copper_ore": 2 }, "monsters": [{ "id": "slime", "count": 1 }], "passiveDropChance": 0.03, "rarityChance": { "normal": 0.9, "rare": 0.1, "epic": 0 } },
+      { "floor": 2, "ores": { "rock": 7, "copper_ore": 3 }, "monsters": [{ "id": "slime", "count": 2 }], "passiveDropChance": 0.03, "rarityChance": { "normal": 0.9, "rare": 0.1, "epic": 0 } },
+      { "floor": 3, "ores": { "rock": 6, "copper_ore": 4 }, "monsters": [{ "id": "slime", "count": 3 }], "passiveDropChance": 0.05, "rarityChance": { "normal": 0.9, "rare": 0.1, "epic": 0 } },
+      { "floor": 4, "ores": { "rock": 5, "copper_ore": 4, "iron_ore": 1 }, "monsters": [{ "id": "slime", "count": 2 }, { "id": "bat", "count": 1 }], "passiveDropChance": 0.05, "rarityChance": { "normal": 0.78, "rare": 0.2, "epic": 0.02 } },
+      { "floor": 5, "ores": { "rock": 5, "copper_ore": 3, "iron_ore": 2 }, "monsters": [{ "id": "bat", "count": 3 }], "passiveDropChance": 0.07, "rarityChance": { "normal": 0.78, "rare": 0.2, "epic": 0.02 } },
+      { "floor": 6, "ores": { "rock": 4, "copper_ore": 2, "iron_ore": 4 }, "monsters": [{ "id": "bat", "count": 2 }, { "id": "mine_rat", "count": 2 }], "passiveDropChance": 0.07, "rarityChance": { "normal": 0.78, "rare": 0.2, "epic": 0.02 } },
+      { "floor": 7, "ores": { "rock": 4, "copper_ore": 1, "iron_ore": 5 }, "monsters": [{ "id": "mine_rat", "count": 4 }], "passiveDropChance": 0.09, "rarityChance": { "normal": 0.65, "rare": 0.3, "epic": 0.05 } },
+      { "floor": 8, "ores": { "rock": 3, "copper_ore": 1, "iron_ore": 6 }, "monsters": [{ "id": "mine_rat", "count": 3 }, { "id": "stone_golem", "count": 1 }], "passiveDropChance": 0.09, "rarityChance": { "normal": 0.65, "rare": 0.3, "epic": 0.05 } },
+      { "floor": 9, "ores": { "rock": 3, "iron_ore": 7 }, "monsters": [{ "id": "mine_rat", "count": 2 }, { "id": "stone_golem", "count": 3 }], "passiveDropChance": 0.12, "rarityChance": { "normal": 0.65, "rare": 0.3, "epic": 0.05 } },
+      { "floor": 10, "ores": { "rock": 2, "iron_ore": 8 }, "monsters": [{ "id": "stone_golem", "count": 4 }, { "id": "mine_guardian", "count": 1 }], "passiveDropChance": 0.15, "rarityChance": { "normal": 0.55, "rare": 0.35, "epic": 0.1 } }
+    ]
+  },
+  "legacyIdMap": {
+    "parsnip": "tomato",
+    "golden_pumpkin": "corn",
+    "seed_parsnip": "seed_tomato",
+    "seed_golden_pumpkin": "seed_corn",
+    "crop_parsnip_normal": "crop_tomato_normal",
+    "crop_golden_pumpkin_normal": "crop_corn_normal",
+    "crop_golden_pumpkin_silver": "crop_corn_normal",
+    "crop_golden_pumpkin_gold": "crop_corn_normal",
+    "crop_golden_pumpkin_perfect": "crop_corn_normal",
+    "parsnip_soup": "tomato_sauce",
+    "cream_stew": "pizza",
+    "pumpkin_soup": "butter_corn",
+    "pumpkin_pie": "corn_pizza"
+  }
+}

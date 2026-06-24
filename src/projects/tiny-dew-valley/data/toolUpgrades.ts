@@ -1,4 +1,5 @@
 import type { CostItem, ToolId } from '../types'
+import balance from './balance.json'
 
 export type UpgradeableToolId = Extract<ToolId, 'pickaxe' | 'scythe'> | 'sword'
 
@@ -18,22 +19,28 @@ export interface ToolUpgradeDef {
 export const UPGRADEABLE_TOOLS: UpgradeableToolId[] = ['pickaxe', 'scythe', 'sword']
 
 export const TOOL_BASE: Record<UpgradeableToolId, ToolBaseDef> = {
-  pickaxe: { name: '낡은 곡괭이', damage: 1 },
-  scythe: { name: '낡은 낫', damage: 1 },
-  sword: { name: '낡은 검', damage: 1 },
+  pickaxe: { name: '낡은 곡괭이', damage: balance.tools.base.pickaxe.damage },
+  scythe: { name: '낡은 낫', damage: balance.tools.base.scythe.damage },
+  sword: { name: '낡은 검', damage: balance.tools.base.sword.damage },
+}
+
+const upgradeNames: Record<UpgradeableToolId, string[]> = {
+  pickaxe: ['구리 곡괭이', '철 곡괭이'],
+  scythe: ['구리 낫', '철 낫'],
+  sword: ['구리 검', '철 검'],
 }
 
 export const TOOL_UPGRADES: Record<UpgradeableToolId, ToolUpgradeDef[]> = {
-  pickaxe: [
-    { level: 1, name: '구리 곡괭이', damage: 2, costGold: 300, costItems: [{ itemId: 'stone', qty: 20 }, { itemId: 'copper_ore', qty: 8 }] },
-    { level: 2, name: '철 곡괭이', damage: 3, costGold: 900, costItems: [{ itemId: 'stone', qty: 50 }, { itemId: 'copper_ore', qty: 18 }, { itemId: 'iron_ore', qty: 10 }] },
-  ],
-  scythe: [
-    { level: 1, name: '구리 낫', damage: 2, costGold: 260, costItems: [{ itemId: 'stone', qty: 14 }, { itemId: 'copper_ore', qty: 6 }] },
-    { level: 2, name: '철 낫', damage: 3, costGold: 760, costItems: [{ itemId: 'stone', qty: 35 }, { itemId: 'copper_ore', qty: 12 }, { itemId: 'iron_ore', qty: 8 }] },
-  ],
-  sword: [
-    { level: 1, name: '구리 검', damage: 2, costGold: 500, costItems: [{ itemId: 'stone', qty: 20 }, { itemId: 'copper_ore', qty: 12 }] },
-    { level: 2, name: '철 검', damage: 3, costGold: 1200, costItems: [{ itemId: 'stone', qty: 40 }, { itemId: 'copper_ore', qty: 15 }, { itemId: 'iron_ore', qty: 18 }] },
-  ],
+  pickaxe: balance.tools.upgrades.pickaxe.map((upgrade, index) => ({
+    ...upgrade,
+    name: upgradeNames.pickaxe[index] ?? `곡괭이 Lv.${upgrade.level}`,
+  })),
+  scythe: balance.tools.upgrades.scythe.map((upgrade, index) => ({
+    ...upgrade,
+    name: upgradeNames.scythe[index] ?? `낫 Lv.${upgrade.level}`,
+  })),
+  sword: balance.tools.upgrades.sword.map((upgrade, index) => ({
+    ...upgrade,
+    name: upgradeNames.sword[index] ?? `검 Lv.${upgrade.level}`,
+  })),
 }

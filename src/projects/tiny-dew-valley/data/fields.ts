@@ -1,3 +1,5 @@
+import balance from './balance.json'
+
 export interface FieldPlotDef {
   id: string
   name: string
@@ -6,7 +8,7 @@ export interface FieldPlotDef {
   sign: { x: number; y: number }
 }
 
-export const FIELD_SIZE = 3
+export const FIELD_SIZE = balance.fields.fieldSize
 
 // Three plots per row, two rows. Unlock order is right-to-left, then the row below.
 export const FIELD_PLOTS: FieldPlotDef[] = [
@@ -18,6 +20,6 @@ export const FIELD_PLOTS: FieldPlotDef[] = [
   { id: 'field_6', name: '밭 구역', x: 23, y: 20, sign: { x: 24, y: 19 } },
 ]
 
-export const DEFAULT_FIELD_CROP = 'wheat'
-export const FIELD_ROW_COST_GOLD = 45
-export const FIELD_ROW_COST_WOOD = 6
+export const DEFAULT_FIELD_CROP = balance.fields.defaultCrop
+export const FIELD_ROW_COST_GOLD = balance.fields.rowBaseGold
+export const FIELD_ROW_COST_WOOD = balance.fields.rowBaseWood

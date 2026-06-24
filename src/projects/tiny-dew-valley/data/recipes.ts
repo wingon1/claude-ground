@@ -1,7 +1,10 @@
 import type { RecipeDef } from '../types'
+import balance from './balance.json'
 import { CHICKEN_UNLOCK_FLAG, DAIRY_UNLOCK_FLAG, PIG_UNLOCK_FLAG, cropUnlockFlag } from './unlocks'
 
-export const RECIPES: RecipeDef[] = [
+const recipeBalance = Object.fromEntries(balance.recipes.map((recipe) => [recipe.id, recipe]))
+
+const RECIPES_BASE: RecipeDef[] = [
   {
     id: 'flour',
     name: '밀 갈기',
@@ -181,3 +184,10 @@ export const RECIPES: RecipeDef[] = [
     difficulty: 2,
   },
 ]
+
+export const RECIPES: RecipeDef[] = RECIPES_BASE.map((recipe) => {
+  const tuning = recipeBalance[recipe.id]
+  return tuning
+    ? { ...recipe, craftSeconds: tuning.craftSeconds, difficulty: tuning.difficulty }
+    : recipe
+})

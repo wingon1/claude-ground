@@ -1,4 +1,5 @@
 import type { PassiveId, PassiveRarity } from './passives'
+import balance from './balance.json'
 
 export type MonsterId = 'slime' | 'bat' | 'mine_rat' | 'stone_golem' | 'mine_guardian'
 
@@ -23,7 +24,7 @@ export interface MonsterDef {
   drops: MonsterDrop[]
 }
 
-export const MONSTERS: Record<MonsterId, MonsterDef> = {
+const MONSTER_BASE: Record<MonsterId, MonsterDef> = {
   slime: {
     id: 'slime',
     name: '슬라임',
@@ -103,3 +104,10 @@ export const MONSTERS: Record<MonsterId, MonsterDef> = {
     ],
   },
 }
+
+export const MONSTERS: Record<MonsterId, MonsterDef> = Object.fromEntries(
+  Object.entries(MONSTER_BASE).map(([id, monster]) => {
+    const tuning = balance.mine.monsters[id as MonsterId]
+    return [id, tuning ? { ...monster, ...tuning } : monster]
+  }),
+) as Record<MonsterId, MonsterDef>

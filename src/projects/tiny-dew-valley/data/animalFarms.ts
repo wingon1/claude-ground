@@ -3,8 +3,9 @@ import {
   DAIRY_UNLOCK_FLAG,
   PIG_UNLOCK_FLAG,
 } from './unlocks'
+import balance from './balance.json'
 
-export const ANIMAL_FARM_MAX_ANIMALS = 10
+export const ANIMAL_FARM_MAX_ANIMALS = balance.animals.maxAnimals
 
 export interface AnimalFarmDef {
   id: string
@@ -23,53 +24,34 @@ export interface AnimalFarmDef {
   color: string
 }
 
+const farmBalance = Object.fromEntries(balance.animals.farms.map((farm) => [farm.id, farm]))
+
+function farm(id: string) {
+  const value = farmBalance[id]
+  if (!value) throw new Error(`Missing animal farm balance: ${id}`)
+  return value
+}
+
 export const ANIMAL_FARMS: AnimalFarmDef[] = [
   {
-    id: 'chicken',
+    ...farm('chicken'),
     name: '닭농장',
     animalItemId: 'animal_chicken',
     unlockFlag: CHICKEN_UNLOCK_FLAG,
-    productItemId: 'egg',
-    productQty: 1,
-    dropSeconds: 5,
-    animalBasePrice: 120,
-    animalPriceStep: 60,
-    x: 36,
-    y: 6,
-    w: 7,
-    h: 6,
     color: '#f0c85a',
   },
   {
-    id: 'cow',
+    ...farm('cow'),
     name: '소농장',
     animalItemId: 'animal_cow',
     unlockFlag: DAIRY_UNLOCK_FLAG,
-    productItemId: 'milk',
-    productQty: 1,
-    dropSeconds: 7,
-    animalBasePrice: 320,
-    animalPriceStep: 140,
-    x: 36,
-    y: 13,
-    w: 7,
-    h: 6,
     color: '#e9e2d2',
   },
   {
-    id: 'pig',
+    ...farm('pig'),
     name: '돼지농장',
     animalItemId: 'animal_pig',
     unlockFlag: PIG_UNLOCK_FLAG,
-    productItemId: 'bacon',
-    productQty: 1,
-    dropSeconds: 9,
-    animalBasePrice: 480,
-    animalPriceStep: 200,
-    x: 36,
-    y: 20,
-    w: 7,
-    h: 6,
     color: '#e89aa8',
   },
 ]
