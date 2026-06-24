@@ -918,7 +918,7 @@ export class GameRenderer {
     R(52, 34, 1, 1, '#4a3420')
     R(59, 34, 1, 1, '#4a3420')
 
-    // ---- rope-only barrier + keep-out sign across the front ----
+    // ---- rope-only barrier across the front ----
     ctx.fillStyle = 'rgba(0,0,0,0.14)'
     ctx.fillRect(x + 10 * S, y + 53 * S, 46 * S, 2 * S)
     // two short stakes
@@ -937,11 +937,6 @@ export class GameRenderer {
     }
     R(12, 45, 2, 1, '#b6a474') // knots
     R(52, 45, 2, 1, '#b6a474')
-    // red "출입금지" no-entry sign hung on the rope
-    R(25, 44, 11, 9, '#9e2828') // dark border
-    R(26, 45, 9, 7, '#cf3a3a') // red field
-    R(26, 45, 9, 1, '#e85f5f') // top sheen
-    R(27, 48, 7, 2, '#f4f0e8') // white bar
   }
 
   private drawSpeechBubbles(S: number) {
