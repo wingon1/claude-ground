@@ -313,6 +313,12 @@
 .tdv-bar .stam.low {
   background: #d66a3a;
 }
+.tdv-bar .hp {
+  background: #d94b45;
+}
+.tdv-bar .hp.low {
+  background: #a9252f;
+}
 .tdv-bar .water {
   background: #4f93d6;
 }

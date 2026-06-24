@@ -180,6 +180,8 @@ export interface GameState {
   /** Cosmetic day/night clock minutes; no gameplay deadline. */
   timeMinutes: number
   gold: number
+  hp: number
+  maxHp: number
   stamina: number
   maxStamina: number
   player: PlayerState

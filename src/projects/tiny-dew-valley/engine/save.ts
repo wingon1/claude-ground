@@ -1,4 +1,5 @@
 import type { GameState } from '../types'
+import { START_MAX_HP } from '../data/gameBalance'
 
 const KEY = 'tiny-dew-valley-save-v1'
 // v4: cozy-island-style core loop (tap-to-move, auto-work, sleep-to-grow).
@@ -40,6 +41,9 @@ export function loadGame(): GameState | null {
     ) {
       return null
     }
+    if (typeof data.maxHp !== 'number' || data.maxHp <= 0) data.maxHp = START_MAX_HP
+    if (typeof data.hp !== 'number') data.hp = data.maxHp
+    data.hp = Math.max(0, Math.min(data.maxHp, data.hp))
     return data
   } catch {
     return null

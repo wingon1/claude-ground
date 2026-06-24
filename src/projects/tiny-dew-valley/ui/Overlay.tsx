@@ -84,6 +84,12 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
         <div className="tdv-rightcol">
           <div className="tdv-panel tdv-bars">
             <Bar
+              cls={ui.hp <= ui.maxHp * 0.25 ? 'hp low' : 'hp'}
+              value={ui.hp}
+              max={ui.maxHp}
+              text={`HP ${ui.hp}/${ui.maxHp}`}
+            />
+            <Bar
               cls={ui.stamina <= ui.maxStamina * 0.25 ? 'stam low' : 'stam'}
               value={ui.stamina}
               max={ui.maxStamina}
@@ -368,7 +374,7 @@ function SettingsModal({
 }
 
 function Bar({ cls, value, max, iconKey, text }: { cls: string; value: number; max: number; iconKey?: string; text: string }) {
-  const pct = Math.max(0, Math.min(100, (value / max) * 100))
+  const pct = max > 0 ? Math.max(0, Math.min(100, (value / max) * 100)) : 0
   return (
     <div className="tdv-bar">
       <span className={cls} style={{ width: `${pct}%` }} />

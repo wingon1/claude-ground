@@ -17,6 +17,7 @@ export const WORK_INTERVAL = gameplay.workInterval // seconds between auto-work 
 export const RESPAWN_SECS = gameplay.respawnSeconds // trees/rocks/stumps regrow after this
 export const STAGE_SECS_PER_DAY = gameplay.cropStageSeconds // real seconds per crop "grow day"
 export const COOK_BATCH_MAX = gameplay.cookBatchMax
+export const START_MAX_HP = gameplay.startMaxHp
 export const START_MAX_STAMINA = gameplay.startMaxStamina
 
 export const COOKING_FIRE_BUILT_FLAG = cookingFire.builtFlag

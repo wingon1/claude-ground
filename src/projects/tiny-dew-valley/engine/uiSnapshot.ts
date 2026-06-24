@@ -211,6 +211,8 @@ export interface UISnapshot {
   period: string
   periodKey: 'morning' | 'afternoon' | 'golden' | 'night'
   gold: number
+  hp: number
+  maxHp: number
   stamina: number
   maxStamina: number
   inventory: InvSlotView[]

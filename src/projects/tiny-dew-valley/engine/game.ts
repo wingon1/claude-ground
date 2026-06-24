@@ -23,6 +23,7 @@ import {
   RARE_ANIMAL_PRODUCTS,
   RESPAWN_SECS,
   STAGE_SECS_PER_DAY,
+  START_MAX_HP,
   START_MAX_STAMINA,
   TUTORIAL_REWARDS,
   WALK_SPEED,
@@ -116,6 +117,7 @@ export class Game {
   private fade = 0
   private fadeDir = 0
   private pendingWake = false
+  private pendingFaint = false
   private workCooldown = 0
   private exhaustedNotified = false
   private target: { x: number; y: number } | null = null
@@ -220,6 +222,8 @@ export class Game {
       day: 1,
       timeMinutes: 360,
       gold: 0,
+      hp: START_MAX_HP,
+      maxHp: START_MAX_HP,
       stamina: START_MAX_STAMINA,
       maxStamina: START_MAX_STAMINA,
       player: {
@@ -289,6 +293,10 @@ export class Game {
           this.pendingWake = false
           this.audio.sfx('rooster')
           this.fadeDir = -1
+        } else if (this.pendingFaint) {
+          this.recoverFromFaint()
+          this.pendingFaint = false
+          this.fadeDir = -1
         }
       } else if (this.fade <= 0 && this.fadeDir < 0) {
         this.fade = 0
@@ -304,6 +312,7 @@ export class Game {
   private update(dt: number) {
     const s = this.state
     s.timeMinutes += dt * GAME_MIN_PER_SEC // cosmetic clock
+    if (this.pendingFaint) return
     this.movePlayer(dt)
     if (this.area === 'farm') {
       this.autoPlantFields()
@@ -685,12 +694,12 @@ export class Game {
         if (!this.monsterCollides(nx, monster.y)) monster.x = nx
         if (!this.monsterCollides(monster.x, ny)) monster.y = ny
       }
-      if (d <= T * 1.2 && monster.attackT <= 0 && this.state.stamina > 0) {
-        this.state.stamina = Math.max(0, this.state.stamina - def.attack)
-        if (this.state.stamina <= 0) this.state.player.exhausted = true
+      if (d <= T * 1.2 && monster.attackT <= 0 && this.state.hp > 0 && !this.pendingFaint) {
+        this.state.hp = Math.max(0, this.state.hp - def.attack)
         monster.attackT = 1.2
         this.toast(`${def.name}에게 맞았어요.`, 'bad')
         this.audio.sfx('reject')
+        if (this.state.hp <= 0) this.faintPlayer()
       }
     }
   }
@@ -724,6 +733,63 @@ export class Game {
     }
     this.audio.sfx('sparkle')
     this.emit()
+  }
+
+  private faintPlayer() {
+    if (this.pendingFaint) return
+    this.pendingFaint = true
+    this.target = null
+    this.workTile = null
+    this.workTool = null
+    this.state.player.moving = false
+    this.fadeDir = 1
+    this.audio.sfx('reject')
+    this.emit()
+  }
+
+  private recoverFromFaint() {
+    const lost = this.loseFaintItems()
+    const p = this.state.player
+    this.area = 'farm'
+    this.mineTiles = []
+    this.mineMonsters = []
+    this.farmReturn = null
+    p.x = LOCATIONS.spawn.x * T + T / 2
+    p.y = LOCATIONS.spawn.y * T + T
+    p.dir = 'down'
+    p.moving = false
+    this.target = null
+    this.workTile = null
+    this.workTool = null
+    this.state.hp = this.state.maxHp
+    this.phase = 'playing'
+    this.toast(lost.length ? `기절했어요. 잃어버린 아이템: ${lost.join(', ')}` : '기절했지만 잃어버린 아이템은 없어요.', 'bad')
+    this.autosave()
+    this.emit()
+  }
+
+  private loseFaintItems(): string[] {
+    const candidates = this.state.inventory
+      .map((slot) => ({ slot, item: slot.itemId ? getItem(slot.itemId) : null }))
+      .filter((entry) =>
+        entry.slot.itemId &&
+        entry.slot.qty > 0 &&
+        entry.item &&
+        entry.item.id !== 'sword' &&
+        entry.item.type !== 'seed' &&
+        entry.item.type !== 'placeable' &&
+        entry.item.type !== 'misc',
+      )
+    if (candidates.length === 0) return []
+    const shuffled = [...candidates].sort(() => Math.random() - 0.5)
+    const lossCount = Math.min(3, Math.max(1, Math.ceil(shuffled.length * 0.2)))
+    const lost: string[] = []
+    for (const entry of shuffled.slice(0, lossCount)) {
+      const qty = Math.max(1, Math.ceil(entry.slot.qty * 0.25))
+      this.removeItem(entry.slot.itemId, qty)
+      lost.push(`${entry.item?.name ?? entry.slot.itemId} ${qty}개`)
+    }
+    return lost
   }
 
   private completeMineGuardianClear(monster: MonsterDef) {
@@ -1733,6 +1799,7 @@ export class Game {
     if (this.phase !== 'sleepConfirm' && this.phase !== 'playing') return
     const s = this.state
     s.maxStamina += 1
+    s.hp = s.maxHp
     s.stamina = s.maxStamina
     s.player.exhausted = false
     this.exhaustedNotified = false
