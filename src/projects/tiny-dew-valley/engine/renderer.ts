@@ -365,7 +365,7 @@ export class GameRenderer {
 
   private drawBlacksmithNpc(S: number) {
     const npc = this.blacksmithNpcPosition()
-    this.drawHuman(this.sprites.barnaby, npc.x, npc.y, npc.dir, true, false, this.nowSecs() + 1.4, false, 0.35)
+    this.drawHuman(this.sprites.smith, npc.x, npc.y, npc.dir, true, false, this.nowSecs() + 1.4, false, 0.35)
     const ctx = this.ctx
     const sx = this.wx(npc.x + 5)
     const sy = this.wy(npc.y - 17)

@@ -9,6 +9,7 @@ type Pal = {
   skin: string
   skinShade: string
   hair: string
+  hairLite?: string
   top: string
   topShade: string
   bottom: string
@@ -16,6 +17,16 @@ type Pal = {
   hat?: string
   hatShade?: string
   hood?: boolean
+  // Cute / per-character detail knobs.
+  style?: 'short' | 'spiky' | 'twin' | 'side' | 'bald'
+  brow?: string
+  eye?: string
+  beard?: string // beard / stubble colour (older men)
+  apron?: string // worker apron over the torso
+  bow?: string // hair ribbon colour
+  skirt?: string // render a skirt instead of trousers
+  broad?: boolean // wider build (e.g. burly smith)
+  freckles?: boolean
 }
 
 function cv(w: number, h: number): HTMLCanvasElement {
@@ -55,57 +66,137 @@ function drawHumanoid(
   pal: Pal,
 ) {
   const legSwing = frame === 1 ? 1 : frame === 2 ? -1 : 0
+  const hairLite = pal.hairLite ?? lighten(pal.hair)
+  const brow = pal.brow ?? darken(pal.hair)
+  const eyeC = pal.eye ?? '#3a2c34'
+  const style = pal.style ?? 'short'
+
   // Soft layered ground shadow.
   px(g, 4, 21, 8, 1, 'rgba(0,0,0,0.22)')
   px(g, 5, 20, 6, 1, 'rgba(0,0,0,0.12)')
 
-  // Legs with boots and a dark outline base.
-  const legY = 16
-  const lL = 4 + (legSwing > 0 ? 0 : -1)
-  const rL = 4 + (legSwing < 0 ? 0 : -1)
-  px(g, 5, legY, 2, lL, pal.bottom)
-  px(g, 9, legY, 2, rL, pal.bottom)
-  px(g, 5, legY, 1, lL, 'rgba(255,255,255,0.12)') // leg highlight
-  px(g, 9, legY, 1, rL, 'rgba(255,255,255,0.12)')
-  px(g, 5, legY + lL, 2, 1, '#3a2a1a') // boots
-  px(g, 9, legY + rL, 2, 1, '#3a2a1a')
+  // ---- Lower body: skirt (cute) or trousers ----
+  if (pal.skirt) {
+    const lL = 2 + (legSwing > 0 ? 1 : 0)
+    const rL = 2 + (legSwing < 0 ? 1 : 0)
+    px(g, 5, 18, 2, lL, pal.skin) // bare legs
+    px(g, 9, 18, 2, rL, pal.skin)
+    px(g, 5, 18 + lL, 2, 1, '#8a4f33') // little shoes
+    px(g, 9, 18 + rL, 2, 1, '#8a4f33')
+    px(g, 4, 15, 8, 3, pal.skirt) // A-line skirt
+    px(g, 3, 17, 10, 2, pal.skirt)
+    px(g, 3, 18, 10, 1, darken(pal.skirt))
+    px(g, 4, 15, 8, 1, lighten(pal.skirt))
+  } else {
+    const legY = 16
+    const lL = 4 + (legSwing > 0 ? 0 : -1)
+    const rL = 4 + (legSwing < 0 ? 0 : -1)
+    px(g, 5, legY, 2, lL, pal.bottom)
+    px(g, 9, legY, 2, rL, pal.bottom)
+    px(g, 5, legY, 1, lL, 'rgba(255,255,255,0.12)')
+    px(g, 9, legY, 1, rL, 'rgba(255,255,255,0.12)')
+    px(g, 5, legY + lL, 2, 1, '#3a2a1a') // boots
+    px(g, 9, legY + rL, 2, 1, '#3a2a1a')
+  }
 
-  // Torso: base, lower shade band, collar accent, side shading + outline.
-  px(g, 4, 10, 8, 7, pal.top)
-  px(g, 4, 14, 8, 3, pal.topShade)
-  px(g, 4, 10, 8, 1, pal.accent)
-  px(g, 11, 11, 1, 6, 'rgba(0,0,0,0.18)') // right-side shade
-  px(g, 4, 10, 1, 7, 'rgba(255,255,255,0.10)') // left-side light
-  px(g, 3, 16, 10, 1, OUTLINE) // belt/hem outline
+  // ---- Torso ----
+  const tx = pal.broad ? 3 : 4
+  const tw = pal.broad ? 10 : 8
+  px(g, tx, 10, tw, 7, pal.top)
+  px(g, tx, 14, tw, 3, pal.topShade)
+  px(g, tx, 10, tw, 1, pal.accent) // collar
+  px(g, tx + tw - 1, 11, 1, 6, 'rgba(0,0,0,0.18)') // right-side shade
+  px(g, tx, 10, 1, 7, 'rgba(255,255,255,0.10)') // left-side light
+  px(g, tx - 1, 16, tw + 2, 1, OUTLINE) // belt/hem outline
 
-  // Arms + hands.
-  px(g, 3, 11, 2, 5, pal.top)
-  px(g, 11, 11, 2, 5, pal.top)
-  px(g, 11, 11, 1, 5, pal.topShade)
-  px(g, 3, 15, 2, 1, pal.skin)
-  px(g, 11, 15, 2, 1, pal.skin)
+  // Apron over the torso (workers).
+  if (pal.apron) {
+    px(g, 6, 10, 4, 7, pal.apron)
+    px(g, 5, 13, 6, 4, pal.apron)
+    px(g, 6, 10, 4, 1, lighten(pal.apron))
+    px(g, 7, 12, 2, 1, darken(pal.apron)) // pocket seam
+  }
 
-  // Head with cheek shading.
+  // ---- Arms + hands ----
+  const aL = tx - 1
+  const aR = tx + tw - 1
+  px(g, aL, 11, 2, 5, pal.top)
+  px(g, aR, 11, 2, 5, pal.top)
+  px(g, aR, 11, 1, 5, pal.topShade)
+  px(g, aL, 15, 2, 1, pal.skin)
+  px(g, aR, 15, 2, 1, pal.skin)
+
+  // ---- Head (rounded, slightly chibi) ----
   px(g, 4, 4, 8, 7, pal.skin)
-  px(g, 4, 10, 8, 1, pal.skinShade)
-  px(g, 11, 5, 1, 5, pal.skinShade)
+  g.clearRect(4, 4, 1, 1)
+  g.clearRect(11, 4, 1, 1)
+  px(g, 4, 10, 8, 1, pal.skinShade) // jaw shade
+  px(g, 11, 5, 1, 5, pal.skinShade) // right cheek
   px(g, 4, 5, 1, 5, 'rgba(255,255,255,0.10)')
+  if (dir === 'down') {
+    px(g, 3, 7, 1, 2, pal.skin) // ears
+    px(g, 12, 7, 1, 2, pal.skin)
+    dot(g, 3, 8, pal.skinShade)
+    dot(g, 12, 8, pal.skinShade)
+  }
 
-  // Hair / hood.
+  // ---- Hair ----
   if (pal.hood) {
     px(g, 3, 2, 10, 7, pal.hair)
-    px(g, 3, 2, 10, 1, lighten(pal.hair))
+    px(g, 3, 2, 10, 1, hairLite)
     px(g, 4, 5, 8, 5, pal.skin) // face opening
     px(g, 4, 10, 8, 1, pal.skinShade)
     px(g, 11, 6, 1, 4, pal.skinShade)
+  } else if (dir === 'up') {
+    px(g, 3, 2, 10, 8, pal.hair) // full back of head
+    px(g, 3, 2, 10, 1, hairLite)
+    px(g, 3, 9, 1, 2, pal.hair)
+    px(g, 12, 9, 1, 2, pal.hair)
+    if (style === 'twin') {
+      px(g, 1, 6, 2, 6, pal.hair)
+      px(g, 13, 6, 2, 6, pal.hair)
+      px(g, 1, 6, 2, 1, hairLite)
+      px(g, 13, 6, 2, 1, hairLite)
+    } else if (style === 'spiky') {
+      px(g, 4, 1, 2, 1, pal.hair)
+      px(g, 8, 1, 1, 1, pal.hair)
+      px(g, 10, 1, 2, 1, pal.hair)
+    }
   } else {
-    px(g, 4, 2, 8, 4, pal.hair)
-    px(g, 3, 3, 1, 4, pal.hair)
-    px(g, 12, 3, 1, 4, pal.hair)
-    px(g, 4, 2, 8, 1, lighten(pal.hair)) // hair sheen
+    px(g, 3, 2, 10, 3, pal.hair) // crown
+    px(g, 3, 2, 10, 1, hairLite)
+    px(g, 3, 4, 1, 5, pal.hair) // left sideburn
+    px(g, 12, 4, 1, 5, pal.hair) // right sideburn
+    if (style === 'spiky') {
+      px(g, 4, 4, 2, 2, pal.hair)
+      px(g, 7, 4, 2, 2, pal.hair)
+      px(g, 10, 4, 2, 2, pal.hair)
+      px(g, 4, 1, 2, 1, pal.hair) // upward spikes
+      px(g, 8, 1, 1, 1, pal.hair)
+      px(g, 10, 1, 2, 1, pal.hair)
+    } else if (style === 'twin') {
+      px(g, 4, 4, 8, 2, pal.hair) // full bangs
+      px(g, 5, 5, 6, 1, hairLite)
+      px(g, 1, 5, 2, 6, pal.hair) // twin tails
+      px(g, 13, 5, 2, 6, pal.hair)
+      px(g, 1, 10, 2, 2, pal.hair)
+      px(g, 13, 10, 2, 2, pal.hair)
+      px(g, 1, 5, 2, 1, hairLite)
+      px(g, 13, 5, 2, 1, hairLite)
+    } else if (style === 'bald') {
+      px(g, 3, 3, 10, 1, pal.hair) // receded hairline
+      px(g, 3, 4, 1, 4, pal.hair)
+      px(g, 12, 4, 1, 4, pal.hair)
+    } else if (style === 'side') {
+      px(g, 4, 4, 7, 2, pal.hair) // side-swept bangs
+      px(g, 4, 4, 5, 1, hairLite)
+    } else {
+      px(g, 4, 4, 8, 1, pal.hair) // short fringe
+      px(g, 4, 4, 4, 1, hairLite)
+    }
   }
 
-  // Hat (straw) with brim shadow.
+  // Straw hat with brim shadow.
   if (pal.hat) {
     px(g, 2, 4, 12, 2, pal.hat)
     px(g, 4, 1, 8, 3, pal.hat)
@@ -114,27 +205,69 @@ function drawHumanoid(
     px(g, 4, 6, 8, 1, 'rgba(0,0,0,0.18)') // brim shadow on face
   }
 
-  // Face by direction.
-  const eye = OUTLINE
+  // Hair ribbon (girls).
+  if (pal.bow) {
+    if (dir === 'up') {
+      px(g, 6, 2, 4, 2, pal.bow)
+      dot(g, 7, 2, '#ffffff')
+    } else {
+      px(g, 12, 4, 3, 2, pal.bow)
+      px(g, 13, 3, 1, 1, lighten(pal.bow))
+      dot(g, 13, 4, '#ffffff')
+    }
+  }
+
+  // ---- Face ----
   if (dir === 'down') {
-    px(g, 6, 7, 1, 2, eye)
-    px(g, 9, 7, 1, 2, eye)
-    dot(g, 6, 7, lighten(eye))
-    dot(g, 9, 7, lighten(eye))
-    px(g, 7, 9, 2, 1, pal.skinShade) // mouth/nose
-    dot(g, 5, 8, '#e8a890') // cheek blush
-    dot(g, 10, 8, '#e8a890')
-  } else if (dir === 'up') {
-    px(g, 5, 5, 6, 3, pal.hair) // back of head
-    px(g, 5, 5, 6, 1, lighten(pal.hair))
+    px(g, 5, 6, 2, 1, brow)
+    px(g, 9, 6, 2, 1, brow)
+    px(g, 5, 7, 2, 2, eyeC) // big round eyes
+    px(g, 9, 7, 2, 2, eyeC)
+    dot(g, 5, 7, '#ffffff') // eye sparkle
+    dot(g, 9, 7, '#ffffff')
+    dot(g, 8, 8, pal.skinShade) // nose
+    px(g, 7, 9, 2, 1, '#bd6a60') // mouth
+    if (pal.freckles) {
+      dot(g, 5, 9, '#d89a78')
+      dot(g, 10, 9, '#d89a78')
+    }
+    dot(g, 4, 8, '#f0a6a6') // blush
+    dot(g, 11, 8, '#f0a6a6')
   } else if (dir === 'left') {
-    px(g, 5, 7, 1, 2, eye)
-    px(g, 4, 8, 1, 1, pal.skinShade)
-    dot(g, 5, 8, '#e8a890')
-  } else {
-    px(g, 10, 7, 1, 2, eye)
+    px(g, 5, 6, 2, 1, brow)
+    px(g, 5, 7, 2, 2, eyeC)
+    dot(g, 5, 7, '#ffffff')
+    px(g, 4, 8, 1, 1, pal.skinShade) // nose
+    px(g, 5, 9, 2, 1, '#bd6a60')
+    dot(g, 4, 8, '#f0a6a6')
+  } else if (dir === 'right') {
+    px(g, 9, 6, 2, 1, brow)
+    px(g, 9, 7, 2, 2, eyeC)
+    dot(g, 9, 7, '#ffffff')
     px(g, 11, 8, 1, 1, pal.skinShade)
-    dot(g, 10, 8, '#e8a890')
+    px(g, 9, 9, 2, 1, '#bd6a60')
+    dot(g, 11, 8, '#f0a6a6')
+  }
+
+  // ---- Beard / stubble (older men) ----
+  if (pal.beard && dir !== 'up') {
+    const bd = pal.beard
+    if (dir === 'down') {
+      px(g, 4, 9, 8, 2, bd) // jaw + chin
+      px(g, 4, 9, 1, 2, darken(bd))
+      px(g, 4, 8, 1, 2, bd) // sideburns
+      px(g, 11, 8, 1, 2, bd)
+      px(g, 6, 8, 4, 1, bd) // moustache
+      px(g, 7, 9, 2, 1, '#7a3f38') // mouth within beard
+      dot(g, 4, 5, hairLite) // greying temples
+      dot(g, 11, 5, hairLite)
+    } else if (dir === 'left') {
+      px(g, 4, 8, 5, 3, bd)
+      px(g, 5, 9, 3, 1, '#7a3f38')
+    } else {
+      px(g, 7, 8, 5, 3, bd)
+      px(g, 8, 9, 3, 1, '#7a3f38')
+    }
   }
 }
 
@@ -924,6 +1057,7 @@ export interface Sprites {
   sprinklerQ: HTMLCanvasElement
   farmer: Record<string, HTMLCanvasElement>
   barnaby: Record<string, HTMLCanvasElement>
+  smith: Record<string, HTMLCanvasElement>
   faye: Record<string, HTMLCanvasElement>
   farmhouse: HTMLCanvasElement
   store: HTMLCanvasElement
@@ -938,25 +1072,55 @@ export function buildSprites(
   cropDefs: { id: string; color: string; stages: number }[],
 ): Sprites {
   if (cached) return cached
+  // Player: cheerful young man, straw hat + tufts of brown hair.
   const farmerPal: Pal = {
     skin: '#f0c79a',
     skinShade: '#d8a878',
     hair: '#5a3a22',
+    hairLite: '#74492a',
     top: '#4a7fc4',
     topShade: '#3a66a0',
     bottom: '#3a4a6a',
     accent: '#9fd0e8',
     hat: '#e8c86a',
     hatShade: '#cda84e',
+    style: 'spiky',
+    brow: '#4a2e18',
+    eye: '#3a5a8c',
   }
+  // Store / order NPC: bright young girl, twin tails + bow, pink dress.
   const barnabyPal: Pal = {
-    skin: '#f0c79a',
-    skinShade: '#d8a878',
-    hair: '#caa05a',
-    top: '#c8763e',
-    topShade: '#a85e30',
-    bottom: '#6e4426',
-    accent: '#fbe3b3',
+    skin: '#f8d2b0',
+    skinShade: '#e6af88',
+    hair: '#d98a3e',
+    hairLite: '#f0ac5e',
+    top: '#ec8aa6',
+    topShade: '#cf6a87',
+    bottom: '#b15577',
+    accent: '#ffe2ec',
+    style: 'twin',
+    bow: '#ff7faa',
+    skirt: '#d75f86',
+    brow: '#a85c2a',
+    eye: '#7a4a86',
+    freckles: true,
+  }
+  // Blacksmith NPC: burly middle-aged man, greying beard + leather apron.
+  const smithPal: Pal = {
+    skin: '#d8a06e',
+    skinShade: '#bc855a',
+    hair: '#6a5c50',
+    hairLite: '#8c7d6e',
+    top: '#8a5030',
+    topShade: '#6a3b22',
+    bottom: '#46352a',
+    accent: '#caa05a',
+    style: 'bald',
+    broad: true,
+    apron: '#3a2e28',
+    beard: '#7c6c5c',
+    brow: '#5a4a3c',
+    eye: '#46342a',
   }
   const fayePal: Pal = {
     skin: '#ecc6a4',
@@ -993,6 +1157,7 @@ export function buildSprites(
     sprinklerQ: bakeItemIcon('sprinkler_quality'),
     farmer: bakeHumanoidSheet(farmerPal),
     barnaby: bakeHumanoidSheet(barnabyPal),
+    smith: bakeHumanoidSheet(smithPal),
     faye: bakeHumanoidSheet(fayePal),
     farmhouse: bakeFarmhouse(),
     store: bakeStore(),
