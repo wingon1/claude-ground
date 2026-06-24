@@ -336,7 +336,7 @@ export class GameRenderer {
     this.drawHuman(this.sprites.barnaby, x, y, npc.dir, true, false, this.nowSecs(), false, 0.35)
     const order = this.currentOrder()
     if (!order || order.completed) return
-    this.drawQuestMarker(x - 4, y - 30, S)
+    this.drawQuestMarker(x + 9, y - 18, S)
   }
 
   private blacksmithNpcPosition(): { x: number; y: number; dir: Direction } {
@@ -369,7 +369,7 @@ export class GameRenderer {
     ctx.fillRect(sx + 2 * S, sy + 3 * S, 2 * S, 2 * S)
     if (!this.flagEnabled('talk:blacksmith:intro')) {
       this.drawSpeechBubble(npc.x, npc.y - 36, '도구 업그레이드가 필요하면 나에게로 와.', S)
-      this.drawQuestMarker(npc.x, npc.y - 31, S)
+      this.drawQuestMarker(npc.x + 9, npc.y - 18, S)
     }
   }
 
@@ -906,15 +906,13 @@ export class GameRenderer {
     const sx = this.wx(x)
     const sy = this.wy(y)
     ctx.save()
-    ctx.fillStyle = 'rgba(255, 244, 200, 0.96)'
-    ctx.beginPath()
-    ctx.arc(sx, sy, 6 * S, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.fillStyle = '#9a6a22'
-    ctx.font = `${Math.max(10, 8 * S)}px sans-serif`
+    ctx.font = `700 ${Math.max(13, 10 * S)}px sans-serif`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.fillText('!', sx, sy + 0.5 * S)
+    ctx.fillStyle = 'rgba(65, 28, 24, 0.35)'
+    ctx.fillText('!', sx + 1 * S, sy + 1 * S)
+    ctx.fillStyle = '#d9362e'
+    ctx.fillText('!', sx, sy)
     ctx.restore()
   }
 
