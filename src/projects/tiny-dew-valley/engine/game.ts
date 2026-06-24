@@ -1824,7 +1824,7 @@ export class Game {
     return this.speechBubbles.filter((bubble) => bubble.until > now)
   }
 
-  private say(speaker: SpeechSpeaker, text: string, seconds = 3.2) {
+  private say(speaker: SpeechSpeaker, text: string, seconds = 4.2) {
     const now = this.nowSecs()
     this.speechBubbles = this.speechBubbles.filter((bubble) => bubble.until > now && bubble.speaker !== speaker)
     this.speechBubbles.push({ speaker, text, until: now + seconds })
@@ -1870,13 +1870,13 @@ export class Game {
     if (!this.nearTileMetadata('mineEntrance') && !this.nearTileMetadata('mineBoard')) return
     if (now < this.nextSpeechAt.lockedMine) return
     this.nextSpeechAt.lockedMine = now + 7
-    this.say('player', this.pickLine(PLAYER_LOCKED_MINE_LINES), 2.8)
+    this.say('player', this.pickLine(PLAYER_LOCKED_MINE_LINES), 3.8)
   }
 
   private updatePlayerAmbientSpeech(now: number) {
     if (now < this.nextSpeechAt.player || this.hasSpeech('player')) return
     this.nextSpeechAt.player = now + 16 + Math.random() * 18
-    if (Math.random() < 0.22) this.say('player', this.pickLine(PLAYER_AMBIENT_LINES), 2.8)
+    if (Math.random() < 0.22) this.say('player', this.pickLine(PLAYER_AMBIENT_LINES), 3.8)
   }
 
   private trySayNewShopStock(): boolean {
@@ -1887,7 +1887,7 @@ export class Game {
     )
     if (!entry) return false
     this.state.flags[this.shopStockSpeechKey(entry.itemId)] = true
-    this.say('shop', this.pickLine(SHOP_NPC_NEW_STOCK_LINES), 3.4)
+    this.say('shop', this.pickLine(SHOP_NPC_NEW_STOCK_LINES), 4.4)
     return true
   }
 
@@ -1922,7 +1922,7 @@ export class Game {
     }
     if (needed <= 0 || needed / Math.max(1, damage) < 4) return
     this.nextSpeechAt.weakTool = now + 18
-    if (Math.random() < 0.45) this.say('player', this.pickLine(PLAYER_WEAK_TOOL_LINES), 2.8)
+    if (Math.random() < 0.45) this.say('player', this.pickLine(PLAYER_WEAK_TOOL_LINES), 3.8)
   }
 
   private selectedFieldId(): string | null {
