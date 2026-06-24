@@ -131,10 +131,11 @@ const FIELD_ROW_BASE_GOLD = 45
 const FIELD_ROW_GOLD_STEP = 35
 const FIELD_ROW_BASE_WOOD = 6
 const FIELD_ROW_WOOD_STEP = 4
-type UpgradeableToolId = Extract<ToolId, 'pickaxe' | 'scythe'>
+type UpgradeableToolId = Extract<ToolId, 'pickaxe' | 'scythe'> | 'sword'
 const TOOL_BASE: Record<UpgradeableToolId, { name: string; damage: number }> = {
   pickaxe: { name: '낡은 곡괭이', damage: 1 },
   scythe: { name: '낡은 낫', damage: 1 },
+  sword: { name: '낡은 검', damage: 1 },
 }
 const TOOL_UPGRADES: Record<UpgradeableToolId, {
   level: number
@@ -150,6 +151,10 @@ const TOOL_UPGRADES: Record<UpgradeableToolId, {
   scythe: [
     { level: 1, name: '구리 낫', damage: 2, costGold: 260, costItems: [{ itemId: 'stone', qty: 14 }, { itemId: 'copper_ore', qty: 6 }] },
     { level: 2, name: '철 낫', damage: 3, costGold: 760, costItems: [{ itemId: 'stone', qty: 35 }, { itemId: 'copper_ore', qty: 12 }, { itemId: 'iron_ore', qty: 8 }] },
+  ],
+  sword: [
+    { level: 1, name: '구리 검', damage: 2, costGold: 500, costItems: [{ itemId: 'stone', qty: 20 }, { itemId: 'copper_ore', qty: 12 }] },
+    { level: 2, name: '철 검', damage: 3, costGold: 1200, costItems: [{ itemId: 'stone', qty: 40 }, { itemId: 'copper_ore', qty: 15 }, { itemId: 'iron_ore', qty: 18 }] },
   ],
 }
 
@@ -1070,7 +1075,7 @@ export class Game {
   }
 
   private hitMonster(monster: MineMonster) {
-    const damage = 1 + Math.floor(this.passiveEffect('attack'))
+    const damage = this.toolDamage('sword') + Math.floor(this.passiveEffect('attack'))
     monster.hp -= damage
     monster.hitT = 0.2
     this.audio.sfx('crack')
@@ -1873,6 +1878,11 @@ export class Game {
     if (this.phase !== 'blacksmith') return
     if (!this.mineUnlocked() || !this.nearBlacksmith()) {
       this.toast('대장장이 앞에서만 도구를 강화할 수 있어요.', 'bad')
+      this.audio.sfx('reject')
+      return
+    }
+    if (toolId === 'sword' && this.countItem('sword') <= 0) {
+      this.toast('검을 먼저 구매해야 업그레이드할 수 있어요.', 'bad')
       this.audio.sfx('reject')
       return
     }
@@ -4127,9 +4137,10 @@ export class Game {
         locked,
       }
     })
-    const toolUpgrades: ToolUpgradeView[] = (['pickaxe', 'scythe'] as UpgradeableToolId[]).map((toolId) => {
+    const toolUpgrades: ToolUpgradeView[] = (['pickaxe', 'scythe', 'sword'] as UpgradeableToolId[]).map((toolId) => {
       const next = this.nextToolUpgrade(toolId)
       const costItems = costViews(next?.costItems ?? [])
+      const owned = toolId !== 'sword' || this.countItem('sword') > 0
       return {
         toolId,
         name: this.toolName(toolId),
@@ -4142,6 +4153,7 @@ export class Game {
         canUpgrade:
           this.phase === 'blacksmith' &&
           this.nearBlacksmith() &&
+          owned &&
           !!next &&
           s.gold >= next.costGold &&
           costItems.every((it) => it.ok),

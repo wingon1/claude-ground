@@ -27,8 +27,8 @@ export const MONSTERS: Record<MonsterId, MonsterDef> = {
   slime: {
     id: 'slime',
     name: '슬라임',
-    hp: 3,
-    attack: 1,
+    hp: 7,
+    attack: 2,
     speed: 10,
     color: '#5fbf68',
     accent: '#a8f0a8',
@@ -42,8 +42,8 @@ export const MONSTERS: Record<MonsterId, MonsterDef> = {
   bat: {
     id: 'bat',
     name: '박쥐',
-    hp: 2,
-    attack: 1,
+    hp: 6,
+    attack: 2,
     speed: 18,
     color: '#5c4c72',
     accent: '#b69ad8',
@@ -57,8 +57,8 @@ export const MONSTERS: Record<MonsterId, MonsterDef> = {
   mine_rat: {
     id: 'mine_rat',
     name: '광산쥐',
-    hp: 4,
-    attack: 2,
+    hp: 10,
+    attack: 3,
     speed: 14,
     color: '#8a705e',
     accent: '#d2b099',
@@ -72,8 +72,8 @@ export const MONSTERS: Record<MonsterId, MonsterDef> = {
   stone_golem: {
     id: 'stone_golem',
     name: '돌골렘',
-    hp: 7,
-    attack: 2,
+    hp: 16,
+    attack: 4,
     speed: 7,
     color: '#85858d',
     accent: '#d0d0d8',
