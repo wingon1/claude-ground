@@ -53,6 +53,11 @@ import type {
 
 type RecipeDef = (typeof RECIPES)[number]
 type CookingFireUpgradeDef = (typeof COOKING_FIRE_UPGRADES)[number]
+const TOOL_USE_TEXT: Record<UpgradeableToolId, string> = {
+  pickaxe: '광산의 돌과 광석을 캘 때 사용합니다.',
+  scythe: '다 자란 작물을 수확할 때 사용합니다.',
+  sword: '광산 몬스터와 싸울 때 사용합니다.',
+}
 
 export interface SnapshotHost {
   phase: UIPhase
@@ -314,6 +319,7 @@ export function buildUISnapshot(host: SnapshotHost): UISnapshot {
     return {
       toolId,
       name: host.toolName(toolId),
+      useText: TOOL_USE_TEXT[toolId],
       level: host.toolLevel(toolId),
       damage: host.toolDamage(toolId),
       nextName: next?.name ?? null,

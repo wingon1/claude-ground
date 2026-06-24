@@ -66,6 +66,7 @@ export interface BuildPermitView {
 export interface ToolUpgradeView {
   toolId: UpgradeableToolId
   name: string
+  useText: string
   level: number
   damage: number
   nextName: string | null

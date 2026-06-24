@@ -795,6 +795,7 @@ function BlacksmithModal({ game, ui }: { game: Game; ui: UISnapshot }) {
               <img src={iconURL(tool.sprite)} alt={tool.name} />
               <div className="info">
                 <div className="nm">{tool.name}</div>
+                <div className="ds">{tool.useText}</div>
                 <div className="ds">
                   현재 타격력 {tool.damage}{tool.nextName ? ` · ${tool.nextName} 타격력 ${tool.nextDamage}` : ' · 최대 등급'}
                 </div>
