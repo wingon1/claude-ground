@@ -68,8 +68,8 @@ export const LOCATIONS: WorldLocations = {
   buildBoard: { x: 32, y: 12 },
   cookingFire: { x: 33, y: 11 },
   mine: { x: 47, y: 8 },
-  blacksmith: { x: 38, y: 6 },
-  blacksmithNpc: { x: 42, y: 10 },
+  blacksmith: { x: 45, y: 16 },
+  blacksmithNpc: { x: 49, y: 20 },
   pond: { x: 25, y: 15 },
   woods: { x: 1, y: 8, w: 9, h: 20 },
   square: { x: 16, y: 31 },
@@ -201,22 +201,10 @@ export function stampMine(tiles: Tile[], active = false) {
     delete t.metadata.invisibleBlock
   })
 
-  const nodes: [number, number, Exclude<Obstacle, null>][] = [
-    [44, 9, 'rock'], [46, 10, 'rock'], [52, 9, 'rock'], [53, 12, 'rock'],
-    [48, 10, 'copper_ore'], [50, 12, 'copper_ore'],
-    [51, 7, 'iron_ore'],
-  ]
-  for (const [x, y, kind] of nodes) {
-    const t = tiles[idx(x, y)]
-    t.terrain = 'grass'
-    setObstacle(t, kind)
-    t.metadata.mineNode = true
-    t.metadata.renewable = true
-  }
 }
 
 export function stampBlacksmith(tiles: Tile[], active = false) {
-  rect(tiles, 37, 5, 43, 11, (t) => {
+  rect(tiles, 44, 15, 51, 21, (t) => {
     t.terrain = 'grass'
     clearObstacle(t)
     t.cropId = null
@@ -227,7 +215,7 @@ export function stampBlacksmith(tiles: Tile[], active = false) {
     delete t.metadata.invisibleBlock
   })
   if (!active) return
-  rect(tiles, 38, 6, 42, 8, (t) => {
+  rect(tiles, 45, 16, 49, 18, (t) => {
     t.terrain = 'blocked'
     clearObstacle(t)
     t.cropId = null
@@ -236,7 +224,7 @@ export function stampBlacksmith(tiles: Tile[], active = false) {
     t.metadata.blacksmithBlock = true
     t.metadata.invisibleBlock = true
   })
-  rect(tiles, 39, 9, 42, 10, (t) => {
+  rect(tiles, 46, 19, 49, 20, (t) => {
     t.terrain = 'grass'
     clearObstacle(t)
     t.cropId = null

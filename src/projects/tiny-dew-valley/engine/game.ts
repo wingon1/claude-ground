@@ -301,7 +301,7 @@ export interface OrderView {
   canComplete: boolean
 }
 export interface ContextActionView {
-  id: 'sleep' | 'animal' | 'seed' | 'shop' | 'cook' | 'order' | 'blacksmith'
+  id: 'sleep' | 'animal' | 'seed' | 'shop' | 'cook' | 'order' | 'blacksmith' | 'blacksmithBuy' | 'mineEnter' | 'mineExit' | 'mineDown'
   label: string
 }
 export interface UISnapshot {
@@ -329,7 +329,7 @@ export interface UISnapshot {
   objectives: ObjectiveTaskView[]
   order: OrderView | null
   contextAction: string | null
-  contextActionId: 'sleep' | 'animal' | 'seed' | 'shop' | 'cook' | 'order' | 'blacksmith' | null
+  contextActionId: 'sleep' | 'animal' | 'seed' | 'shop' | 'cook' | 'order' | 'blacksmith' | 'blacksmithBuy' | 'mineEnter' | 'mineExit' | 'mineDown' | null
   contextActions: ContextActionView[]
   nearBed: boolean
   nearStore: boolean
@@ -393,6 +393,10 @@ export class Game {
   private jumpT = 0
   private workAnimT = 0
   private awardingTutorialReward = false
+  private area: 'farm' | 'mine' = 'farm'
+  private mineTiles: Tile[] = []
+  private mineFloor = 1
+  private farmReturn: { x: number; y: number; dir: Direction } | null = null
 
   private listeners = new Set<() => void>()
   private snap: UISnapshot
@@ -427,6 +431,7 @@ export class Game {
 
   newGame() {
     this.state = this.freshState()
+    this.leaveMineRuntime()
     this.applyInitialUnlocks()
     this.applyFieldRows()
     this.initRuntime()
@@ -442,6 +447,7 @@ export class Game {
     if (!s) return false
     if (s.tiles.length !== WORLD_W * WORLD_H) s.tiles = generateWorld()
     this.state = s
+    this.leaveMineRuntime()
     this.applyInitialUnlocks()
     this.applyGroundCleanup()
     this.applyFieldRows()
@@ -557,11 +563,13 @@ export class Game {
     const s = this.state
     s.timeMinutes += dt * GAME_MIN_PER_SEC // cosmetic clock
     this.movePlayer(dt)
-    this.autoPlantFields()
-    this.growCrops(dt)
-    this.updateAnimalDrops(dt)
-    this.respawnNodes()
-    this.updateFireflies(dt)
+    if (this.area === 'farm') {
+      this.autoPlantFields()
+      this.growCrops(dt)
+      this.updateAnimalDrops(dt)
+      this.respawnNodes()
+      this.updateFireflies(dt)
+    }
     if (!s.player.moving) this.tryAutoWork()
   }
 
@@ -633,7 +641,7 @@ export class Game {
     for (let ty = y0; ty <= y1; ty++) {
       for (let tx = x0; tx <= x1; tx++) {
         if (!inBounds(tx, ty)) return true
-        if (this.tileSolid(this.state.tiles[idx(tx, ty)])) return true
+        if (this.tileSolid(this.activeTiles()[idx(tx, ty)])) return true
       }
     }
     return false
@@ -655,7 +663,7 @@ export class Game {
     for (let ty = y0; ty <= y1; ty++) {
       for (let tx = x0; tx <= x1; tx++) {
         if (!inBounds(tx, ty)) continue
-        if (this.state.tiles[idx(tx, ty)].metadata.animalFence === true) return true
+        if (this.area === 'farm' && this.state.tiles[idx(tx, ty)].metadata.animalFence === true) return true
       }
     }
     return false
@@ -689,6 +697,63 @@ export class Game {
     }
   }
 
+  private activeTiles(): Tile[] {
+    return this.area === 'mine' ? this.mineTiles : this.state.tiles
+  }
+
+  private leaveMineRuntime() {
+    this.area = 'farm'
+    this.mineTiles = []
+    this.mineFloor = 1
+    this.farmReturn = null
+  }
+
+  private makeRuntimeTile(x: number, y: number, terrain: Tile['terrain']): Tile {
+    return {
+      x,
+      y,
+      terrain,
+      cropId: null,
+      growthStage: 0,
+      wateredToday: false,
+      wateredYesterday: false,
+      daysUnwatered: 0,
+      obstacle: null,
+      hasFertilizer: false,
+      metadata: {},
+    }
+  }
+
+  private buildMineTiles(floor: number): Tile[] {
+    const tiles: Tile[] = []
+    for (let y = 0; y < WORLD_H; y++) {
+      for (let x = 0; x < WORLD_W; x++) {
+        const inside = x >= 13 && x <= 44 && y >= 6 && y <= 29
+        const wall = !inside || x === 13 || x === 44 || y === 6 || y === 29
+        tiles.push(this.makeRuntimeTile(x, y, wall ? 'blocked' : 'grass'))
+      }
+    }
+    const exit = tiles[idx(27, 27)]
+    exit.metadata.mineExit = true
+    const stairs = tiles[idx(29, 27)]
+    stairs.metadata.mineDown = true
+    const spots: [number, number][] = [
+      [18, 10], [23, 9], [34, 9], [39, 12], [17, 15], [27, 14],
+      [36, 16], [21, 20], [31, 21], [40, 23], [18, 25], [35, 26],
+      [24, 26], [30, 11], [42, 18], [15, 22],
+    ]
+    const copperCount = Math.min(7, 2 + floor)
+    const ironCount = Math.max(0, Math.min(5, floor - 1))
+    spots.forEach(([x, y], i) => {
+      const t = tiles[idx(x, y)]
+      if (i < ironCount) setObstacle(t, 'iron_ore')
+      else if (i < ironCount + copperCount) setObstacle(t, 'copper_ore')
+      else setObstacle(t, 'rock')
+      t.metadata.mineNode = true
+    })
+    return tiles
+  }
+
   // Find the best workable tile adjacent to the player (incl. own tile).
   private findWork(): { t: Tile; kind: WorkKind } | null {
     const p = this.state.player
@@ -699,7 +764,7 @@ export class Game {
         const tx = pt.x + dx
         const ty = pt.y + dy
         if (!inBounds(tx, ty)) continue
-        const t = this.state.tiles[idx(tx, ty)]
+        const t = this.activeTiles()[idx(tx, ty)]
         let kind: WorkKind | null = null
         let pri = 0
         if (this.groundItemId(t)) { kind = 'pickup'; pri = 4 }
@@ -792,8 +857,11 @@ export class Game {
       if (ob === 'copper_ore' || ob === 'iron_ore') this.giveItem('stone', 1)
       this.audio.sfx('crack')
       const renewable = !!t.metadata.renewable
+      const mineNode = t.metadata.mineNode === true
       this.clearObs(t)
-      if (renewable) {
+      if (mineNode) {
+        t.metadata.mineNode = true
+      } else if (renewable) {
         t.metadata.renewable = true
         t.metadata.respawnAt = this.nowSecs() + RESPAWN_SECS
         t.metadata.respawnKind = ob
@@ -1053,9 +1121,69 @@ export class Game {
       this.audio.sfx('reject')
       return
     }
+    if (!this.flagEnabled('talk:blacksmith:intro')) {
+      this.state.flags['talk:blacksmith:intro'] = true
+      this.autosave()
+    }
     this.phase = 'blacksmith'
     this.target = null
     this.audio.resume()
+    this.audio.sfx('select')
+    this.emit()
+  }
+
+  enterMine() {
+    if (this.phase !== 'playing' || !this.mineUnlocked() || !this.nearMineEntrance()) return
+    const p = this.state.player
+    this.farmReturn = { x: p.x, y: p.y, dir: p.dir }
+    this.area = 'mine'
+    this.mineFloor = 1
+    this.mineTiles = this.buildMineTiles(this.mineFloor)
+    p.x = 28 * T + T / 2
+    p.y = 28 * T
+    p.dir = 'up'
+    p.moving = false
+    this.target = null
+    this.workTile = null
+    this.fade = 1
+    this.fadeDir = -1
+    this.toast(`광산 ${this.mineFloor}층`, 'info')
+    this.audio.sfx('select')
+    this.emit()
+  }
+
+  exitMine() {
+    if (this.phase !== 'playing' || this.area !== 'mine') return
+    const p = this.state.player
+    const ret = this.farmReturn
+    this.area = 'farm'
+    this.mineTiles = []
+    p.x = ret?.x ?? (LOCATIONS.mine.x * T + T / 2)
+    p.y = ret?.y ?? ((LOCATIONS.mine.y + 2) * T)
+    p.dir = 'down'
+    p.moving = false
+    this.target = null
+    this.workTile = null
+    this.fade = 1
+    this.fadeDir = -1
+    this.audio.sfx('select')
+    this.emit()
+  }
+
+  descendMine() {
+    if (this.phase !== 'playing' || this.area !== 'mine' || !this.nearMineDown()) return
+    this.mineFloor += 1
+    this.mineTiles = this.buildMineTiles(this.mineFloor)
+    const p = this.state.player
+    p.x = 28 * T + T / 2
+    p.y = 28 * T
+    p.dir = 'up'
+    p.moving = false
+    this.target = null
+    this.workTile = null
+    this.fade = 1
+    this.fadeDir = -1
+    this.toast(`광산 ${this.mineFloor}층`, 'info')
     this.audio.sfx('select')
     this.emit()
   }
@@ -1561,6 +1689,7 @@ export class Game {
   }
 
   private nearBed(): boolean {
+    if (this.area !== 'farm') return false
     const p = this.playerTile()
     const b = LOCATIONS.bed
     return Math.abs(p.x - b.x) <= 1 && Math.abs(p.y - b.y) <= 1
@@ -1571,26 +1700,41 @@ export class Game {
   }
 
   private nearStore(): boolean {
+    if (this.area !== 'farm') return false
     return this.nearTileMetadata('storeCounter') || this.nearTileMetadata('storeInterior')
   }
 
   private nearOrderNpc(): boolean {
+    if (this.area !== 'farm') return false
     const p = this.playerTile()
     return Math.abs(p.x - ORDER_NPC.x) <= 1 && Math.abs(p.y - ORDER_NPC.y) <= 1
   }
 
   private nearBlacksmith(): boolean {
-    if (!this.mineUnlocked()) return false
+    if (this.area !== 'farm' || !this.mineUnlocked()) return false
     const p = this.playerTile()
     return Math.abs(p.x - BLACKSMITH_NPC.x) <= 1 && Math.abs(p.y - BLACKSMITH_NPC.y) <= 1
   }
 
   private nearBuild(): boolean {
-    return true
+    return this.area === 'farm'
   }
 
   private nearCooking(): boolean {
+    if (this.area !== 'farm') return false
     return this.cookingFireBuilt() && this.nearTileMetadata('cookingFire')
+  }
+
+  private nearMineEntrance(): boolean {
+    return this.area === 'farm' && this.mineUnlocked() && this.nearTileMetadata('mineEntrance')
+  }
+
+  private nearMineExit(): boolean {
+    return this.area === 'mine' && this.nearTileMetadata('mineExit')
+  }
+
+  private nearMineDown(): boolean {
+    return this.area === 'mine' && this.nearTileMetadata('mineDown')
   }
 
   private nearTileMetadata(key: string): boolean {
@@ -1598,7 +1742,7 @@ export class Game {
     for (let dy = -1; dy <= 1; dy++) {
       for (let dx = -1; dx <= 1; dx++) {
         const t = inBounds(pt.x + dx, pt.y + dy)
-          ? this.state.tiles[idx(pt.x + dx, pt.y + dy)]
+          ? this.activeTiles()[idx(pt.x + dx, pt.y + dy)]
           : null
         if (t && t.metadata[key]) return true
       }
@@ -1607,6 +1751,7 @@ export class Game {
   }
 
   private selectedFieldId(): string | null {
+    if (this.area !== 'farm') return null
     const pt = this.playerTile()
     for (let dy = -1; dy <= 1; dy++) {
       for (let dx = -1; dx <= 1; dx++) {
@@ -2541,12 +2686,28 @@ export class Game {
   }
 
   private autosave() {
-    saveGame(this.state)
+    this.saveGameState()
   }
   saveNow(): boolean {
-    const ok = saveGame(this.state)
+    const ok = this.saveGameState()
     this.toast(ok ? '게임을 저장했어요.' : '저장에 실패했어요.', ok ? 'good' : 'bad')
     this.emit()
+    return ok
+  }
+
+  private saveGameState(): boolean {
+    if (this.area !== 'mine' || !this.farmReturn) return saveGame(this.state)
+    const p = this.state.player
+    const current = { x: p.x, y: p.y, dir: p.dir, moving: p.moving }
+    p.x = this.farmReturn.x
+    p.y = this.farmReturn.y
+    p.dir = this.farmReturn.dir
+    p.moving = false
+    const ok = saveGame(this.state)
+    p.x = current.x
+    p.y = current.y
+    p.dir = current.dir
+    p.moving = current.moving
     return ok
   }
   toggleMute() {
@@ -2666,6 +2827,7 @@ export class Game {
     const y0 = Math.floor(this.cam.y / T) - 1
     const x1 = x0 + Math.ceil(viewW / T) + 3
     const y1 = y0 + Math.ceil(viewH / T) + 3
+    const tiles = this.activeTiles()
 
     this.waterAnim += 0.02
     const wf = Math.floor(this.waterAnim) % this.sprites.water.length
@@ -2673,33 +2835,37 @@ export class Game {
     for (let ty = y0; ty <= y1; ty++) {
       for (let tx = x0; tx <= x1; tx++) {
         if (!inBounds(tx, ty)) continue
-        this.drawGround(this.state.tiles[idx(tx, ty)], wf, S)
+        const t = tiles[idx(tx, ty)]
+        if (this.area === 'mine') this.drawMineGround(t, S)
+        else this.drawGround(t, wf, S)
       }
     }
     // buildings
     // Tent (player home): 48×48 canvas over the 30–32 × 7–8 footprint,
     // base resting on the front (row 9) where the bed/spawn sits.
-    this.drawBuilding(this.sprites.farmhouse, 30, 7, S, -16)
-    this.drawBuilding(this.sprites.store, 22, 6, S, -14)
-    this.drawAnimalFarms(S)
-    this.drawFieldSigns(S)
-    this.drawCookingFire(S)
-    this.drawMineEntrance(S)
-    this.drawBlacksmith(S)
+    if (this.area === 'farm') {
+      this.drawBuilding(this.sprites.farmhouse, 30, 7, S, -16)
+      this.drawBuilding(this.sprites.store, 22, 6, S, -14)
+      this.drawAnimalFarms(S)
+      this.drawFieldSigns(S)
+      this.drawCookingFire(S)
+      this.drawMineEntrance(S)
+      this.drawBlacksmith(S)
+    }
 
     type Draw = { y: number; fn: () => void }
     const draws: Draw[] = []
     for (let ty = y0; ty <= y1; ty++) {
       for (let tx = x0; tx <= x1; tx++) {
         if (!inBounds(tx, ty)) continue
-        const t = this.state.tiles[idx(tx, ty)]
+        const t = tiles[idx(tx, ty)]
         if (t.obstacle) draws.push({ y: ty * T + T, fn: () => this.drawObstacle(t, S) })
         if (t.cropId) draws.push({ y: ty * T + T, fn: () => this.drawCrop(t, S) })
         if (this.groundItemId(t)) draws.push({ y: ty * T + T, fn: () => this.drawGroundItem(t, S) })
       }
     }
-    draws.push({ y: this.orderNpcPosition().y, fn: () => this.drawOrderNpc(S) })
-    if (this.mineUnlocked()) {
+    if (this.area === 'farm') draws.push({ y: this.orderNpcPosition().y, fn: () => this.drawOrderNpc(S) })
+    if (this.area === 'farm' && this.mineUnlocked()) {
       const smith = this.blacksmithNpcPosition()
       draws.push({ y: smith.y, fn: () => this.drawBlacksmithNpc(S) })
     }
@@ -2709,7 +2875,7 @@ export class Game {
 
     this.drawWorkHighlight(S)
     this.drawParticles(S)
-    this.drawLighting(S, bw, bh)
+    if (this.area === 'farm') this.drawLighting(S, bw, bh)
     if (this.fade > 0) {
       ctx.fillStyle = `rgba(0,0,0,${this.fade})`
       ctx.fillRect(0, 0, bw, bh)
@@ -2746,6 +2912,36 @@ export class Game {
     else if (t.terrain === 'soil' || t.terrain === 'tilled') img = this.sprites.soil
     else img = this.sprites.grass[(t.x * 7 + t.y * 13) % 3]
     this.ctx.drawImage(img, dx, dy, sz, sz)
+  }
+
+  private drawMineGround(t: Tile, S: number) {
+    const ctx = this.ctx
+    const dx = this.wx(t.x * T)
+    const dy = this.wy(t.y * T)
+    const sz = T * S
+    if (t.terrain === 'blocked') {
+      ctx.fillStyle = '#25252c'
+      ctx.fillRect(dx, dy, sz, sz)
+      ctx.fillStyle = (t.x + t.y) % 3 === 0 ? '#303039' : '#2b2b33'
+      ctx.fillRect(dx + 1 * S, dy + 1 * S, sz - 2 * S, sz - 2 * S)
+      return
+    }
+    ctx.fillStyle = '#3a332e'
+    ctx.fillRect(dx, dy, sz, sz)
+    ctx.fillStyle = (t.x * 5 + t.y * 7) % 4 === 0 ? '#4a4038' : '#403832'
+    ctx.fillRect(dx + 1 * S, dy + 1 * S, sz - 2 * S, sz - 2 * S)
+    if (t.metadata.mineExit === true) {
+      ctx.fillStyle = '#1d1b20'
+      ctx.fillRect(dx + 3 * S, dy + 2 * S, 10 * S, 12 * S)
+      ctx.fillStyle = '#6b6254'
+      ctx.fillRect(dx + 2 * S, dy + 2 * S, 12 * S, 2 * S)
+    } else if (t.metadata.mineDown === true) {
+      ctx.fillStyle = '#221d20'
+      ctx.fillRect(dx + 2 * S, dy + 3 * S, 12 * S, 10 * S)
+      ctx.fillStyle = '#6b4a32'
+      ctx.fillRect(dx + 4 * S, dy + 5 * S, 8 * S, 2 * S)
+      ctx.fillRect(dx + 5 * S, dy + 9 * S, 7 * S, 2 * S)
+    }
   }
 
   private itemIcon(itemId: string): HTMLCanvasElement {
@@ -2855,6 +3051,31 @@ export class Game {
     ctx.fillRect(sx + 1 * S, sy + 1 * S, 4 * S, 2 * S)
     ctx.fillStyle = '#2a2a30'
     ctx.fillRect(sx + 2 * S, sy + 3 * S, 2 * S, 2 * S)
+    if (!this.flagEnabled('talk:blacksmith:intro')) {
+      const text = '도구 업그레이드가 필요하면 나에게로와'
+      const bx = this.wx(npc.x - 68)
+      const by = this.wy(npc.y - 54)
+      const bw = 136 * S
+      const bh = 16 * S
+      ctx.fillStyle = '#fff4d6'
+      ctx.fillRect(bx, by, bw, bh)
+      ctx.beginPath()
+      ctx.moveTo(this.wx(npc.x) - 4 * S, by + bh - 1 * S)
+      ctx.lineTo(this.wx(npc.x) + 4 * S, by + bh - 1 * S)
+      ctx.lineTo(this.wx(npc.x), by + bh + 5 * S)
+      ctx.closePath()
+      ctx.fill()
+      ctx.fillStyle = '#4b3427'
+      ctx.font = `${Math.max(10, 6 * S)}px sans-serif`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(text, bx + bw / 2, by + bh / 2 + 0.5 * S)
+      ctx.fillStyle = '#f5d85c'
+      ctx.fillRect(this.wx(npc.x - 2), this.wy(npc.y - 34), 4 * S, 8 * S)
+      ctx.fillStyle = '#8a5a32'
+      ctx.fillRect(this.wx(npc.x - 1), this.wy(npc.y - 24), 2 * S, 2 * S)
+      ctx.textAlign = 'left'
+    }
   }
 
   private drawAnimalFarms(S: number) {
@@ -3130,7 +3351,7 @@ export class Game {
   private currentWorkTool(): UpgradeableToolId {
     const w = this.workTile
     if (!w || !inBounds(w.x, w.y)) return 'scythe'
-    const ob = this.state.tiles[idx(w.x, w.y)].obstacle
+    const ob = this.activeTiles()[idx(w.x, w.y)].obstacle
     return ob === 'rock' || ob === 'copper_ore' || ob === 'iron_ore' ? 'pickaxe' : 'scythe'
   }
 
@@ -3558,8 +3779,12 @@ export class Game {
     let contextActionId: UISnapshot['contextActionId'] = null
     const contextActions: ContextActionView[] = []
     if (this.phase === 'playing') {
-      const animalFarm = this.selectedAnimalFarm()
-      if (this.nearBed() && this.canSleep()) {
+      if (this.area === 'mine') {
+        if (this.nearMineExit()) contextActions.push({ id: 'mineExit', label: '나가기' })
+        if (this.nearMineDown()) contextActions.push({ id: 'mineDown', label: '아래층' })
+      } else {
+        const animalFarm = this.selectedAnimalFarm()
+        if (this.nearBed() && this.canSleep()) {
         contextAction = '잠자기'
         contextActionId = 'sleep'
         contextActions.push({ id: 'sleep', label: '잠자기' })
@@ -3574,10 +3799,13 @@ export class Game {
         contextActions.push({ id: 'order', label: '주문' })
         if (this.nearStore()) contextActions.push({ id: 'shop', label: '상점' })
       } else if (this.nearBlacksmith()) {
-        contextActions.push({ id: 'blacksmith', label: '대장간' })
+        contextActions.push({ id: 'blacksmithBuy', label: '구매' })
+        contextActions.push({ id: 'blacksmith', label: '도구 업그레이드' })
       } else {
+        if (this.nearMineEntrance()) contextActions.push({ id: 'mineEnter', label: '광산 들어가기' })
         if (this.nearStore()) contextActions.push({ id: 'shop', label: '상점' })
         if (this.nearCooking()) contextActions.push({ id: 'cook', label: '요리' })
+      }
       }
       if (contextActions.length > 0 && contextActionId == null) {
         contextAction = contextActions[0].label

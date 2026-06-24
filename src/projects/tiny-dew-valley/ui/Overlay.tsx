@@ -98,7 +98,10 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
                 else if (action.id === 'shop') game.openShop()
                 else if (action.id === 'cook') game.openCooking()
                 else if (action.id === 'order') game.openOrder()
-                else if (action.id === 'blacksmith') game.openBlacksmith()
+                else if (action.id === 'blacksmith' || action.id === 'blacksmithBuy') game.openBlacksmith()
+                else if (action.id === 'mineEnter') game.enterMine()
+                else if (action.id === 'mineExit') game.exitMine()
+                else if (action.id === 'mineDown') game.descendMine()
               }}
             >
               {action.label}
