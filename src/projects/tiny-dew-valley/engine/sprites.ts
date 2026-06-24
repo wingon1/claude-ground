@@ -836,28 +836,70 @@ export function bakeItemIcon(sprite: string, color?: string): HTMLCanvasElement 
       px(g, 7, 5, 2, 2, '#ff9e2c')
       break
     case 'herbal_tea':
-      px(g, 4, 7, 8, 6, '#e8e2d0')
+      // rising steam
+      dot(g, 6, 2, 'rgba(210,230,210,0.7)')
+      dot(g, 9, 3, 'rgba(210,230,210,0.7)')
+      dot(g, 7, 4, 'rgba(210,230,210,0.7)')
+      // saucer
+      px(g, 3, 11, 10, 2, '#e6dfce')
+      px(g, 3, 11, 10, 1, '#fbf5e6')
+      // cup
+      px(g, 4, 6, 8, 5, '#f4efe2')
       px(g, 4, 6, 8, 1, '#ffffff')
-      px(g, 5, 8, 6, 3, '#7bbf6a')
-      px(g, 11, 8, 2, 3, '#e8e2d0')
-      px(g, 6, 4, 1, 2, 'rgba(200,220,200,0.7)')
+      px(g, 11, 6, 1, 5, '#d8d0bd')
+      // green tea surface + floating leaf
+      px(g, 5, 6, 6, 2, '#7bbf6a')
+      px(g, 5, 6, 6, 1, '#9ad889')
+      dot(g, 8, 7, '#3f8a3a')
+      // handle
+      px(g, 12, 7, 1, 3, '#f4efe2')
+      px(g, 12, 7, 2, 1, '#f4efe2')
+      px(g, 12, 9, 2, 1, '#f4efe2')
       break
     case 'flour':
-      px(g, 4, 5, 8, 8, '#eee2c8')
-      px(g, 4, 5, 8, 2, '#ffffff')
-      px(g, 6, 8, 4, 2, '#d8c79e')
+      // folded paper top
+      px(g, 6, 2, 4, 1, '#ece0c4')
+      px(g, 5, 3, 6, 2, '#ded0b0')
+      // sack body
+      px(g, 4, 5, 8, 8, '#ece0c4')
+      px(g, 4, 5, 1, 8, '#fbf4e2')
+      px(g, 11, 5, 1, 8, '#d2c29c')
+      px(g, 4, 12, 8, 1, '#c9b88f')
+      // wheat emblem
+      px(g, 7, 7, 2, 4, '#c98a3a')
+      dot(g, 6, 8, '#c98a3a')
+      dot(g, 9, 8, '#c98a3a')
+      dot(g, 6, 9, '#d8a24a')
+      dot(g, 9, 9, '#d8a24a')
+      dot(g, 7, 6, '#e6c06a')
       break
     case 'bread':
-      px(g, 3, 7, 10, 5, '#b97832')
-      px(g, 4, 5, 8, 4, '#d99a4a')
-      px(g, 5, 6, 2, 1, '#f2c078')
-      px(g, 9, 6, 2, 1, '#f2c078')
+      px(g, 3, 7, 10, 5, '#a8632a') // bottom crust
+      px(g, 3, 7, 10, 1, '#c2843a')
+      px(g, 4, 5, 8, 3, '#d99a4a') // domed top
+      px(g, 5, 4, 6, 2, '#e6ad5a')
+      px(g, 5, 4, 6, 1, '#f2c078') // sheen
+      px(g, 6, 6, 1, 3, '#a8632a') // score marks
+      px(g, 9, 6, 1, 3, '#a8632a')
+      px(g, 3, 11, 10, 1, '#8f5520')
       break
     case 'toast':
+      // bread-slice silhouette + butter pat
+      px(g, 5, 3, 6, 2, '#c78335')
+      px(g, 4, 4, 8, 9, '#c78335')
+      px(g, 5, 6, 6, 6, '#f3cd82')
+      px(g, 5, 6, 6, 1, '#ffe1a0')
+      px(g, 7, 8, 3, 3, '#ffe79a')
+      px(g, 7, 8, 2, 1, '#fff2c0')
+      break
     case 'bacon_toast':
-      px(g, 3, 6, 10, 7, '#c78335')
-      px(g, 4, 7, 8, 4, '#f0c070')
-      px(g, 6, 8, 4, 2, sprite === 'toast' ? '#fff2c0' : '#c86462')
+      px(g, 5, 3, 6, 2, '#c78335')
+      px(g, 4, 4, 8, 9, '#c78335')
+      px(g, 5, 6, 6, 6, '#f3cd82')
+      px(g, 5, 7, 6, 2, '#c25048') // bacon strip
+      px(g, 5, 7, 6, 1, '#e88a7a')
+      px(g, 5, 10, 6, 2, '#a83e3a') // bacon strip
+      px(g, 5, 10, 6, 1, '#d2706a')
       break
     case 'milk':
       px(g, 5, 4, 6, 9, '#f4f1df')
@@ -893,67 +935,112 @@ export function bakeItemIcon(sprite: string, color?: string): HTMLCanvasElement 
       px(g, 4, 4, 8, 1, '#fff08a')
       break
     case 'butter':
-      px(g, 4, 7, 8, 5, '#f5d35f')
-      px(g, 4, 7, 8, 1, '#fff18f')
-      px(g, 6, 5, 4, 2, '#efe6c8')
+      px(g, 3, 9, 10, 3, '#efe6c8') // wrapper
+      px(g, 3, 9, 10, 1, '#fff7e0')
+      px(g, 4, 5, 8, 4, '#f5d35f') // butter block
+      px(g, 4, 5, 8, 1, '#fff18f')
+      px(g, 4, 8, 8, 1, '#e0b84a')
+      px(g, 6, 4, 3, 1, '#fbe79a') // knob
       break
     case 'cheese':
-      px(g, 4, 6, 8, 7, '#f0c34a')
-      px(g, 4, 6, 8, 2, '#ffe07a')
-      dot(g, 6, 9, '#b88428')
-      dot(g, 10, 8, '#b88428')
+      px(g, 3, 5, 9, 2, '#ffe07a') // wedge, wide top
+      px(g, 3, 7, 8, 2, '#f5cf5a')
+      px(g, 3, 9, 6, 2, '#f5cf5a')
+      px(g, 3, 11, 4, 1, '#f0c34a')
+      px(g, 3, 5, 9, 1, '#fff0a0') // top sheen
+      px(g, 3, 5, 1, 7, '#e0b84a') // rind
+      dot(g, 6, 7, '#d8a83a') // holes
+      dot(g, 5, 10, '#d8a83a')
+      dot(g, 8, 8, '#d8a83a')
       break
     case 'pastry':
-      px(g, 3, 6, 10, 7, '#c98a3a')
-      px(g, 4, 5, 8, 2, '#e4b25f')
-      px(g, 5, 8, 6, 1, '#f2d08a')
-      px(g, 5, 10, 6, 1, '#9a6428')
+      px(g, 4, 6, 8, 4, '#d99a4a') // croissant body
+      px(g, 3, 7, 2, 2, '#cf9040') // left horn
+      px(g, 11, 7, 2, 2, '#cf9040') // right horn
+      px(g, 5, 5, 6, 1, '#e6ad5a')
+      px(g, 4, 6, 8, 1, '#f2c078') // sheen
+      px(g, 6, 6, 1, 3, '#b97832') // segment lines
+      px(g, 8, 6, 1, 3, '#b97832')
+      px(g, 10, 6, 1, 2, '#b97832')
+      px(g, 4, 9, 8, 1, '#a8632a')
       break
     case 'strawberry_jam':
-      px(g, 4, 5, 8, 9, '#d8e2f0')
-      px(g, 5, 7, 6, 5, '#d93f5f')
-      px(g, 4, 4, 8, 2, '#e8c75a')
-      dot(g, 7, 8, '#ffb0c0')
-      dot(g, 9, 10, '#ffb0c0')
+      px(g, 5, 3, 6, 2, '#c75a86') // lid
+      px(g, 5, 3, 6, 1, '#e07fa6')
+      px(g, 4, 5, 8, 1, '#cdbb92') // rim
+      px(g, 4, 6, 8, 7, '#d2384f') // jam fill
+      px(g, 4, 6, 8, 1, '#e85f74')
+      px(g, 11, 6, 1, 6, 'rgba(255,255,255,0.28)') // glass shine
+      px(g, 5, 9, 6, 3, '#f3e9cf') // label
+      dot(g, 7, 10, '#d2384f') // berry on label
+      dot(g, 8, 10, '#d2384f')
+      dot(g, 7, 11, '#3f8a3a')
       break
     case 'strawberry_milk':
-      px(g, 5, 4, 6, 9, '#f4c6d5')
-      px(g, 5, 4, 6, 2, '#d93f5f')
-      px(g, 6, 7, 4, 3, '#ffd8e4')
-      dot(g, 8, 9, '#ffffff')
+      px(g, 5, 4, 6, 9, '#f6cdda') // pink milk
+      px(g, 5, 4, 6, 1, '#ffe1ea') // foam
+      px(g, 5, 4, 1, 9, 'rgba(255,255,255,0.35)') // glass shine
+      px(g, 5, 12, 6, 1, '#e2a6bc') // base shade
+      px(g, 9, 2, 1, 5, '#ff6f9a') // straw
+      dot(g, 10, 2, '#ff9fb8')
       break
     case 'strawberry_jam_toast':
-      px(g, 3, 6, 10, 7, '#c78335')
-      px(g, 4, 7, 8, 4, '#f0c070')
-      px(g, 5, 8, 6, 3, '#d93f5f')
-      px(g, 6, 7, 4, 1, '#f5d35f')
+      px(g, 5, 3, 6, 2, '#c78335')
+      px(g, 4, 4, 8, 9, '#c78335')
+      px(g, 5, 6, 6, 6, '#f3cd82')
+      px(g, 5, 7, 6, 4, '#d2384f') // jam spread
+      px(g, 5, 7, 6, 1, '#e85f74')
+      dot(g, 7, 9, '#ff9fb0') // seeds
+      dot(g, 9, 10, '#ff9fb0')
       break
     case 'tomato_sauce':
-      px(g, 3, 7, 10, 6, '#d8e2f0')
-      px(g, 4, 6, 8, 2, '#ffffff')
-      px(g, 5, 8, 6, 3, '#d8443d')
-      dot(g, 8, 8, '#ffb0a0')
+      px(g, 5, 3, 6, 2, '#c0473d') // lid
+      px(g, 5, 3, 6, 1, '#e0685c')
+      px(g, 6, 5, 4, 1, '#cfd9ea') // neck
+      px(g, 4, 6, 8, 7, '#cfd9ea') // glass jar
+      px(g, 5, 7, 6, 5, '#d8443d') // sauce
+      px(g, 5, 7, 6, 1, '#e8675c')
+      px(g, 11, 7, 1, 5, 'rgba(255,255,255,0.30)') // shine
+      dot(g, 7, 9, '#ffb0a0') // tomato bits
+      dot(g, 9, 10, '#ffb0a0')
       break
     case 'pizza':
-      px(g, 3, 6, 10, 7, '#c78335')
-      px(g, 4, 7, 8, 4, '#f0c070')
-      px(g, 5, 8, 6, 2, '#d8443d')
-      dot(g, 7, 9, '#f0c34a')
-      dot(g, 10, 9, '#f0c34a')
+      px(g, 3, 4, 10, 2, '#e0a850') // crust
+      px(g, 3, 4, 10, 1, '#f0c87a')
+      px(g, 4, 6, 8, 2, '#f2cb55') // cheese, narrowing to a tip
+      px(g, 5, 8, 6, 2, '#f2cb55')
+      px(g, 6, 10, 4, 1, '#f2cb55')
+      px(g, 7, 11, 2, 1, '#f2cb55')
+      px(g, 5, 6, 2, 2, '#cf3f3a') // pepperoni
+      px(g, 9, 7, 2, 2, '#cf3f3a')
+      px(g, 7, 9, 2, 2, '#cf3f3a')
       break
     case 'butter_corn':
-      px(g, 3, 7, 10, 6, '#d8e2f0')
-      px(g, 4, 6, 8, 2, '#ffffff')
-      px(g, 5, 8, 6, 3, '#f0c84b')
-      px(g, 6, 7, 4, 1, '#f5d35f')
-      dot(g, 7, 9, '#7bbf6a')
+      px(g, 3, 8, 2, 5, '#5aa038') // husk leaves
+      px(g, 11, 8, 2, 5, '#5aa038')
+      px(g, 5, 3, 6, 10, '#f0c84b') // cob
+      px(g, 5, 3, 6, 1, '#ffe14d')
+      px(g, 5, 12, 6, 1, '#d8a24a')
+      px(g, 7, 3, 1, 10, '#e0b440') // kernel columns
+      px(g, 9, 3, 1, 10, '#e0b440')
+      px(g, 5, 6, 6, 1, '#e0b440') // kernel rows
+      px(g, 5, 9, 6, 1, '#e0b440')
+      px(g, 6, 4, 4, 2, '#fff2a0') // melting butter pat
+      px(g, 6, 4, 4, 1, '#ffffff')
       break
     case 'corn_pizza':
-      px(g, 3, 6, 10, 7, '#b97832')
-      px(g, 4, 5, 8, 2, '#e4b25f')
-      px(g, 5, 7, 6, 3, '#d8443d')
-      dot(g, 6, 9, '#f0c84b')
-      dot(g, 9, 8, '#f0c84b')
+      px(g, 3, 4, 10, 2, '#e0a850') // crust
+      px(g, 3, 4, 10, 1, '#f0c87a')
+      px(g, 4, 6, 8, 2, '#e8b94a') // cheese, narrowing to a tip
+      px(g, 5, 8, 6, 2, '#e8b94a')
+      px(g, 6, 10, 4, 1, '#e8b94a')
+      px(g, 7, 11, 2, 1, '#e8b94a')
+      dot(g, 5, 6, '#ffe87a') // corn kernels
+      dot(g, 7, 7, '#ffe87a')
+      dot(g, 9, 6, '#ffe87a')
+      dot(g, 6, 9, '#ffe87a')
+      dot(g, 8, 9, '#ffe87a')
+      dot(g, 10, 8, '#7bbf6a') // herb fleck
       break
     case 'permit_chicken':
     case 'permit_dairy':
