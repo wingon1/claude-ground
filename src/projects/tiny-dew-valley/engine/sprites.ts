@@ -902,37 +902,71 @@ export function bakeItemIcon(sprite: string, color?: string): HTMLCanvasElement 
       px(g, 5, 10, 6, 1, '#d2706a')
       break
     case 'milk':
-      px(g, 5, 4, 6, 9, '#f4f1df')
-      px(g, 5, 4, 6, 2, '#9fd0ff')
-      px(g, 6, 7, 4, 3, '#ffffff')
+      px(g, 6, 2, 4, 2, '#9fd0ff') // cap
+      px(g, 6, 2, 4, 1, '#cbe6ff')
+      px(g, 6, 4, 4, 1, '#eef4ff') // neck
+      px(g, 5, 5, 6, 8, '#f4f1df') // bottle body
+      px(g, 5, 5, 1, 8, '#ffffff') // shine
+      px(g, 10, 5, 1, 8, '#dcd6c0') // shade
+      px(g, 5, 12, 6, 1, '#d4cdb6') // base
+      px(g, 5, 8, 6, 3, '#cfe6ff') // label
+      dot(g, 7, 9, '#5a9fd0')
+      dot(g, 9, 9, '#5a9fd0')
       break
     case 'egg':
-      px(g, 5, 5, 6, 8, '#f5efe0')
-      px(g, 6, 4, 4, 2, '#ffffff')
-      px(g, 6, 11, 4, 2, '#d8c8a8')
+      px(g, 6, 3, 4, 1, '#fffdf6') // narrow top
+      px(g, 5, 4, 6, 7, '#f6efdf') // body
+      px(g, 6, 11, 4, 1, '#eee4cc') // round bottom
+      px(g, 6, 4, 2, 4, '#fffdf6') // highlight
+      px(g, 10, 6, 1, 5, '#e2d6bd') // shade
       break
     case 'golden_egg':
-      px(g, 5, 5, 6, 8, '#f0c44f')
-      px(g, 6, 4, 4, 2, '#fff08a')
-      px(g, 6, 11, 4, 2, '#b88724')
-      dot(g, 8, 8, '#fff7b8')
+      px(g, 6, 3, 4, 1, '#ffe9a0')
+      px(g, 5, 4, 6, 7, '#f0c44f')
+      px(g, 6, 11, 4, 1, '#c79a34')
+      px(g, 6, 4, 2, 3, '#fff0a8') // highlight
+      px(g, 10, 6, 1, 5, '#b88724') // shade
+      dot(g, 8, 6, '#fffce0') // sparkle
+      dot(g, 9, 9, '#fff7b8')
       break
     case 'rich_milk':
-      px(g, 5, 4, 6, 9, '#fff6d8')
-      px(g, 5, 4, 6, 2, '#d7a45a')
-      px(g, 6, 7, 4, 3, '#ffffff')
-      px(g, 7, 11, 2, 1, '#f0d48a')
+      px(g, 6, 2, 4, 2, '#e8c06a') // gold cap
+      px(g, 6, 2, 4, 1, '#fbe39a')
+      px(g, 6, 4, 4, 1, '#fff6e0') // neck
+      px(g, 5, 5, 6, 8, '#fff6d8') // creamy body
+      px(g, 5, 5, 1, 8, '#ffffff')
+      px(g, 10, 5, 1, 8, '#e8dcb0')
+      px(g, 5, 12, 6, 1, '#dccba0')
+      px(g, 5, 8, 6, 3, '#f5e6bd') // label
+      dot(g, 8, 9, '#caa24a')
       break
     case 'bacon':
-      px(g, 4, 5, 8, 8, '#c86462')
-      px(g, 5, 5, 2, 8, '#f0b0a0')
-      px(g, 9, 5, 1, 8, '#8f3f42')
+      // two wavy rashers (stepped rows)
+      px(g, 3, 4, 4, 2, '#c25048')
+      px(g, 6, 5, 4, 2, '#c25048')
+      px(g, 9, 4, 4, 2, '#c25048')
+      px(g, 3, 4, 4, 1, '#e88a7a') // fat
+      px(g, 6, 5, 4, 1, '#e88a7a')
+      px(g, 9, 4, 4, 1, '#e88a7a')
+      px(g, 3, 9, 4, 2, '#a83e3a')
+      px(g, 6, 10, 4, 2, '#a83e3a')
+      px(g, 9, 9, 4, 2, '#a83e3a')
+      px(g, 3, 9, 4, 1, '#d2706a')
+      px(g, 6, 10, 4, 1, '#d2706a')
+      px(g, 9, 9, 4, 1, '#d2706a')
       break
     case 'premium_bacon':
-      px(g, 4, 5, 8, 8, '#a83e48')
-      px(g, 5, 5, 2, 8, '#ffd08a')
-      px(g, 9, 5, 1, 8, '#6d2930')
-      px(g, 4, 4, 8, 1, '#fff08a')
+      // one bold marbled rasher + shine
+      px(g, 3, 5, 4, 3, '#a83e48')
+      px(g, 6, 6, 4, 3, '#a83e48')
+      px(g, 9, 5, 4, 3, '#a83e48')
+      px(g, 3, 5, 4, 1, '#ffd08a') // fat marbling
+      px(g, 6, 6, 4, 1, '#ffd08a')
+      px(g, 9, 5, 4, 1, '#ffd08a')
+      px(g, 3, 7, 4, 1, '#d2706a')
+      px(g, 6, 8, 4, 1, '#d2706a')
+      px(g, 9, 7, 4, 1, '#d2706a')
+      dot(g, 11, 5, '#fff0a0') // sheen
       break
     case 'butter':
       px(g, 3, 9, 10, 3, '#efe6c8') // wrapper
