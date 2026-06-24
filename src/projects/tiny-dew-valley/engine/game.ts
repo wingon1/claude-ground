@@ -60,6 +60,7 @@ import {
 } from '../data/cookingFire'
 import { cropUnlockFlag } from '../data/unlocks'
 import { RECIPES } from '../data/recipes'
+import { INTRO_ARRIVAL_LINES } from '../data/intro'
 import { OBSTACLE_DROP, OBSTACLE_HP, OBSTACLE_SOLID, TERRAIN_SOLID } from '../data/tiles'
 import {
   generateWorld,
@@ -83,6 +84,7 @@ import { buildMineMonsters, buildMineTiles } from './mineRuntime'
 import { buildUISnapshot } from './snapshotBuilder'
 import { GameRenderer } from './renderer'
 import type {
+  IntroScene,
   ObjectiveTaskView,
   ObjectiveView,
   OrderView,
@@ -116,6 +118,10 @@ const PLAYER_BLACKSMITH_SITE_LINES = [
   '누가 여기에 뭔가 지으려나 봐.',
   '공사 준비 중인 자리인가?',
 ]
+const INTRO_WOODS_START = { x: 2 * T + T / 2, y: 11 * T + T }
+const INTRO_WOODS_EDGE = { x: 8 * T + T / 2, y: 11 * T + T }
+const INTRO_FIELD_EDGE = { x: 19 * T + T / 2, y: 11 * T + T }
+const INTRO_TENT_APPROACH = { x: LOCATIONS.spawn.x * T + T / 2, y: LOCATIONS.spawn.y * T + T }
 
 export class Game {
   private canvas: HTMLCanvasElement
@@ -135,6 +141,9 @@ export class Game {
   private toasts: ToastMsg[] = []
   private toastId = 1
   private phase: UIPhase = 'title'
+  private introScene: IntroScene = null
+  private introT = 0
+  private introLineStep = -1
   private fade = 0
   private fadeDir = 0
   private pendingWake = false
@@ -205,13 +214,55 @@ export class Game {
     this.applyFieldRows()
     this.initRuntime()
     this.phase = 'intro'
+    this.introScene = 'newspaper'
+    this.introT = 0
+    this.introLineStep = -1
     this.audio.resume()
     this.audio.startMusic()
     this.emit()
   }
 
+  startIntroArrival() {
+    if (this.phase !== 'intro') return
+    this.introScene = 'arrival'
+    this.introT = 0
+    this.introLineStep = -1
+    this.fade = 0
+    this.fadeDir = 0
+    this.area = 'farm'
+    const introTree = this.state.tiles[idx(1, 11)]
+    introTree.terrain = 'grass'
+    introTree.cropId = null
+    introTree.metadata = { ...introTree.metadata }
+    setObstacle(introTree, 'tree')
+    const p = this.state.player
+    p.x = INTRO_WOODS_START.x
+    p.y = INTRO_WOODS_START.y
+    p.dir = 'right'
+    p.moving = true
+    p.animTime = 0
+    p.exhausted = false
+    this.target = null
+    this.workTile = null
+    this.workTool = null
+    this.speechBubbles = []
+    this.emit()
+  }
+
   finishIntro() {
     if (this.phase !== 'intro') return
+    this.introScene = null
+    this.introT = 0
+    this.introLineStep = -1
+    this.fade = 0
+    this.fadeDir = 0
+    const p = this.state.player
+    p.x = INTRO_TENT_APPROACH.x
+    p.y = INTRO_TENT_APPROACH.y
+    p.dir = 'down'
+    p.moving = false
+    p.animTime = 0
+    this.speechBubbles = []
     this.phase = 'playing'
     this.toast('숲 끝의 텐트에 도착했어요. 화면을 탭해 걸어보세요!', 'good')
     this.emit()
@@ -232,6 +283,9 @@ export class Game {
     stampFarmhouse(this.state.tiles)
     stampCookingFire(this.state.tiles, this.cookingFireBuilt())
     this.initRuntime()
+    this.introScene = null
+    this.introT = 0
+    this.introLineStep = -1
     this.phase = 'playing'
     this.audio.resume()
     this.audio.startMusic()
@@ -303,6 +357,7 @@ export class Game {
     const dt = Math.min(0.05, (now - this.last) / 1000)
     this.last = now
     if (this.phase === 'playing' || this.phase === 'cook') this.updateCooking(dt)
+    if (this.phase === 'intro') this.updateIntro(dt)
     if (this.phase === 'playing') this.update(dt)
     this.updateTransitions(dt)
     this.updateParticles(dt)
@@ -342,6 +397,55 @@ export class Game {
       this.playerFaintT = Math.max(0, this.playerFaintT - dt)
       if (this.playerFaintT <= 0 && this.pendingFaint && this.fadeDir === 0) this.fadeDir = 1
     }
+  }
+
+  private updateIntro(dt: number) {
+    if (this.introScene !== 'arrival') return
+    const p = this.state.player
+    this.introT += dt
+    this.speechBubbles = this.speechBubbles.filter((bubble) => bubble.until > this.nowSecs())
+    if (this.introT < 2.2) {
+      this.placeIntroPlayer(INTRO_WOODS_START, INTRO_WOODS_EDGE, this.introT / 2.2)
+      if (this.introLineStep < 0 && this.introT > 0.35) {
+        this.introLineStep = 0
+        this.say('player', INTRO_ARRIVAL_LINES[0], 3.1)
+      }
+    } else if (this.introT < 4.0) {
+      p.x = INTRO_WOODS_EDGE.x
+      p.y = INTRO_WOODS_EDGE.y
+      p.dir = 'right'
+      p.moving = false
+      if (this.introLineStep < 1 && this.introT > 2.45) {
+        this.introLineStep = 1
+        this.say('player', INTRO_ARRIVAL_LINES[1], 2.9)
+      }
+    } else if (this.introT < 6.8) {
+      this.placeIntroPlayer(INTRO_WOODS_EDGE, INTRO_FIELD_EDGE, (this.introT - 4.0) / 2.8)
+      if (this.introLineStep < 2 && this.introT > 4.3) {
+        this.introLineStep = 2
+        this.say('player', INTRO_ARRIVAL_LINES[2], 3.2)
+      }
+    } else if (this.introT < 10.2) {
+      this.placeIntroPlayer(INTRO_FIELD_EDGE, INTRO_TENT_APPROACH, (this.introT - 6.8) / 3.4)
+      if (this.introLineStep < 3 && this.introT > 7.1) {
+        this.introLineStep = 3
+        this.say('player', INTRO_ARRIVAL_LINES[3], 3.3)
+      }
+      if (this.introT > 8.0) this.fade = Math.min(1, (this.introT - 8.0) / 2.2)
+    } else {
+      this.finishIntro()
+    }
+  }
+
+  private placeIntroPlayer(from: { x: number; y: number }, to: { x: number; y: number }, rawT: number) {
+    const p = this.state.player
+    const t = Math.max(0, Math.min(1, rawT))
+    const eased = t * t * (3 - 2 * t)
+    p.x = from.x + (to.x - from.x) * eased
+    p.y = from.y + (to.y - from.y) * eased
+    p.dir = to.x >= from.x ? 'right' : 'left'
+    p.moving = true
+    p.animTime = this.introT
   }
 
   // ---------------- update ----------------
@@ -3332,6 +3436,7 @@ export class Game {
   private buildSnapshot(): UISnapshot {
     return buildUISnapshot({
       phase: this.phase,
+      introScene: this.introScene,
       area: this.area,
       state: this.state,
       toasts: this.toasts,

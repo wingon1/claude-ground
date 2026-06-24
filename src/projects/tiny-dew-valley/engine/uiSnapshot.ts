@@ -2,6 +2,7 @@ import type { PassiveId, PassiveRarity } from '../data/passives'
 import type { UpgradeableToolId } from '../data/toolUpgrades'
 
 export type UIPhase = 'title' | 'intro' | 'playing' | 'shop' | 'build' | 'blacksmith' | 'blacksmithBuy' | 'cook' | 'seed' | 'order' | 'sleepConfirm'
+export type IntroScene = 'newspaper' | 'arrival' | null
 
 export interface ToastMsg {
   id: number
@@ -210,6 +211,7 @@ export interface ContextActionView {
 
 export interface UISnapshot {
   phase: UIPhase
+  introScene: IntroScene
   day: number
   clock: string
   period: string

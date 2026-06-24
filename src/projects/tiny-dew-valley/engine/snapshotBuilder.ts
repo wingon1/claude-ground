@@ -69,6 +69,7 @@ const TOOL_USE_TEXT: Record<UpgradeableToolId, string> = {
 
 export interface SnapshotHost {
   phase: UIPhase
+  introScene: UISnapshot['introScene']
   area: 'farm' | 'mine'
   state: GameState | undefined
   toasts: ToastMsg[]
@@ -131,6 +132,7 @@ export interface SnapshotHost {
 function emptySnapshot(host: SnapshotHost): UISnapshot {
   return {
     phase: host.phase,
+    introScene: host.introScene,
     day: 1,
     clock: '오전 6:00',
     period: '아침',
@@ -537,6 +539,7 @@ export function buildUISnapshot(host: SnapshotHost): UISnapshot {
 
   return {
     phase: host.phase,
+    introScene: host.introScene,
     day: s.day,
     clock: host.clockString(),
     period: host.periodLabel(),

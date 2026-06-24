@@ -27,4 +27,6 @@ export const INTRO_STEPS = [
   },
 ] as const
 
+export const INTRO_ARRIVAL_LINES = INTRO_STEPS[1].lines
+
 export type IntroStep = (typeof INTRO_STEPS)[number]
