@@ -213,7 +213,7 @@ export class Game {
     this.applyInitialUnlocks()
     this.applyGroundCleanup()
     this.applyFieldRows()
-    this.applyFieldExpansions()
+    this.applyFieldExpansions(true)
     this.applyMineState()
     this.applyAnimalFarms()
     stampFarmhouse(this.state.tiles)
@@ -2916,13 +2916,33 @@ export class Game {
     return this.fieldCrop(fieldId) ?? DEFAULT_FIELD_CROP
   }
 
+  private fieldCellAt(x: number, y: number): { plotId: string; row: number } | null {
+    for (const plot of FIELD_PLOTS) {
+      const insideX = x >= plot.x && x < plot.x + FIELD_SIZE
+      const insideY = y >= plot.y && y < plot.y + FIELD_SIZE
+      if (insideX && insideY) return { plotId: plot.id, row: y - plot.y }
+    }
+    return null
+  }
+
+  private fieldSignAt(x: number, y: number): string | null {
+    const plot = FIELD_PLOTS.find((candidate) => candidate.sign.x === x && candidate.sign.y === y)
+    return plot?.id ?? null
+  }
+
+  private clearCropState(t: Tile) {
+    t.cropId = null
+    t.growthStage = 0
+    t.metadata.growT = 0
+    delete t.metadata.harvestHp
+  }
+
   private applyFieldRows() {
     for (const t of this.state.tiles) {
-      if (typeof t.metadata.fieldId === 'string' || typeof t.metadata.fieldSign === 'string') {
+      const hasFieldMeta = typeof t.metadata.fieldId === 'string' || typeof t.metadata.fieldSign === 'string'
+      if (hasFieldMeta && !this.fieldCellAt(t.x, t.y) && !this.fieldSignAt(t.x, t.y)) {
         t.terrain = 'grass'
-        t.cropId = null
-        t.growthStage = 0
-        t.metadata.growT = 0
+        this.clearCropState(t)
         t.obstacle = null
         t.hp = undefined
         delete t.metadata.fieldId
@@ -2937,22 +2957,23 @@ export class Game {
           const unlocked = row < rows
           t.terrain = unlocked ? 'soil' : 'grass'
           if (!unlocked) {
-            t.cropId = null
-            t.growthStage = 0
-            t.metadata.growT = 0
+            this.clearCropState(t)
+          } else if (t.cropId && !CROPS[t.cropId]) {
+            this.clearCropState(t)
           }
           t.obstacle = null
           t.hp = undefined
           t.metadata.fieldId = plot.id
+          delete t.metadata.fieldSign
         }
       }
       const sign = this.state.tiles[idx(plot.sign.x, plot.sign.y)]
       sign.terrain = 'grass'
-      sign.cropId = null
-      sign.growthStage = 0
+      this.clearCropState(sign)
       sign.obstacle = null
       sign.hp = undefined
       sign.metadata.fieldSign = plot.id
+      delete sign.metadata.fieldId
     }
   }
 
@@ -3059,14 +3080,14 @@ export class Game {
     return typeof raw === 'number' ? raw : 0
   }
 
-  private applyFieldExpansions() {
+  private applyFieldExpansions(preserveCrops = false) {
     const level = this.fieldExpansionLevel()
     for (const option of BUILD_OPTIONS) {
-      if (option.level <= level) this.applyBuildRect(option.rect)
+      if (option.level <= level) this.applyBuildRect(option.rect, preserveCrops)
     }
   }
 
-  private applyBuildRect(rect: { x: number; y: number; w: number; h: number }) {
+  private applyBuildRect(rect: { x: number; y: number; w: number; h: number }, preserveCrops = false) {
     for (let y = rect.y; y < rect.y + rect.h; y++) {
       for (let x = rect.x; x < rect.x + rect.w; x++) {
         if (!inBounds(x, y)) continue
@@ -3074,9 +3095,7 @@ export class Game {
         t.terrain = 'soil'
         t.obstacle = null
         t.hp = undefined
-        t.cropId = null
-        t.growthStage = 0
-        t.metadata.growT = 0
+        if (!preserveCrops || (t.cropId && !CROPS[t.cropId])) this.clearCropState(t)
       }
     }
   }
