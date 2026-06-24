@@ -139,21 +139,16 @@ export function stampCookingFire(tiles: Tile[], built = true) {
     }
   }
   if (!built) return
-  rect(
-    tiles,
-    LOCATIONS.cookingFire.x,
-    LOCATIONS.cookingFire.y,
-    LOCATIONS.cookingFire.x + 1,
-    LOCATIONS.cookingFire.y + 1,
-    (t) => {
-      t.terrain = 'grass'
-      clearObstacle(t)
-      t.cropId = null
-      t.growthStage = 0
-      t.metadata.cookingFire = true
-      t.metadata.cookingFireBlock = true
-    },
-  )
+  rect(tiles, LOCATIONS.cookingFire.x - 1, LOCATIONS.cookingFire.y - 1, LOCATIONS.cookingFire.x + 2, LOCATIONS.cookingFire.y + 2, (t) => {
+    t.metadata.cookingFire = true
+  })
+  rect(tiles, LOCATIONS.cookingFire.x, LOCATIONS.cookingFire.y, LOCATIONS.cookingFire.x + 1, LOCATIONS.cookingFire.y + 1, (t) => {
+    t.terrain = 'grass'
+    clearObstacle(t)
+    t.cropId = null
+    t.growthStage = 0
+    t.metadata.cookingFire = true
+  })
 }
 
 export function stampMine(tiles: Tile[]) {
