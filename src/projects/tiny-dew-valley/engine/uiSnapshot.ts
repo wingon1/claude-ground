@@ -1,7 +1,7 @@
 import type { PassiveId, PassiveRarity } from '../data/passives'
 import type { UpgradeableToolId } from '../data/toolUpgrades'
 
-export type UIPhase = 'title' | 'playing' | 'shop' | 'build' | 'blacksmith' | 'blacksmithBuy' | 'cook' | 'seed' | 'order' | 'sleepConfirm'
+export type UIPhase = 'title' | 'intro' | 'playing' | 'shop' | 'build' | 'blacksmith' | 'blacksmithBuy' | 'cook' | 'seed' | 'order' | 'sleepConfirm'
 
 export interface ToastMsg {
   id: number

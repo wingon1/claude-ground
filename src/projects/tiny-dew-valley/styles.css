@@ -1373,6 +1373,198 @@
   margin-top: 14px;
   line-height: 1.5;
 }
+.tdv-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: #101714;
+  color: #3b2a1c;
+}
+.tdv-intro-skip {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  border: 2px solid #8a6b45;
+  background: #efe0bd;
+  color: #4a3624;
+  font-weight: 900;
+  padding: 7px 12px;
+  cursor: pointer;
+  box-shadow: 0 3px 0 #5f4932;
+}
+.tdv-newspaper {
+  width: min(420px, 92vw);
+  max-height: 90vh;
+  overflow: auto;
+  background:
+    linear-gradient(90deg, #00000008 1px, transparent 1px) 0 0 / 14px 14px,
+    linear-gradient(#f4e6c6, #dfc899);
+  border: 3px solid #6f5434;
+  box-shadow: 0 14px 0 #00000038;
+  padding: 18px;
+}
+.tdv-paper-name {
+  text-align: center;
+  font-size: 18px;
+  font-weight: 900;
+  border-bottom: 3px double #6f5434;
+  padding-bottom: 6px;
+}
+.tdv-paper-date {
+  text-align: center;
+  font-size: 10px;
+  font-weight: 800;
+  margin: 6px 0 10px;
+  color: #6f5434;
+}
+.tdv-newspaper h1 {
+  font-size: 27px;
+  line-height: 1.12;
+  margin: 0 0 12px;
+  text-align: center;
+  color: #2d2118;
+}
+.tdv-paper-grid {
+  display: grid;
+  grid-template-columns: 112px 1fr;
+  gap: 12px;
+}
+.tdv-mosaic-photo {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  width: 112px;
+  height: 132px;
+  border: 3px solid #4a3624;
+  background: #2f2f2f;
+  overflow: hidden;
+}
+.tdv-mosaic-photo span:nth-child(4n) { background: #d0b58b; }
+.tdv-mosaic-photo span:nth-child(4n + 1) { background: #4d443c; }
+.tdv-mosaic-photo span:nth-child(4n + 2) { background: #8f7658; }
+.tdv-mosaic-photo span:nth-child(4n + 3) { background: #1f2421; }
+.tdv-paper-copy p {
+  margin: 0 0 9px;
+  font-size: 12px;
+  line-height: 1.55;
+  font-weight: 700;
+}
+.tdv-readable-crime {
+  background: #fff3c8;
+  border-left: 4px solid #9a3328;
+  padding: 7px 8px;
+  color: #2d2118;
+}
+.tdv-intro-next {
+  width: 100%;
+  margin-top: 14px;
+}
+.tdv-intro-arrival {
+  background:
+    linear-gradient(#17271f 0 32%, #243f2d 32% 64%, #192b21 64%),
+    #17271f;
+}
+.tdv-forest-scene {
+  position: relative;
+  width: min(420px, 92vw);
+  height: min(620px, 92vh);
+  overflow: hidden;
+  border: 3px solid #1b2a20;
+  background: #243f2d;
+  box-shadow: 0 14px 0 #00000038;
+}
+.tdv-forest-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, transparent 0 8%, #0f1d16 8% 12%, transparent 12% 22%, #13271c 22% 27%, transparent 27% 41%, #0f1d16 41% 45%, transparent 45% 62%, #13271c 62% 67%, transparent 67%),
+    linear-gradient(#10251a 0 36%, #24452f 36% 72%, #4a5837 72%);
+}
+.tdv-forest-bg::after {
+  content: '';
+  position: absolute;
+  left: -20%;
+  right: -20%;
+  bottom: 0;
+  height: 34%;
+  background:
+    radial-gradient(circle at 25% 20%, #6f6a3d 0 3px, transparent 4px),
+    radial-gradient(circle at 67% 55%, #365a35 0 4px, transparent 5px),
+    linear-gradient(#56683f, #31472f);
+}
+.tdv-forest-player {
+  position: absolute;
+  left: 21%;
+  bottom: 25%;
+  width: 24px;
+  height: 42px;
+  background: #334a5b;
+  box-shadow:
+    0 -14px 0 #d0a06d,
+    6px -20px 0 #513820,
+    -5px 16px 0 #1f2930,
+    5px 16px 0 #1f2930;
+}
+.tdv-forest-tent {
+  position: absolute;
+  right: 15%;
+  bottom: 23%;
+  width: 94px;
+  height: 62px;
+  background: linear-gradient(135deg, transparent 0 50%, #be7b3f 51%), linear-gradient(45deg, transparent 0 50%, #d6944f 51%);
+  border-bottom: 8px solid #6b422a;
+}
+.tdv-forest-tent::after {
+  content: '';
+  position: absolute;
+  left: 38px;
+  bottom: 0;
+  border-left: 11px solid transparent;
+  border-right: 11px solid transparent;
+  border-bottom: 38px solid #4a2c24;
+}
+.tdv-forest-dialogue {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 82px;
+  background: #f1dfb9;
+  color: #3b2a1c;
+  border: 3px solid #6f5434;
+  padding: 12px 14px;
+  box-shadow: 0 5px 0 #00000024;
+}
+.tdv-forest-dialogue .place {
+  color: #7a5a32;
+  font-size: 11px;
+  font-weight: 900;
+  margin-bottom: 6px;
+}
+.tdv-forest-dialogue p {
+  margin: 3px 0;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+.tdv-forest-scene .tdv-intro-next {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 14px;
+  width: auto;
+}
+@media (max-width: 360px) {
+  .tdv-paper-grid {
+    grid-template-columns: 1fr;
+  }
+  .tdv-mosaic-photo {
+    width: 100%;
+    height: 120px;
+  }
+}
 .tdv-ending .art {
   font-size: 46px;
   text-align: center;

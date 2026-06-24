@@ -204,10 +204,16 @@ export class Game {
     this.applyInitialUnlocks()
     this.applyFieldRows()
     this.initRuntime()
-    this.phase = 'playing'
+    this.phase = 'intro'
     this.audio.resume()
     this.audio.startMusic()
-    this.toast('포근한 골짜기에 도착했어요. 화면을 탭해 걸어보세요!', 'good')
+    this.emit()
+  }
+
+  finishIntro() {
+    if (this.phase !== 'intro') return
+    this.phase = 'playing'
+    this.toast('숲 끝의 텐트에 도착했어요. 화면을 탭해 걸어보세요!', 'good')
     this.emit()
   }
 

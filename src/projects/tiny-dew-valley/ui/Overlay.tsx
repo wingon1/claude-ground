@@ -3,6 +3,7 @@ import type { Game } from '../engine/game'
 import type { UISnapshot } from '../engine/uiSnapshot'
 import { iconURL } from '../engine/sprites'
 import { ITEMS } from '../data/items'
+import { INTRO_STEPS } from '../data/intro'
 
 // Pixel-art icon, used everywhere emoji used to be.
 function Ic({ k, cls }: { k: string; cls?: string }) {
@@ -21,6 +22,7 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
   const testMode = settingsTapCount >= 5
 
   if (ui.phase === 'title') return <TitleScreen game={game} ui={ui} />
+  if (ui.phase === 'intro') return <IntroScreen game={game} />
 
   const modalOpen =
     ui.phase === 'shop' ||
@@ -218,6 +220,53 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
         />
       )}
     </>
+  )
+}
+
+// ---------------- Intro ----------------
+function IntroScreen({ game }: { game: Game }) {
+  const [stepIndex, setStepIndex] = useState(0)
+  const step = INTRO_STEPS[stepIndex]
+  const isLast = stepIndex >= INTRO_STEPS.length - 1
+  const finish = () => game.finishIntro()
+  const next = () => {
+    if (isLast) finish()
+    else setStepIndex((index) => index + 1)
+  }
+
+  return (
+    <div className={`tdv-intro tdv-intro-${step.kind}`}>
+      <button className="tdv-intro-skip" onClick={finish}>스킵</button>
+      {step.kind === 'newspaper' ? (
+        <div className="tdv-newspaper">
+          <div className="tdv-paper-name">골짜기 조간신문</div>
+          <div className="tdv-paper-date">{step.dateLine}</div>
+          <h1>{step.headline}</h1>
+          <div className="tdv-paper-grid">
+            <div className="tdv-mosaic-photo" aria-label={step.suspectLabel}>
+              {Array.from({ length: 64 }).map((_, i) => <span key={i} />)}
+            </div>
+            <div className="tdv-paper-copy">
+              <p>{step.articleLead}</p>
+              <p className="tdv-readable-crime">{step.readableCrime}</p>
+              <p>{step.articleTail}</p>
+            </div>
+          </div>
+          <button className="tdv-bigbtn tdv-intro-next" onClick={next}>다음</button>
+        </div>
+      ) : (
+        <div className="tdv-forest-scene">
+          <div className="tdv-forest-bg" />
+          <div className="tdv-forest-player" />
+          <div className="tdv-forest-tent" />
+          <div className="tdv-forest-dialogue">
+            <div className="place">{step.location}</div>
+            {step.lines.map((line) => <p key={line}>{line}</p>)}
+          </div>
+          <button className="tdv-bigbtn tdv-intro-next" onClick={next}>시작하기</button>
+        </div>
+      )}
+    </div>
   )
 }
 
