@@ -1,10 +1,22 @@
-import type { CookJob, Direction, GameState, InventorySlot, Tile, ToolId } from '../types'
+import type { CookJob, Direction, GameState, InventorySlot, Obstacle, Tile, ToolId } from '../types'
 import { CROPS, CROP_LIST } from '../data/crops'
 import { cropItemId, getItem } from '../data/items'
 import { SHOP_CATALOG } from '../data/shopCatalog'
 import { BUILD_OPTIONS } from '../data/buildOptions'
 import { ANIMAL_FARMS, ANIMAL_FARM_MAX_ANIMALS, type AnimalFarmDef } from '../data/animalFarms'
 import { ANIMAL_UPGRADES, type AnimalUpgradeDef } from '../data/animalUpgrades'
+import { MINE_MAX_FLOOR, mineFloorDef } from '../data/mineFloors'
+import { MONSTERS, type MonsterDef, type MonsterId } from '../data/monsters'
+import {
+  PASSIVES,
+  PASSIVE_RARITIES,
+  PASSIVE_RARITY_LABEL,
+  PASSIVE_RARITY_WEIGHT,
+  passiveDef,
+  passiveValueText,
+  type PassiveId,
+  type PassiveRarity,
+} from '../data/passives'
 import {
   DEFAULT_FIELD_CROP,
   FIELD_PLOTS,
@@ -211,6 +223,22 @@ export interface ToolUpgradeView {
   maxed: boolean
   sprite: string
 }
+export interface PassiveView {
+  id: PassiveId
+  rarity: PassiveRarity
+  key: string
+  name: string
+  rarityLabel: string
+  effectText: string
+  desc: string
+  qty: number
+  equipped: boolean
+}
+export interface PassiveSlotView {
+  index: number
+  unlocked: boolean
+  passive: PassiveView | null
+}
 export interface CropChoiceView {
   id: string
   name: string
@@ -320,6 +348,9 @@ export interface UISnapshot {
   buildOptions: BuildOptionView[]
   buildPermits: BuildPermitView[]
   toolUpgrades: ToolUpgradeView[]
+  passives: PassiveView[]
+  passiveSlots: PassiveSlotView[]
+  passiveSlotCount: number
   fieldPlots: FieldPlotView[]
   cropChoices: CropChoiceView[]
   selectedFieldId: string | null
@@ -362,6 +393,16 @@ interface Firefly {
 }
 type Period = 'morning' | 'afternoon' | 'golden' | 'night'
 type WorkKind = 'pickup' | 'harvest' | 'chop' | 'plant'
+interface MineMonster {
+  uid: string
+  id: MonsterId
+  x: number
+  y: number
+  hp: number
+  maxHp: number
+  hitT: number
+  attackT: number
+}
 
 export class Game {
   private canvas: HTMLCanvasElement
@@ -390,6 +431,7 @@ export class Game {
   private stuckT = 0
   private keys = new Set<string>()
   private workTile: { x: number; y: number } | null = null
+  private workTool: UpgradeableToolId | 'sword' | null = null
   private itemIconCache = new Map<string, HTMLCanvasElement>()
   private jumpT = 0
   private workAnimT = 0
@@ -397,6 +439,7 @@ export class Game {
   private area: 'farm' | 'mine' = 'farm'
   private mineTiles: Tile[] = []
   private mineFloor = 1
+  private mineMonsters: MineMonster[] = []
   private farmReturn: { x: number; y: number; dir: Direction } | null = null
 
   private listeners = new Set<() => void>()
@@ -570,7 +613,10 @@ export class Game {
       this.updateAnimalDrops(dt)
       this.respawnNodes()
       this.updateFireflies(dt)
+    } else {
+      this.updateMineMonsters(dt)
     }
+    this.collectMagnetItems()
     if (!s.player.moving) this.tryAutoWork()
   }
 
@@ -623,7 +669,7 @@ export class Game {
     p.moving = true
     if (Math.abs(vx) > Math.abs(vy)) p.dir = vx > 0 ? 'right' : 'left'
     else p.dir = vy > 0 ? 'down' : 'up'
-    const speed = WALK_SPEED * dt
+    const speed = WALK_SPEED * (1 + this.passiveEffect('move_speed')) * dt
     const nx = p.x + vx * speed
     const ny = p.y + vy * speed
     let moved = false
@@ -705,6 +751,7 @@ export class Game {
   private leaveMineRuntime() {
     this.area = 'farm'
     this.mineTiles = []
+    this.mineMonsters = []
     this.mineFloor = 1
     this.farmReturn = null
   }
@@ -727,6 +774,7 @@ export class Game {
 
   private buildMineTiles(floor: number): Tile[] {
     const tiles: Tile[] = []
+    const floorDef = mineFloorDef(floor)
     for (let y = 0; y < WORLD_H; y++) {
       for (let x = 0; x < WORLD_W; x++) {
         const inside = x >= 20 && x <= 37 && y >= 10 && y <= 24
@@ -742,16 +790,150 @@ export class Game {
       [23, 12], [27, 12], [33, 12], [35, 15], [22, 16], [28, 16],
       [32, 18], [24, 20], [35, 21], [22, 22], [31, 22],
     ]
-    const copperCount = Math.min(7, 2 + floor)
-    const ironCount = Math.max(0, Math.min(5, floor - 1))
+    const orePlan: Exclude<Obstacle, null>[] = []
+    for (const [obstacle, count] of Object.entries(floorDef.ores)) {
+      for (let i = 0; i < (count ?? 0); i++) orePlan.push(obstacle as Exclude<Obstacle, null>)
+    }
     spots.forEach(([x, y], i) => {
       const t = tiles[idx(x, y)]
-      if (i < ironCount) setObstacle(t, 'iron_ore')
-      else if (i < ironCount + copperCount) setObstacle(t, 'copper_ore')
-      else setObstacle(t, 'rock')
+      setObstacle(t, orePlan[i] ?? 'rock')
       t.metadata.mineNode = true
     })
     return tiles
+  }
+
+  private buildMineMonsters(floor: number): MineMonster[] {
+    const floorDef = mineFloorDef(floor)
+    const spawnTiles: [number, number][] = [
+      [22, 12], [25, 13], [31, 13], [35, 14], [23, 17],
+      [30, 17], [34, 18], [25, 21], [33, 21], [36, 22],
+    ]
+    const monsters: MineMonster[] = []
+    let cursor = 0
+    for (const entry of floorDef.monsters) {
+      const def = MONSTERS[entry.id]
+      for (let i = 0; i < entry.count; i++) {
+        const [tx, ty] = spawnTiles[cursor % spawnTiles.length]
+        cursor += 1
+        monsters.push({
+          uid: `${floor}:${entry.id}:${i}:${cursor}`,
+          id: entry.id,
+          x: tx * T + T / 2,
+          y: ty * T + T,
+          hp: def.hp,
+          maxHp: def.hp,
+          hitT: 0,
+          attackT: 0.8 + Math.random() * 0.6,
+        })
+      }
+    }
+    return monsters
+  }
+
+  private deepestMineFloor(): number {
+    const raw = this.state.flags['mine:deepestFloor']
+    return typeof raw === 'number' ? Math.max(0, Math.min(MINE_MAX_FLOOR, Math.floor(raw))) : 0
+  }
+
+  private setDeepestMineFloor(floor: number) {
+    this.state.flags['mine:deepestFloor'] = Math.max(this.deepestMineFloor(), Math.min(MINE_MAX_FLOOR, floor))
+  }
+
+  private passiveCountKey(id: PassiveId, rarity: PassiveRarity): string {
+    return `passive:${id}:${rarity}`
+  }
+
+  private passiveEquipKey(slot: number): string {
+    return `passive:equip:${slot}`
+  }
+
+  private passiveKey(id: PassiveId, rarity: PassiveRarity): string {
+    return `${id}:${rarity}`
+  }
+
+  private parsePassiveKey(key: unknown): { id: PassiveId; rarity: PassiveRarity } | null {
+    if (typeof key !== 'string') return null
+    const [id, rarity] = key.split(':')
+    if (!passiveDef(id)) return null
+    if (!PASSIVE_RARITIES.includes(rarity as PassiveRarity)) return null
+    return { id: id as PassiveId, rarity: rarity as PassiveRarity }
+  }
+
+  private passiveCount(id: PassiveId, rarity: PassiveRarity): number {
+    const raw = this.state.flags[this.passiveCountKey(id, rarity)]
+    return typeof raw === 'number' ? Math.max(0, Math.floor(raw)) : 0
+  }
+
+  private passiveSlotCount(): number {
+    if (!this.mineUnlocked()) return 0
+    const floor = this.deepestMineFloor()
+    if (floor >= 10) return 3
+    if (floor >= 5) return 2
+    return 1
+  }
+
+  private equippedPassives(): { id: PassiveId; rarity: PassiveRarity }[] {
+    const out: { id: PassiveId; rarity: PassiveRarity }[] = []
+    for (let i = 0; i < this.passiveSlotCount(); i++) {
+      const parsed = this.parsePassiveKey(this.state.flags[this.passiveEquipKey(i)])
+      if (parsed) out.push(parsed)
+    }
+    return out
+  }
+
+  private passiveEffect(id: PassiveId): number {
+    let value = 0
+    for (const equipped of this.equippedPassives()) {
+      if (equipped.id !== id) continue
+      const def = passiveDef(equipped.id)
+      if (def) value += def.values[equipped.rarity]
+    }
+    return value
+  }
+
+  private grantPassive(id: PassiveId, rarity: PassiveRarity) {
+    const def = passiveDef(id)
+    if (!def) return
+    const key = this.passiveCountKey(id, rarity)
+    const next = this.passiveCount(id, rarity) + 1
+    this.state.flags[key] = next
+    this.toast(`${PASSIVE_RARITY_LABEL[rarity]} ${def.name} 획득`, rarity === 'epic' ? 'good' : 'info')
+  }
+
+  equipPassive(id: PassiveId, rarity: PassiveRarity) {
+    if (this.passiveCount(id, rarity) <= 0) return
+    const slots = this.passiveSlotCount()
+    if (slots <= 0) return
+    const nextKey = this.passiveKey(id, rarity)
+    for (let i = 0; i < slots; i++) {
+      const parsed = this.parsePassiveKey(this.state.flags[this.passiveEquipKey(i)])
+      if (parsed?.id === id) {
+        this.state.flags[this.passiveEquipKey(i)] = nextKey
+        this.audio.sfx('select')
+        this.autosave()
+        this.emit()
+        return
+      }
+    }
+    for (let i = 0; i < slots; i++) {
+      if (!this.parsePassiveKey(this.state.flags[this.passiveEquipKey(i)])) {
+        this.state.flags[this.passiveEquipKey(i)] = nextKey
+        this.audio.sfx('select')
+        this.autosave()
+        this.emit()
+        return
+      }
+    }
+    this.toast('패시브 슬롯이 부족해요.', 'bad')
+    this.audio.sfx('reject')
+  }
+
+  unequipPassive(slot: number) {
+    if (slot < 0 || slot >= this.passiveSlotCount()) return
+    delete this.state.flags[this.passiveEquipKey(slot)]
+    this.audio.sfx('select')
+    this.autosave()
+    this.emit()
   }
 
   // Find the best workable tile adjacent to the player (incl. own tile).
@@ -786,7 +968,28 @@ export class Game {
 
   private tryAutoWork() {
     this.workTile = null
+    this.workTool = null
     if (this.fadeDir !== 0) return
+    const monster = this.nearestAttackableMonster()
+    if (monster) {
+      const p = this.state.player
+      const tx = Math.floor(monster.x / T)
+      const ty = Math.floor((monster.y - 8) / T)
+      this.workTile = { x: tx, y: ty }
+      this.workTool = 'sword'
+      if (Math.abs(monster.x - p.x) > Math.abs(monster.y - p.y)) p.dir = monster.x > p.x ? 'right' : 'left'
+      else p.dir = monster.y > p.y ? 'down' : 'up'
+      if (this.workCooldown > 0) return
+      this.workCooldown = WORK_INTERVAL
+      if (this.countItem('sword') <= 0) {
+        this.toast('몬스터를 공격하려면 검이 필요해요.', 'bad')
+        this.audio.sfx('reject')
+        return
+      }
+      this.workAnimT = 0.28
+      this.hitMonster(monster)
+      return
+    }
     const work = this.findWork()
     if (!work) return
     this.workTile = { x: work.t.x, y: work.t.y }
@@ -811,6 +1014,159 @@ export class Game {
       else if (work.kind === 'chop') this.chopObstacle(work.t)
       else if (work.kind === 'plant') this.plantTile(work.t)
     }
+  }
+
+  private nearestAttackableMonster(): MineMonster | null {
+    if (this.area !== 'mine' || this.mineMonsters.length === 0) return null
+    const p = this.state.player
+    let best: { monster: MineMonster; d: number } | null = null
+    for (const monster of this.mineMonsters) {
+      const d = Math.hypot(monster.x - p.x, monster.y - p.y)
+      if (d > WORK_RANGE + T * 0.5) continue
+      if (!best || d < best.d) best = { monster, d }
+    }
+    return best?.monster ?? null
+  }
+
+  private monsterCollides(cx: number, cy: number): boolean {
+    const x0 = Math.floor((cx - 5) / T)
+    const x1 = Math.floor((cx + 5) / T)
+    const y0 = Math.floor((cy - 6) / T)
+    const y1 = Math.floor((cy - 0.5) / T)
+    for (let ty = y0; ty <= y1; ty++) {
+      for (let tx = x0; tx <= x1; tx++) {
+        if (!inBounds(tx, ty)) return true
+        if (this.tileSolid(this.activeTiles()[idx(tx, ty)])) return true
+      }
+    }
+    return false
+  }
+
+  private updateMineMonsters(dt: number) {
+    if (this.area !== 'mine') return
+    const p = this.state.player
+    for (const monster of this.mineMonsters) {
+      const def = MONSTERS[monster.id]
+      monster.hitT = Math.max(0, monster.hitT - dt)
+      monster.attackT = Math.max(0, monster.attackT - dt)
+      const dx = p.x - monster.x
+      const dy = p.y - monster.y
+      const d = Math.max(1, Math.hypot(dx, dy))
+      if (d < T * 7 && d > T * 1.15) {
+        const step = def.speed * dt
+        const nx = monster.x + (dx / d) * step
+        const ny = monster.y + (dy / d) * step
+        if (!this.monsterCollides(nx, monster.y)) monster.x = nx
+        if (!this.monsterCollides(monster.x, ny)) monster.y = ny
+      }
+      if (d <= T * 1.2 && monster.attackT <= 0 && this.state.stamina > 0) {
+        this.state.stamina = Math.max(0, this.state.stamina - def.attack)
+        if (this.state.stamina <= 0) this.state.player.exhausted = true
+        monster.attackT = 1.2
+        this.toast(`${def.name}에게 맞았어요.`, 'bad')
+        this.audio.sfx('reject')
+      }
+    }
+  }
+
+  private hitMonster(monster: MineMonster) {
+    const damage = 1 + Math.floor(this.passiveEffect('attack'))
+    monster.hp -= damage
+    monster.hitT = 0.2
+    this.audio.sfx('crack')
+    this.dirtPuff(monster.x, monster.y - 8, MONSTERS[monster.id].accent)
+    if (monster.hp > 0) {
+      this.emit()
+      return
+    }
+    this.defeatMonster(monster)
+  }
+
+  private defeatMonster(monster: MineMonster) {
+    const def = MONSTERS[monster.id]
+    this.mineMonsters = this.mineMonsters.filter((m) => m.uid !== monster.uid)
+    for (const drop of def.drops) {
+      if (Math.random() > drop.chance) continue
+      const qty = drop.minQty + Math.floor(Math.random() * (drop.maxQty - drop.minQty + 1))
+      this.dropGroundItemNear(monster.x, monster.y, drop.itemId, qty)
+    }
+    this.rollPassiveDrop(def)
+    this.toast(`${def.name} 처치`, 'good')
+    this.audio.sfx('sparkle')
+    this.emit()
+  }
+
+  private rollPassiveDrop(monster: MonsterDef) {
+    const floor = mineFloorDef(this.mineFloor)
+    const dropChance = floor.passiveDropChance + monster.passiveDropBonus
+    if (Math.random() > dropChance) return
+    const passive = this.pickWeightedPassive(monster)
+    const rarity = this.pickPassiveRarity(monster)
+    this.grantPassive(passive.id, rarity)
+    this.autosave()
+  }
+
+  private pickWeightedPassive(monster: MonsterDef) {
+    const weights = PASSIVES.map((passive) => ({
+      passive,
+      weight: monster.passiveWeights?.[passive.id] ?? 1,
+    }))
+    const total = weights.reduce((sum, entry) => sum + entry.weight, 0)
+    let roll = Math.random() * total
+    for (const entry of weights) {
+      roll -= entry.weight
+      if (roll <= 0) return entry.passive
+    }
+    return weights[weights.length - 1].passive
+  }
+
+  private pickPassiveRarity(monster: MonsterDef): PassiveRarity {
+    const base = { ...mineFloorDef(this.mineFloor).rarityChance }
+    for (const rarity of PASSIVE_RARITIES) base[rarity] += monster.rarityBonus?.[rarity] ?? 0
+    const total = PASSIVE_RARITIES.reduce((sum, rarity) => sum + Math.max(0, base[rarity]), 0)
+    let roll = Math.random() * Math.max(0.001, total)
+    for (const rarity of PASSIVE_RARITIES) {
+      roll -= Math.max(0, base[rarity])
+      if (roll <= 0) return rarity
+    }
+    return 'normal'
+  }
+
+  private dropGroundItemNear(x: number, y: number, itemId: string, qty: number) {
+    const tx = Math.floor(x / T)
+    const ty = Math.floor((y - 8) / T)
+    for (let r = 0; r <= 2; r++) {
+      for (let dy = -r; dy <= r; dy++) {
+        for (let dx = -r; dx <= r; dx++) {
+          const px = tx + dx
+          const py = ty + dy
+          if (!inBounds(px, py)) continue
+          const t = this.activeTiles()[idx(px, py)]
+          if (this.tileSolid(t) || t.cropId || this.groundItemId(t)) continue
+          t.metadata.groundItemId = itemId
+          t.metadata.groundItemQty = qty
+          return
+        }
+      }
+    }
+    this.giveItem(itemId, qty)
+  }
+
+  private collectMagnetItems() {
+    const rangeTiles = this.passiveEffect('magnet')
+    if (rangeTiles <= 0) return
+    const p = this.state.player
+    const range = rangeTiles * T
+    let best: { t: Tile; d: number } | null = null
+    for (const t of this.activeTiles()) {
+      if (!this.groundItemId(t)) continue
+      const cx = t.x * T + T / 2
+      const cy = t.y * T + T / 2
+      const d = Math.hypot(cx - p.x, cy - p.y)
+      if (d > range) continue
+      if (!best || d < best.d) best = { t, d }
+    }
+    if (best) this.pickupGroundItem(best.t)
   }
 
   private chopObstacle(t: Tile) {
@@ -853,7 +1209,10 @@ export class Game {
     else this.woodChips(px, py)
     if (t.hp <= 0) {
       const drop = OBSTACLE_DROP[ob]
-      if (drop) this.giveItem(drop.itemId, drop.qty)
+      if (drop) {
+        this.giveItem(drop.itemId, drop.qty)
+        if (mining && Math.random() < this.passiveEffect('ore_bonus')) this.giveItem(drop.itemId, 1)
+      }
       if (ob === 'copper_ore' || ob === 'iron_ore') this.giveItem('stone', 1)
       this.audio.sfx('crack')
       const renewable = !!t.metadata.renewable
@@ -966,6 +1325,7 @@ export class Game {
       return
     }
     this.giveItem(itemId, 1)
+    if (Math.random() < this.passiveEffect('crop_yield')) this.giveItem(itemId, 1)
     const nextCropId = this.cropForTile(t) ?? crop.id
     t.cropId = nextCropId
     t.growthStage = 0
@@ -1062,6 +1422,7 @@ export class Game {
   private spendStamina(cost: number): boolean {
     const s = this.state
     if (cost <= 0) return true
+    if (Math.random() < this.passiveEffect('stamina_save')) return true
     if (s.stamina < cost) {
       if (!this.exhaustedNotified) {
         this.audio.sfx('reject')
@@ -1157,6 +1518,8 @@ export class Game {
     this.area = 'mine'
     this.mineFloor = 1
     this.mineTiles = this.buildMineTiles(this.mineFloor)
+    this.mineMonsters = this.buildMineMonsters(this.mineFloor)
+    this.setDeepestMineFloor(this.mineFloor)
     p.x = 28 * T + T / 2
     p.y = 23 * T
     p.dir = 'up'
@@ -1190,8 +1553,15 @@ export class Game {
 
   descendMine() {
     if (this.phase !== 'playing' || this.area !== 'mine' || !this.nearMineDown()) return
+    if (this.mineFloor >= MINE_MAX_FLOOR) {
+      this.toast(`현재 광산은 ${MINE_MAX_FLOOR}층까지예요.`, 'info')
+      this.audio.sfx('reject')
+      return
+    }
     this.mineFloor += 1
     this.mineTiles = this.buildMineTiles(this.mineFloor)
+    this.mineMonsters = this.buildMineMonsters(this.mineFloor)
+    this.setDeepestMineFloor(this.mineFloor)
     const p = this.state.player
     p.x = 28 * T + T / 2
     p.y = 23 * T
@@ -1445,7 +1815,7 @@ export class Game {
       recipeId: recipe.id,
       totalQty: cookQty,
       remainingQty: cookQty,
-      remainingSecs: recipe.craftSeconds,
+      remainingSecs: Math.max(1, recipe.craftSeconds * (1 - this.passiveEffect('cook_speed'))),
     })
     this.toast(`${recipe.name} 조리 시작!`, 'good')
     this.audio.sfx('select')
@@ -2401,7 +2771,7 @@ export class Game {
 
   private animalProductQty(farm: AnimalFarmDef): number {
     const yieldLevel = this.farmUpgradeLevel(farm, 'yield')
-    const chance = [0, 0.25, 0.45, 0.65][yieldLevel] ?? 0
+    const chance = Math.min(0.9, ([0, 0.25, 0.45, 0.65][yieldLevel] ?? 0) + this.passiveEffect('animal_yield'))
     let qty = farm.productQty
     if (Math.random() < chance) qty += 1
     if (yieldLevel >= 3 && Math.random() < 0.15) qty += 1
@@ -2917,6 +3287,11 @@ export class Game {
       const smith = this.blacksmithNpcPosition()
       draws.push({ y: smith.y, fn: () => this.drawBlacksmithNpc(S) })
     }
+    if (this.area === 'mine') {
+      for (const monster of this.mineMonsters) {
+        draws.push({ y: monster.y, fn: () => this.drawMonster(monster, S) })
+      }
+    }
     draws.push({ y: p.y, fn: () => this.drawHuman(this.sprites.farmer, p.x, p.y, p.dir, p.moving, p.exhausted, p.animTime) })
     draws.sort((a, b) => a.y - b.y)
     for (const d of draws) d.fn()
@@ -3256,6 +3631,48 @@ export class Game {
     }
   }
 
+  private drawMonster(monster: MineMonster, S: number) {
+    const def = MONSTERS[monster.id]
+    const ctx = this.ctx
+    const x = this.wx(monster.x - 8)
+    const y = this.wy(monster.y - 17 + (monster.hitT > 0 ? -2 : 0))
+    ctx.fillStyle = 'rgba(0,0,0,0.22)'
+    ctx.fillRect(this.wx(monster.x - 6), this.wy(monster.y - 3), 12 * S, 3 * S)
+    ctx.fillStyle = def.color
+    if (monster.id === 'bat') {
+      ctx.fillRect(x + 2 * S, y + 7 * S, 12 * S, 6 * S)
+      ctx.fillRect(x - 3 * S, y + 8 * S, 5 * S, 4 * S)
+      ctx.fillRect(x + 14 * S, y + 8 * S, 5 * S, 4 * S)
+    } else if (monster.id === 'stone_golem') {
+      ctx.fillRect(x + 3 * S, y + 3 * S, 10 * S, 12 * S)
+      ctx.fillRect(x + 1 * S, y + 7 * S, 3 * S, 6 * S)
+      ctx.fillRect(x + 12 * S, y + 7 * S, 3 * S, 6 * S)
+    } else {
+      ctx.fillRect(x + 3 * S, y + 5 * S, 10 * S, 9 * S)
+      ctx.fillRect(x + 4 * S, y + 3 * S, 8 * S, 3 * S)
+    }
+    ctx.fillStyle = def.accent
+    ctx.fillRect(x + 5 * S, y + 6 * S, 2 * S, 2 * S)
+    ctx.fillRect(x + 10 * S, y + 6 * S, 2 * S, 2 * S)
+    ctx.fillStyle = '#282028'
+    ctx.fillRect(x + 6 * S, y + 11 * S, 5 * S, 1 * S)
+    if (monster.hp < monster.maxHp) {
+      this.drawWorldHpBar(monster.x - 8, monster.y - 24, monster.hp, monster.maxHp, S)
+    }
+  }
+
+  private drawWorldHpBar(x: number, y: number, hp: number, maxHp: number, S: number) {
+    const ctx = this.ctx
+    const sx = this.wx(x + 3)
+    const sy = this.wy(y)
+    const w = 10 * S
+    const h = Math.max(2, 2 * S)
+    ctx.fillStyle = 'rgba(30,24,20,0.55)'
+    ctx.fillRect(sx, sy, w, h)
+    ctx.fillStyle = '#e05a36'
+    ctx.fillRect(sx, sy, Math.max(0, Math.min(w, w * (hp / Math.max(1, maxHp)))), h)
+  }
+
   private drawCrop(t: Tile, S: number) {
     if (!t.cropId) return
     const frames = this.sprites.crops[t.cropId]
@@ -3396,14 +3813,15 @@ export class Game {
     ctx.restore()
   }
 
-  private currentWorkTool(): UpgradeableToolId {
+  private currentWorkTool(): UpgradeableToolId | 'sword' {
+    if (this.workTool) return this.workTool
     const w = this.workTile
     if (!w || !inBounds(w.x, w.y)) return 'scythe'
     const ob = this.activeTiles()[idx(w.x, w.y)].obstacle
     return ob === 'rock' || ob === 'copper_ore' || ob === 'iron_ore' ? 'pickaxe' : 'scythe'
   }
 
-  private drawWorkPose(x: number, y: number, dir: string, t: number, S: number, tool: UpgradeableToolId) {
+  private drawWorkPose(x: number, y: number, dir: string, t: number, S: number, tool: UpgradeableToolId | 'sword') {
     const ctx = this.ctx
     const sx = this.wx(x)
     const sy = this.wy(y)
@@ -3426,7 +3844,13 @@ export class Game {
     ctx.fillStyle = '#7a5230'
     ctx.fillRect(-1 * S, -10 * S, 1 * S, 10 * S)
     ctx.fillStyle = '#cfd3dc'
-    if (tool === 'pickaxe') {
+    if (tool === 'sword') {
+      ctx.fillRect(-1 * S, -15 * S, 2 * S, 12 * S)
+      ctx.fillStyle = '#eef0f6'
+      ctx.fillRect(0, -15 * S, 1 * S, 12 * S)
+      ctx.fillStyle = '#caa066'
+      ctx.fillRect(-4 * S, -4 * S, 8 * S, 1 * S)
+    } else if (tool === 'pickaxe') {
       ctx.fillRect(-5 * S, -12 * S, 10 * S, 2 * S)
       ctx.fillStyle = '#eef0f6'
       ctx.fillRect(-5 * S, -12 * S, 10 * S, 1 * S)
@@ -3558,7 +3982,7 @@ export class Game {
       return {
         phase: this.phase, day: 1, clock: '오전 6:00', period: '아침', periodKey: 'morning',
         gold: 0, stamina: 0, maxStamina: 0, inventory: [], toasts: [...this.toasts], shopBuy: [], blacksmithBuy: [],
-        buildOptions: [], buildPermits: [], toolUpgrades: [], fieldPlots: [], cropChoices: [], selectedFieldId: null, cookRecipes: [],
+        buildOptions: [], buildPermits: [], toolUpgrades: [], passives: [], passiveSlots: [], passiveSlotCount: 0, fieldPlots: [], cropChoices: [], selectedFieldId: null, cookRecipes: [],
         cookQueue: [],
         cookingFire: {
           built: false,
@@ -3635,6 +4059,43 @@ export class Game {
       desc: swordDef.description,
       owned: this.countItem('sword') > 0,
     }] : []
+    const equippedPassiveKeys = new Set<string>()
+    for (let i = 0; i < this.passiveSlotCount(); i++) {
+      const parsed = this.parsePassiveKey(s.flags[this.passiveEquipKey(i)])
+      if (parsed) equippedPassiveKeys.add(this.passiveKey(parsed.id, parsed.rarity))
+    }
+    const makePassiveView = (id: PassiveId, rarity: PassiveRarity): PassiveView | null => {
+      const def = passiveDef(id)
+      if (!def) return null
+      const key = this.passiveKey(id, rarity)
+      return {
+        id,
+        rarity,
+        key,
+        name: def.name,
+        rarityLabel: PASSIVE_RARITY_LABEL[rarity],
+        effectText: passiveValueText(def, rarity),
+        desc: def.description,
+        qty: this.passiveCount(id, rarity),
+        equipped: equippedPassiveKeys.has(key),
+      }
+    }
+    const passives: PassiveView[] = PASSIVES.flatMap((passive) =>
+      PASSIVE_RARITIES.map((rarity) => makePassiveView(passive.id, rarity)).filter((view): view is PassiveView =>
+        !!view && view.qty > 0,
+      ),
+    ).sort((a, b) =>
+      PASSIVE_RARITY_WEIGHT[b.rarity] - PASSIVE_RARITY_WEIGHT[a.rarity] || a.name.localeCompare(b.name),
+    )
+    const passiveSlotCount = this.passiveSlotCount()
+    const passiveSlots: PassiveSlotView[] = Array.from({ length: 3 }, (_, index) => {
+      const parsed = this.parsePassiveKey(s.flags[this.passiveEquipKey(index)])
+      return {
+        index,
+        unlocked: index < passiveSlotCount,
+        passive: parsed ? makePassiveView(parsed.id, parsed.rarity) : null,
+      }
+    })
     const costViews = (items: { itemId: string; qty: number }[]): CostItemView[] =>
       items.map((it) => {
         const have = this.countItem(it.itemId)
@@ -3767,7 +4228,7 @@ export class Game {
     const cookQueue: CookJobView[] = s.cookQueue.map((job) => {
       const recipe = RECIPES.find((r) => r.id === job.recipeId)
       const out = recipe ? getItem(recipe.output.itemId) : undefined
-      const perItemSecs = Math.max(1, recipe?.craftSeconds ?? job.remainingSecs)
+      const perItemSecs = Math.max(1, (recipe?.craftSeconds ?? job.remainingSecs) * (1 - this.passiveEffect('cook_speed')))
       const remainingQty = Math.max(1, Math.floor(job.remainingQty ?? job.totalQty ?? 1))
       const totalQty = Math.max(1, Math.floor(job.totalQty ?? remainingQty))
       const remainingSecs = Math.max(0, job.remainingSecs)
@@ -3887,6 +4348,9 @@ export class Game {
       buildOptions,
       buildPermits,
       toolUpgrades,
+      passives,
+      passiveSlots,
+      passiveSlotCount,
       fieldPlots,
       cropChoices,
       selectedFieldId,

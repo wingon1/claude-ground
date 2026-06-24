@@ -827,6 +827,40 @@
 }
 .tdv-detail .nm { font-weight: 800; font-size: 13px; }
 .tdv-detail .ds { font-size: 11px; opacity: 0.8; margin: 4px 0; }
+.tdv-passive-panel { display: flex; flex-direction: column; gap: 8px; }
+.tdv-passive-slots {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.tdv-passive-slot {
+  min-height: 46px;
+  border: 2px solid var(--panel-edge);
+  background: #efe1bd;
+  color: var(--ink);
+  font: inherit;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 5px;
+  box-shadow: inset 0 -2px 0 rgba(0,0,0,0.12);
+}
+.tdv-passive-slot.locked { opacity: 0.5; background: #b9ad93; }
+.tdv-passive-slot strong { font-size: 11px; }
+.tdv-passive-slot span { font-size: 9px; }
+.tdv-craft.passive.equipped { outline: 2px solid #e0a93f; }
+.tdv-passive-badge {
+  min-width: 42px;
+  text-align: center;
+  border: 2px solid #7a5230;
+  background: #d8c8a4;
+  padding: 4px;
+  font-size: 10px;
+  font-weight: 900;
+}
+.tdv-passive-badge.rare { background: #b8d5f0; border-color: #5a80aa; }
+.tdv-passive-badge.epic { background: #d8b8f0; border-color: #855aaa; }
 
 /* ---------------- Shrine ---------------- */
 .tdv-req {

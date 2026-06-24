@@ -170,7 +170,7 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
         />
       )}
       {invOpen && ui.phase === 'playing' && (
-        <InventoryModal ui={ui} sel={invSel} setSel={setInvSel} onClose={() => setInvOpen(false)} />
+        <InventoryModal game={game} ui={ui} sel={invSel} setSel={setInvSel} onClose={() => setInvOpen(false)} />
       )}
       {objectiveOpen && ui.phase === 'playing' && (
         <ObjectiveModal
@@ -417,19 +417,27 @@ function ShopModal({ game, ui }: { game: Game; ui: UISnapshot }) {
 
 // ---------------- Inventory ----------------
 function InventoryModal({
-  ui, sel, setSel, onClose,
+  game, ui, sel, setSel, onClose,
 }: {
+  game: Game
   ui: UISnapshot
   sel: number | null
   setSel: (i: number | null) => void
   onClose: () => void
 }) {
+  const [tab, setTab] = useState<'items' | 'passives'>('items')
   const slot = sel != null ? ui.inventory[sel] : null
   return (
     <div className="tdv-modal-bg" onClick={onClose}>
       <div className="tdv-modal" onClick={(e) => e.stopPropagation()}>
-        <h2><Ic k="backpack" /> 가방</h2>
+        <h2><Ic k="backpack" /> {'\uAC00\uBC29'}</h2>
         <div className="sub">수확물·자원을 모아 잡화점에서 팔아요.</div>
+        <div className="tdv-tabs">
+          <button className={`tdv-tab ${tab === 'items' ? 'on' : ''}`} onClick={() => setTab('items')}>{'\uC544\uC774\uD15C'}</button>
+          <button className={`tdv-tab ${tab === 'passives' ? 'on' : ''}`} onClick={() => setTab('passives')}>{'\uD328\uC2DC\uBE0C'}</button>
+        </div>
+        {tab === 'items' && (
+          <>
         <div className="tdv-invgrid">
           {ui.inventory.map((s, i) => (
             <div
@@ -446,7 +454,54 @@ function InventoryModal({
           <div className="tdv-detail">
             <div className="nm">{slot.name}</div>
             <div className="ds">{slot.desc}</div>
-            <div className="price">개당 {slot.sellPrice}G</div>
+            <div className="price">{'\uAC1C\uB2F9'} {slot.sellPrice}G</div>
+          </div>
+        )}
+          </>
+        )}
+        {tab === 'passives' && (
+          <div className="tdv-passive-panel">
+            <div className="tdv-passive-slots">
+              {ui.passiveSlots.map((slot) => (
+                <button
+                  key={slot.index}
+                  className={`tdv-passive-slot ${slot.unlocked ? '' : 'locked'}`}
+                  disabled={!slot.unlocked || !slot.passive}
+                  onClick={() => game.unequipPassive(slot.index)}
+                >
+                  {slot.unlocked ? (
+                    slot.passive ? (
+                      <>
+                        <strong>{slot.passive.name}</strong>
+                        <span>{slot.passive.rarityLabel} {slot.passive.effectText}</span>
+                      </>
+                    ) : <span>{'\uBE48 \uC2AC\uB86F'}</span>
+                  ) : <span>{'\uC7A0\uAE40'}</span>}
+                </button>
+              ))}
+            </div>
+            <div className="tdv-craftlist">
+              {ui.passives.length === 0 && <div className="sub">{'\uBAAC\uC2A4\uD130\uB97C \uCC98\uCE58\uD558\uBA74 \uD328\uC2DC\uBE0C\uB97C \uC5BB\uC744 \uC218 \uC788\uC5B4\uC694.'}</div>}
+              {ui.passives.map((passive) => (
+                <div className={`tdv-craft passive ${passive.equipped ? 'equipped' : ''}`} key={passive.key}>
+                  <div className={`tdv-passive-badge ${passive.rarity}`}>{passive.rarityLabel}</div>
+                  <div className="info">
+                    <div className="nm">{passive.name} <span className="x">x{passive.qty}</span></div>
+                    <div className="ds">{passive.desc}</div>
+                    <div className="mats"><span className="mat">{passive.effectText}</span></div>
+                  </div>
+                  <div className="act">
+                    <button
+                      className="tdv-btn gold sm"
+                      disabled={passive.equipped || ui.passiveSlotCount <= 0}
+                      onClick={() => game.equipPassive(passive.id, passive.rarity)}
+                    >
+                      {passive.equipped ? '\uC7A5\uCC29\uC911' : '\uC7A5\uCC29'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
         <div className="tdv-row">
