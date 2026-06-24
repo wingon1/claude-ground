@@ -451,7 +451,6 @@ export function buildUISnapshot(host: SnapshotHost): UISnapshot {
       unlocked: true,
       lockText: null,
       craftSeconds: recipe.craftSeconds,
-      difficulty: recipe.difficulty,
       sellPrice: out?.sellPrice ?? 0,
     }
   })
@@ -469,7 +468,6 @@ export function buildUISnapshot(host: SnapshotHost): UISnapshot {
       unlocked: true,
       lockText: null,
       craftSeconds: 0,
-      difficulty: 0,
       sellPrice: 0,
       mystery: true,
     })

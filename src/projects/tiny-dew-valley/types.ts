@@ -64,7 +64,6 @@ export interface RecipeDef {
   inputs: CostItem[]
   output: { itemId: string; qty: number }
   craftSeconds: number
-  difficulty: number
   unlockFlag?: string
 }
 

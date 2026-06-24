@@ -12,7 +12,6 @@ const RECIPES_BASE: RecipeDef[] = [
     inputs: [{ itemId: 'crop_wheat_normal', qty: 2 }],
     output: { itemId: 'flour', qty: 1 },
     craftSeconds: 6,
-    difficulty: 1,
   },
   {
     id: 'bread',
@@ -21,7 +20,6 @@ const RECIPES_BASE: RecipeDef[] = [
     inputs: [{ itemId: 'flour', qty: 1 }],
     output: { itemId: 'bread', qty: 1 },
     craftSeconds: 12,
-    difficulty: 1,
   },
   {
     id: 'toast',
@@ -34,7 +32,6 @@ const RECIPES_BASE: RecipeDef[] = [
     output: { itemId: 'toast', qty: 1 },
     unlockFlag: CHICKEN_UNLOCK_FLAG,
     craftSeconds: 20,
-    difficulty: 2,
   },
   {
     id: 'tomato_sauce',
@@ -44,7 +41,6 @@ const RECIPES_BASE: RecipeDef[] = [
     output: { itemId: 'tomato_sauce', qty: 1 },
     unlockFlag: cropUnlockFlag('tomato'),
     craftSeconds: 18,
-    difficulty: 2,
   },
   {
     id: 'butter',
@@ -54,7 +50,6 @@ const RECIPES_BASE: RecipeDef[] = [
     output: { itemId: 'butter', qty: 1 },
     unlockFlag: DAIRY_UNLOCK_FLAG,
     craftSeconds: 18,
-    difficulty: 2,
   },
   {
     id: 'cheese',
@@ -64,7 +59,6 @@ const RECIPES_BASE: RecipeDef[] = [
     output: { itemId: 'cheese', qty: 1 },
     unlockFlag: DAIRY_UNLOCK_FLAG,
     craftSeconds: 24,
-    difficulty: 2,
   },
   {
     id: 'strawberry_milk',
@@ -77,7 +71,6 @@ const RECIPES_BASE: RecipeDef[] = [
     output: { itemId: 'strawberry_milk', qty: 1 },
     unlockFlag: cropUnlockFlag('strawberry'),
     craftSeconds: 22,
-    difficulty: 2,
   },
   {
     id: 'pizza',
@@ -91,7 +84,6 @@ const RECIPES_BASE: RecipeDef[] = [
     output: { itemId: 'pizza', qty: 1 },
     unlockFlag: cropUnlockFlag('tomato'),
     craftSeconds: 40,
-    difficulty: 3,
   },
   {
     id: 'pastry',
@@ -104,7 +96,6 @@ const RECIPES_BASE: RecipeDef[] = [
     output: { itemId: 'pastry', qty: 1 },
     unlockFlag: DAIRY_UNLOCK_FLAG,
     craftSeconds: 42,
-    difficulty: 4,
   },
   {
     id: 'strawberry_jam',
@@ -114,7 +105,6 @@ const RECIPES_BASE: RecipeDef[] = [
     output: { itemId: 'strawberry_jam', qty: 1 },
     unlockFlag: cropUnlockFlag('strawberry'),
     craftSeconds: 30,
-    difficulty: 3,
   },
   {
     id: 'strawberry_jam_toast',
@@ -128,7 +118,6 @@ const RECIPES_BASE: RecipeDef[] = [
     output: { itemId: 'strawberry_jam_toast', qty: 1 },
     unlockFlag: cropUnlockFlag('strawberry'),
     craftSeconds: 48,
-    difficulty: 4,
   },
   {
     id: 'butter_corn',
@@ -141,7 +130,6 @@ const RECIPES_BASE: RecipeDef[] = [
     output: { itemId: 'butter_corn', qty: 1 },
     unlockFlag: cropUnlockFlag('corn'),
     craftSeconds: 46,
-    difficulty: 4,
   },
   {
     id: 'corn_pizza',
@@ -156,7 +144,6 @@ const RECIPES_BASE: RecipeDef[] = [
     output: { itemId: 'corn_pizza', qty: 1 },
     unlockFlag: cropUnlockFlag('corn'),
     craftSeconds: 68,
-    difficulty: 5,
   },
   {
     id: 'bacon_toast',
@@ -169,7 +156,6 @@ const RECIPES_BASE: RecipeDef[] = [
     output: { itemId: 'bacon_toast', qty: 1 },
     unlockFlag: PIG_UNLOCK_FLAG,
     craftSeconds: 36,
-    difficulty: 4,
   },
   {
     id: 'herbal_tea',
@@ -181,13 +167,12 @@ const RECIPES_BASE: RecipeDef[] = [
     ],
     output: { itemId: 'herbal_tea', qty: 1 },
     craftSeconds: 20,
-    difficulty: 2,
   },
 ]
 
 export const RECIPES: RecipeDef[] = RECIPES_BASE.map((recipe) => {
   const tuning = recipeBalance[recipe.id]
   return tuning
-    ? { ...recipe, craftSeconds: tuning.craftSeconds, difficulty: tuning.difficulty }
+    ? { ...recipe, craftSeconds: tuning.craftSeconds }
     : recipe
 })

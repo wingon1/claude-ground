@@ -441,78 +441,63 @@
   "recipes": [
     {
       "id": "flour",
-      "craftSeconds": 7,
-      "difficulty": 1
+      "craftSeconds": 7
     },
     {
       "id": "bread",
-      "craftSeconds": 14,
-      "difficulty": 1
+      "craftSeconds": 14
     },
     {
       "id": "toast",
-      "craftSeconds": 24,
-      "difficulty": 2
+      "craftSeconds": 24
     },
     {
       "id": "tomato_sauce",
-      "craftSeconds": 28,
-      "difficulty": 3
+      "craftSeconds": 28
     },
     {
       "id": "butter",
-      "craftSeconds": 24,
-      "difficulty": 2
+      "craftSeconds": 24
     },
     {
       "id": "cheese",
-      "craftSeconds": 30,
-      "difficulty": 2
+      "craftSeconds": 30
     },
     {
       "id": "strawberry_milk",
-      "craftSeconds": 26,
-      "difficulty": 2
+      "craftSeconds": 26
     },
     {
       "id": "pizza",
-      "craftSeconds": 64,
-      "difficulty": 4
+      "craftSeconds": 64
     },
     {
       "id": "pastry",
-      "craftSeconds": 48,
-      "difficulty": 4
+      "craftSeconds": 48
     },
     {
       "id": "strawberry_jam",
-      "craftSeconds": 34,
-      "difficulty": 3
+      "craftSeconds": 34
     },
     {
       "id": "strawberry_jam_toast",
-      "craftSeconds": 58,
-      "difficulty": 4
+      "craftSeconds": 58
     },
     {
       "id": "butter_corn",
-      "craftSeconds": 58,
-      "difficulty": 4
+      "craftSeconds": 58
     },
     {
       "id": "corn_pizza",
-      "craftSeconds": 86,
-      "difficulty": 5
+      "craftSeconds": 86
     },
     {
       "id": "bacon_toast",
-      "craftSeconds": 52,
-      "difficulty": 4
+      "craftSeconds": 52
     },
     {
       "id": "herbal_tea",
-      "craftSeconds": 20,
-      "difficulty": 2
+      "craftSeconds": 20
     }
   ],
   "tutorialRewards": [

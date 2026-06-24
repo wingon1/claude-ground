@@ -131,7 +131,6 @@ export interface CookRecipeView {
   unlocked: boolean
   lockText: string | null
   craftSeconds: number
-  difficulty: number
   sellPrice: number
   mystery?: boolean
 }

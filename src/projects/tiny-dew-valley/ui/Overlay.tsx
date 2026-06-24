@@ -824,7 +824,6 @@ function CookingModal({ game, ui }: { game: Game; ui: UISnapshot }) {
                 <div className="ds">{r.desc}</div>
                 {!r.unlocked && <div className="lock">{r.lockText}</div>}
                 {!r.mystery && <div className="mats">
-                  <span className="mat">난이도 {r.difficulty}</span>
                   <span className="mat">시간 {fmtTime(r.craftSeconds)} × 개수</span>
                   <span className="mat">판매 {r.sellPrice}G</span>
                   <span className="mat">최대 {r.maxCookQty}개</span>
