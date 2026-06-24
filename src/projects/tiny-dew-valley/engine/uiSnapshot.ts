@@ -68,6 +68,7 @@ export interface ToolUpgradeView {
   name: string
   useText: string
   level: number
+  tone: ToolTone
   damage: number
   nextName: string | null
   nextDamage: number | null
@@ -77,6 +78,8 @@ export interface ToolUpgradeView {
   maxed: boolean
   sprite: string
 }
+
+export type ToolTone = 'base' | 'copper' | 'silver'
 
 export interface PassiveView {
   id: PassiveId

@@ -791,8 +791,10 @@ function BlacksmithModal({ game, ui }: { game: Game; ui: UISnapshot }) {
         <div className="sub">광산에서 얻은 돌과 광석으로 낫과 곡괭이를 강화합니다.</div>
         <div className="tdv-craftlist">
           {ui.toolUpgrades.map((tool) => (
-            <div className={`tdv-craft${tool.maxed ? ' locked' : ''}`} key={tool.toolId}>
-              <img src={iconURL(tool.sprite)} alt={tool.name} />
+            <div className={`tdv-craft tdv-tool-card tool-${tool.tone}${tool.maxed ? ' locked' : ''}`} key={tool.toolId}>
+              <div className={`tdv-toolicon ${tool.tone}`}>
+                <img src={iconURL(tool.sprite)} alt={tool.name} />
+              </div>
               <div className="info">
                 <div className="nm">{tool.name}</div>
                 <div className="ds">{tool.useText}</div>

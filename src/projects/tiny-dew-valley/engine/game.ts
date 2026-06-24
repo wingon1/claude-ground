@@ -145,7 +145,7 @@ export class Game {
   private stuckT = 0
   private keys = new Set<string>()
   private workTile: { x: number; y: number } | null = null
-  private workTool: UpgradeableToolId | 'sword' | null = null
+  private workTool: UpgradeableToolId | 'hand' | null = null
   private jumpT = 0
   private workAnimT = 0
   private playerHurtT = 0
@@ -661,6 +661,7 @@ export class Game {
     const work = this.findWork()
     if (!work) return
     this.workTile = { x: work.t.x, y: work.t.y }
+    this.workTool = this.toolForWork(work)
     // face the node
     const p = this.state.player
     const cx = work.t.x * T + T / 2
@@ -683,6 +684,16 @@ export class Game {
       else if (work.kind === 'chop') this.chopObstacle(work.t)
       else if (work.kind === 'plant') this.plantTile(work.t)
     }
+  }
+
+  private toolForWork(work: { t: Tile; kind: WorkKind }): UpgradeableToolId | 'hand' | null {
+    if (work.kind === 'pickup') return null
+    if (work.kind === 'harvest') return 'scythe'
+    if (work.kind === 'plant') return 'hand'
+    const obstacle = work.t.obstacle
+    if (obstacle === 'rock' || obstacle === 'copper_ore' || obstacle === 'iron_ore') return 'pickaxe'
+    if (obstacle === 'tree' || obstacle === 'stump' || obstacle === 'large_stump') return 'axe'
+    return 'scythe'
   }
 
   private nearestAttackableMonster(): MineMonster | null {

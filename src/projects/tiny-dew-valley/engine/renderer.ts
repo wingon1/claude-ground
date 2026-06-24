@@ -34,7 +34,7 @@ export interface RenderHost {
   playerHurtT: number
   playerFainting: boolean
   workTile: { x: number; y: number } | null
-  workTool: UpgradeableToolId | 'sword' | null
+  workTool: UpgradeableToolId | 'hand' | null
   nowSecs: () => number
   period: () => Period
   groundItemId: (tile: Tile) => string | null
@@ -1083,7 +1083,7 @@ export class GameRenderer {
     this.drawSpeechBubble(x, y - 24, '피곤해.. 잠을 자야해', S)
   }
 
-  private currentWorkTool(): UpgradeableToolId | 'sword' {
+  private currentWorkTool(): UpgradeableToolId | 'hand' {
     if (this.workTool) return this.workTool
     const w = this.workTile
     if (!w || !inBounds(w.x, w.y)) return 'scythe'
@@ -1093,7 +1093,7 @@ export class GameRenderer {
     return 'scythe'
   }
 
-  private drawWorkPose(x: number, y: number, dir: string, t: number, S: number, tool: UpgradeableToolId | 'sword') {
+  private drawWorkPose(x: number, y: number, dir: string, t: number, S: number, tool: UpgradeableToolId | 'hand') {
     const ctx = this.ctx
     const sx = this.wx(x)
     const sy = this.wy(y)
@@ -1110,6 +1110,12 @@ export class GameRenderer {
     // Hand gripping the snath.
     ctx.fillStyle = '#f0c79a'
     ctx.fillRect(-2 * S, -2 * S, 4 * S, 4 * S)
+    if (tool === 'hand') {
+      ctx.fillStyle = '#d7a878'
+      ctx.fillRect(1 * S, -1 * S, 3 * S, 3 * S)
+      ctx.restore()
+      return
+    }
     // Short wooden handle pointing up from the hand.
     ctx.fillStyle = '#9a6a3a'
     ctx.fillRect(-1 * S, -10 * S, 2 * S, 10 * S)
@@ -1148,9 +1154,9 @@ export class GameRenderer {
 
   private toolMetalPalette(tool: UpgradeableToolId) {
     const level = Math.max(0, this.toolLevel(tool))
-    if (level >= 2) return { mid: '#8fa4bd', light: '#dce8f4', dark: '#5f7188' }
+    if (level >= 2) return { mid: '#d1d7e0', light: '#f4f6fa', dark: '#929ca9' }
     if (level === 1) return { mid: '#c8753a', light: '#f0ad68', dark: '#8f4c2e' }
-    return { mid: '#cfd3dc', light: '#eef0f6', dark: '#aeb2bc' }
+    return { mid: '#aeb4bf', light: '#d4d9e2', dark: '#737c88' }
   }
 
   private drawWorkHighlight(S: number) {

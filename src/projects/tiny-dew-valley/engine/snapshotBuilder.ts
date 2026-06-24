@@ -45,6 +45,7 @@ import type {
   PassiveView,
   ShopBuyView,
   ToastMsg,
+  ToolTone,
   ToolUpgradeView,
   UIPhase,
   UISnapshot,
@@ -53,6 +54,12 @@ import type {
 
 type RecipeDef = (typeof RECIPES)[number]
 type CookingFireUpgradeDef = (typeof COOKING_FIRE_UPGRADES)[number]
+function toolTone(level: number): ToolTone {
+  if (level >= 2) return 'silver'
+  if (level === 1) return 'copper'
+  return 'base'
+}
+
 const TOOL_USE_TEXT: Record<UpgradeableToolId, string> = {
   axe: '나무와 그루터기를 벨 때 사용합니다.',
   pickaxe: '광산의 돌과 광석을 캘 때 사용합니다.',
@@ -317,11 +324,13 @@ export function buildUISnapshot(host: SnapshotHost): UISnapshot {
     const next = host.nextToolUpgrade(toolId)
     const costItems = costViews(next?.costItems ?? [])
     const owned = toolId !== 'sword' || host.countItem('sword') > 0
+    const level = host.toolLevel(toolId)
     return {
       toolId,
       name: host.toolName(toolId),
       useText: TOOL_USE_TEXT[toolId],
-      level: host.toolLevel(toolId),
+      level,
+      tone: toolTone(level),
       damage: host.toolDamage(toolId),
       nextName: next?.name ?? null,
       nextDamage: next?.damage ?? null,
