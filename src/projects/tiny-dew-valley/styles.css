@@ -1,8 +1,13 @@
 .tdv-root {
   position: absolute;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: min(100vw, 480px, calc(100vh * 9 / 16));
+  transform: translateX(-50%);
   overflow: hidden;
   background: #1c2a1c;
+  box-shadow: 0 0 0 1px #00000044, 0 0 42px #00000066;
   font-family: ui-monospace, 'SFMono-Regular', 'Courier New', monospace;
   color: #3a2a1a;
   user-select: none;
