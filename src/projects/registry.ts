@@ -70,7 +70,7 @@ export const projects: Project[] = [
     id: 'tiny-dew-valley',
     title: '🌾 Tiny Dew Valley',
     description:
-      '탭으로 거닐고 나무·바위·작물 곁에 서면 도구 없이 자동으로 일하는 포근한 도트 농장. 스태미나를 다 쓰면 침대에서 자고, 깨어나면 최대 스태미나가 +1. 시간 제한·마감 없이 느긋하게 심고 캐고 파는 절차적 픽셀 라이프. 그래픽은 원작 그대로.',
+      '탭으로 거닐고 나무·바위·작물 곁에 서면 자동으로 일하는 포근한 도트 농장. 농사·동물·요리·광산과 도구 강화로 생산 루프를 넓혀가는 절차적 픽셀 라이프.',
     emoji: '🌾',
     tags: ['react', 'canvas', 'pixel-art', 'game', 'mobile'],
     kind: 'react',

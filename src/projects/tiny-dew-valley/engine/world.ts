@@ -12,6 +12,7 @@ export interface WorldLocations {
   storeFront: { x: number; y: number } // where player stands to interact
   buildBoard: { x: number; y: number }
   cookingFire: { x: number; y: number }
+  mine: { x: number; y: number }
   pond: { x: number; y: number }
   woods: { x: number; y: number; w: number; h: number }
   square: { x: number; y: number } // village square center
@@ -64,6 +65,7 @@ export const LOCATIONS: WorldLocations = {
   storeFront: { x: 24, y: 10 },
   buildBoard: { x: 32, y: 12 },
   cookingFire: { x: 33, y: 11 },
+  mine: { x: 47, y: 8 },
   pond: { x: 25, y: 15 },
   woods: { x: 1, y: 8, w: 9, h: 20 },
   square: { x: 16, y: 31 },
@@ -154,6 +156,53 @@ export function stampCookingFire(tiles: Tile[], built = true) {
   )
 }
 
+export function stampMine(tiles: Tile[]) {
+  // Clear the quarry pad so old saves gain a stable mining area.
+  rect(tiles, 43, 4, 54, 14, (t) => {
+    t.terrain = 'grass'
+    clearObstacle(t)
+    t.cropId = null
+    t.growthStage = 0
+    delete t.metadata.mineEntrance
+    delete t.metadata.mineWall
+  })
+
+  // Cave back wall and entrance silhouette.
+  rect(tiles, 45, 4, 51, 6, (t) => {
+    t.terrain = 'blocked'
+    clearObstacle(t)
+    t.cropId = null
+    t.metadata.mineWall = true
+    t.metadata.invisibleBlock = true
+  })
+  rect(tiles, 47, 6, 49, 7, (t) => {
+    t.terrain = 'blocked'
+    clearObstacle(t)
+    t.cropId = null
+    t.metadata.mineEntrance = true
+    t.metadata.invisibleBlock = true
+  })
+  rect(tiles, 44, 8, 53, 13, (t) => {
+    t.terrain = 'grass'
+    t.cropId = null
+    t.growthStage = 0
+    delete t.metadata.invisibleBlock
+  })
+
+  const nodes: [number, number, Exclude<Obstacle, null>][] = [
+    [44, 9, 'rock'], [46, 10, 'rock'], [52, 9, 'rock'], [53, 12, 'rock'],
+    [48, 10, 'copper_ore'], [50, 12, 'copper_ore'],
+    [51, 7, 'iron_ore'],
+  ]
+  for (const [x, y, kind] of nodes) {
+    const t = tiles[idx(x, y)]
+    t.terrain = 'grass'
+    setObstacle(t, kind)
+    t.metadata.mineNode = true
+    t.metadata.renewable = true
+  }
+}
+
 function stampFields(tiles: Tile[]) {
   for (const plot of FIELD_PLOTS) {
     for (let y = plot.y; y < plot.y + FIELD_SIZE; y++) {
@@ -196,6 +245,7 @@ export function generateWorld(): Tile[] {
   stampStore(tiles)
 
   stampCookingFire(tiles, false)
+  stampMine(tiles)
 
   // ---- Western woods: trees, stumps, daffodils, weeds ----
   const w = LOCATIONS.woods
@@ -251,6 +301,8 @@ export function generateWorld(): Tile[] {
 function setObstacle(t: Tile, o: Exclude<Obstacle, null>) {
   t.obstacle = o
   if (o === 'large_stump') t.hp = 6
+  else if (o === 'iron_ore') t.hp = 9
+  else if (o === 'copper_ore') t.hp = 6
   else if (o === 'tree') t.hp = 3
   else if (o === 'rock') t.hp = 2
   else if (o === 'stump') t.hp = 2

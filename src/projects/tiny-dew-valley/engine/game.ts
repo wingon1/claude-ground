@@ -1,4 +1,4 @@
-import type { CookJob, Direction, GameState, InventorySlot, Tile } from '../types'
+import type { CookJob, Direction, GameState, InventorySlot, Tile, ToolId } from '../types'
 import { CROPS, CROP_LIST } from '../data/crops'
 import { cropItemId, getItem } from '../data/items'
 import { SHOP_CATALOG } from '../data/shopCatalog'
@@ -27,6 +27,7 @@ import {
   setObstacle,
   stampCookingFire,
   stampFarmhouse,
+  stampMine,
   WORLD_H,
   WORLD_W,
 } from './world'
@@ -116,6 +117,27 @@ const FIELD_ROW_BASE_GOLD = 45
 const FIELD_ROW_GOLD_STEP = 35
 const FIELD_ROW_BASE_WOOD = 6
 const FIELD_ROW_WOOD_STEP = 4
+type UpgradeableToolId = Extract<ToolId, 'pickaxe' | 'scythe'>
+const TOOL_BASE: Record<UpgradeableToolId, { name: string; damage: number }> = {
+  pickaxe: { name: '낡은 곡괭이', damage: 1 },
+  scythe: { name: '낡은 낫', damage: 1 },
+}
+const TOOL_UPGRADES: Record<UpgradeableToolId, {
+  level: number
+  name: string
+  damage: number
+  costGold: number
+  costItems: { itemId: string; qty: number }[]
+}[]> = {
+  pickaxe: [
+    { level: 1, name: '구리 곡괭이', damage: 2, costGold: 300, costItems: [{ itemId: 'stone', qty: 20 }, { itemId: 'copper_ore', qty: 8 }] },
+    { level: 2, name: '철 곡괭이', damage: 3, costGold: 900, costItems: [{ itemId: 'stone', qty: 50 }, { itemId: 'copper_ore', qty: 18 }, { itemId: 'iron_ore', qty: 10 }] },
+  ],
+  scythe: [
+    { level: 1, name: '구리 낫', damage: 2, costGold: 260, costItems: [{ itemId: 'stone', qty: 14 }, { itemId: 'copper_ore', qty: 6 }] },
+    { level: 2, name: '철 낫', damage: 3, costGold: 760, costItems: [{ itemId: 'stone', qty: 35 }, { itemId: 'copper_ore', qty: 12 }, { itemId: 'iron_ore', qty: 8 }] },
+  ],
+}
 
 // ---------- UI snapshot ----------
 export type UIPhase = 'title' | 'playing' | 'shop' | 'build' | 'cook' | 'seed' | 'order' | 'sleepConfirm'
@@ -173,6 +195,19 @@ export interface BuildPermitView {
   sprite: string
   built: boolean
   locked: boolean
+}
+export interface ToolUpgradeView {
+  toolId: UpgradeableToolId
+  name: string
+  level: number
+  damage: number
+  nextName: string | null
+  nextDamage: number | null
+  costGold: number
+  costItems: CostItemView[]
+  canUpgrade: boolean
+  maxed: boolean
+  sprite: string
 }
 export interface CropChoiceView {
   id: string
@@ -281,6 +316,7 @@ export interface UISnapshot {
   shopBuy: ShopBuyView[]
   buildOptions: BuildOptionView[]
   buildPermits: BuildPermitView[]
+  toolUpgrades: ToolUpgradeView[]
   fieldPlots: FieldPlotView[]
   cropChoices: CropChoiceView[]
   selectedFieldId: string | null
@@ -409,6 +445,10 @@ export class Game {
     this.applyFieldRows()
     this.applyAnimalFarms()
     this.applyFieldExpansions()
+    if (this.state.flags['migration:mine:v1'] !== true) {
+      stampMine(this.state.tiles)
+      this.state.flags['migration:mine:v1'] = true
+    }
     stampFarmhouse(this.state.tiles)
     stampCookingFire(this.state.tiles, this.cookingFireBuilt())
     this.initRuntime()
@@ -724,22 +764,33 @@ export class Game {
       this.emit()
       return
     }
+    const mining = ob === 'rock' || ob === 'copper_ore' || ob === 'iron_ore'
+    if (mining) {
+      const requiredLevel = ob === 'iron_ore' ? 1 : 0
+      if (this.toolLevel('pickaxe') < requiredLevel) {
+        this.toast('더 좋은 곡괭이가 필요해요.', 'bad')
+        this.audio.sfx('reject')
+        return
+      }
+    }
     if (!this.spendStamina(COST.chop)) return
-    t.hp = (t.hp ?? OBSTACLE_HP[ob]) - 1
-    this.audio.sfx(ob === 'rock' ? 'crack' : 'chop')
-    if (ob === 'rock') this.dirtPuff(px, py, '#9a9a9a')
+    const damage = mining ? this.toolDamage('pickaxe') : 1
+    t.hp = (t.hp ?? OBSTACLE_HP[ob]) - damage
+    this.audio.sfx(mining ? 'crack' : 'chop')
+    if (mining) this.dirtPuff(px, py, ob === 'copper_ore' ? '#c8753a' : ob === 'iron_ore' ? '#c8ccd6' : '#9a9a9a')
     else this.woodChips(px, py)
     if (t.hp <= 0) {
       const drop = OBSTACLE_DROP[ob]
       if (drop) this.giveItem(drop.itemId, drop.qty)
+      if (ob === 'copper_ore' || ob === 'iron_ore') this.giveItem('stone', 1)
       this.audio.sfx('crack')
       const renewable = !!t.metadata.renewable
       this.clearObs(t)
       if (renewable) {
         t.metadata.renewable = true
         t.metadata.respawnAt = this.nowSecs() + RESPAWN_SECS
-        t.metadata.respawnKind = 'large_stump'
-      } else if (ob === 'tree' || ob === 'rock' || ob === 'stump') {
+        t.metadata.respawnKind = ob
+      } else if (ob === 'tree' || ob === 'rock' || ob === 'stump' || ob === 'copper_ore' || ob === 'iron_ore') {
         t.metadata.respawnAt = this.nowSecs() + RESPAWN_SECS
         t.metadata.respawnKind = ob
       }
@@ -772,6 +823,7 @@ export class Game {
       t.cropId = crop.id
       t.growthStage = 0
       t.metadata.growT = 0
+      delete t.metadata.harvestHp
     }
   }
 
@@ -784,6 +836,7 @@ export class Game {
     t.cropId = crop.id
     t.growthStage = 0
     t.metadata.growT = 0
+    delete t.metadata.harvestHp
     this.audio.sfx('plant')
     this.dirtPuff(t.x * T + T / 2, t.y * T + T / 2, '#3a8a3a')
     this.emit()
@@ -798,8 +851,19 @@ export class Game {
       t.metadata.growT = grow
       const matureSecs = crop.growDays * STAGE_SECS_PER_DAY
       const stage = Math.min(crop.stages - 1, Math.floor((grow / matureSecs) * (crop.stages - 1)))
-      if (stage !== t.growthStage) t.growthStage = stage
+      if (stage !== t.growthStage) {
+        t.growthStage = stage
+        delete t.metadata.harvestHp
+      }
     }
+  }
+
+  private cropHarvestHp(cropId: string): number {
+    if (cropId === 'wheat') return 2
+    if (cropId === 'tomato') return 3
+    if (cropId === 'strawberry') return 4
+    if (cropId === 'corn') return 4
+    return 2
   }
 
   private harvestCrop(t: Tile) {
@@ -811,13 +875,22 @@ export class Game {
       return
     }
     if (!this.spendStamina(COST.harvest)) return
-    this.giveItem(itemId, 1)
+    const maxHp = this.cropHarvestHp(crop.id)
+    const hp = typeof t.metadata.harvestHp === 'number' ? t.metadata.harvestHp : maxHp
+    const nextHp = hp - this.toolDamage('scythe')
+    t.metadata.harvestHp = Math.max(0, nextHp)
     this.audio.sfx('harvest')
     this.leafBurst(t.x * T + T / 2, t.y * T + T / 2, crop.color)
+    if (nextHp > 0) {
+      this.emit()
+      return
+    }
+    this.giveItem(itemId, 1)
     const nextCropId = this.cropForTile(t) ?? crop.id
     t.cropId = nextCropId
     t.growthStage = 0
     t.metadata.growT = 0
+    delete t.metadata.harvestHp
     this.toast(`${crop.name}을(를) 수확했어요!`, 'good')
   }
 
@@ -1155,6 +1228,7 @@ export class Game {
         t.cropId = cropId
         t.growthStage = 0
         t.metadata.growT = 0
+        delete t.metadata.harvestHp
       }
     }
     this.toast(`${CROPS[cropId].name} 밭으로 등록했어요.`, 'good')
@@ -1250,6 +1324,26 @@ export class Game {
     this.toast('화로를 제작했어요! 이제 요리를 시작할 수 있어요.', 'good')
     this.audio.sfx('sparkle')
     this.checkTutorialRewards()
+    this.autosave()
+    this.emit()
+  }
+
+  upgradeTool(toolId: UpgradeableToolId) {
+    if (this.phase !== 'build') return
+    const upgrade = this.nextToolUpgrade(toolId)
+    if (!upgrade) {
+      this.toast('이미 최대 등급 도구예요.', 'info')
+      return
+    }
+    if (!this.canPayCost(upgrade.costGold, upgrade.costItems)) {
+      this.toast('도구 업그레이드 재료가 부족해요.', 'bad')
+      this.audio.sfx('reject')
+      return
+    }
+    this.payCost(upgrade.costGold, upgrade.costItems)
+    this.state.flags[this.toolLevelKey(toolId)] = upgrade.level
+    this.toast(`${upgrade.name} 업그레이드 완료! 타격력 ${upgrade.damage}`, 'good')
+    this.audio.sfx('sparkle')
     this.autosave()
     this.emit()
   }
@@ -1510,6 +1604,30 @@ export class Game {
 
   private flagEnabled(flag: string | undefined): boolean {
     return !flag || this.state.flags[flag] === true
+  }
+
+  private toolLevelKey(toolId: UpgradeableToolId): string {
+    return `tool:${toolId}:level`
+  }
+
+  private toolLevel(toolId: UpgradeableToolId): number {
+    const raw = this.state.flags[this.toolLevelKey(toolId)]
+    const maxLevel = TOOL_UPGRADES[toolId][TOOL_UPGRADES[toolId].length - 1]?.level ?? 0
+    return typeof raw === 'number' ? Math.max(0, Math.min(maxLevel, Math.floor(raw))) : 0
+  }
+
+  private toolName(toolId: UpgradeableToolId): string {
+    const level = this.toolLevel(toolId)
+    return TOOL_UPGRADES[toolId].find((upgrade) => upgrade.level === level)?.name ?? TOOL_BASE[toolId].name
+  }
+
+  private toolDamage(toolId: UpgradeableToolId): number {
+    const level = this.toolLevel(toolId)
+    return TOOL_UPGRADES[toolId].find((upgrade) => upgrade.level === level)?.damage ?? TOOL_BASE[toolId].damage
+  }
+
+  private nextToolUpgrade(toolId: UpgradeableToolId) {
+    return TOOL_UPGRADES[toolId].find((upgrade) => upgrade.level === this.toolLevel(toolId) + 1) ?? null
   }
 
   private applyInitialUnlocks() {
@@ -1802,6 +1920,24 @@ export class Game {
         detail: '빵과 달걀로 토스트를 만들어 더 높은 가격에 파세요.',
         progress: Math.min(2, (this.countItem('bread') > 0 ? 1 : 0) + (this.countItem('egg') > 0 ? 1 : 0)),
         max: 2,
+      }
+    }
+    if (!this.itemSeen('copper_ore')) {
+      return {
+        title: '광산에서 구리광석 캐기',
+        detail: '동쪽 광산 구역의 구리 광맥을 곡괭이로 여러 번 타격하세요.',
+        progress: Math.min(1, this.countItem('copper_ore')),
+        max: 1,
+      }
+    }
+    if (this.toolLevel('pickaxe') < 1) {
+      const stone = Math.min(20, this.countItem('stone'))
+      const copper = Math.min(8, this.countItem('copper_ore'))
+      return {
+        title: '구리 곡괭이 강화하기',
+        detail: '건설탭에서 돌 20개와 구리광석 8개로 곡괭이를 강화하세요.',
+        progress: stone + copper,
+        max: 28,
       }
     }
     if (!this.cropUnlocked('strawberry')) {
@@ -2451,6 +2587,7 @@ export class Game {
     this.drawAnimalFarms(S)
     this.drawFieldSigns(S)
     this.drawCookingFire(S)
+    this.drawMineEntrance(S)
 
     type Draw = { y: number; fn: () => void }
     const draws: Draw[] = []
@@ -2707,12 +2844,17 @@ export class Game {
       case 'stump': img = this.sprites.stump; break
       case 'large_stump': img = this.sprites.largeStump; yOff = -4; break
       case 'rock': img = this.sprites.rock; break
+      case 'copper_ore': img = this.sprites.copperOre; break
+      case 'iron_ore': img = this.sprites.ironOre; break
       case 'weed': img = this.sprites.weed; break
       case 'flower': img = this.sprites.flower; break
       default: img = null
     }
     if (!img) return
     this.ctx.drawImage(img, this.wx(t.x * T), this.wy(t.y * T + yOff), img.width * S, img.height * S)
+    if (t.hp != null && t.obstacle && t.hp < OBSTACLE_HP[t.obstacle]) {
+      this.drawHpBar(t.x, t.y, t.hp, OBSTACLE_HP[t.obstacle], S)
+    }
   }
 
   private drawCrop(t: Tile, S: number) {
@@ -2720,6 +2862,41 @@ export class Game {
     const frames = this.sprites.crops[t.cropId]
     const img = frames[Math.min(t.growthStage, frames.length - 1)]
     this.ctx.drawImage(img, this.wx(t.x * T), this.wy(t.y * T), T * S, T * S)
+    const crop = CROPS[t.cropId]
+    if (crop && t.growthStage >= crop.stages - 1 && typeof t.metadata.harvestHp === 'number') {
+      this.drawHpBar(t.x, t.y, t.metadata.harvestHp, this.cropHarvestHp(crop.id), S)
+    }
+  }
+
+  private drawHpBar(tx: number, ty: number, hp: number, maxHp: number, S: number) {
+    const ctx = this.ctx
+    const x = this.wx(tx * T + 3)
+    const y = this.wy(ty * T + 1)
+    const w = 10 * S
+    const h = Math.max(2, 2 * S)
+    ctx.fillStyle = 'rgba(30,24,20,0.55)'
+    ctx.fillRect(x, y, w, h)
+    ctx.fillStyle = '#e05a36'
+    ctx.fillRect(x, y, Math.max(0, Math.min(w, w * (hp / Math.max(1, maxHp)))), h)
+  }
+
+  private drawMineEntrance(S: number) {
+    const ctx = this.ctx
+    const x = this.wx(45 * T)
+    const y = this.wy(4 * T)
+    ctx.fillStyle = 'rgba(0,0,0,0.18)'
+    ctx.fillRect(x + 4 * S, y + 48 * S, 104 * S, 8 * S)
+    ctx.fillStyle = '#6f6b60'
+    ctx.fillRect(x + 4 * S, y + 20 * S, 104 * S, 36 * S)
+    ctx.fillStyle = '#8b8678'
+    ctx.fillRect(x + 10 * S, y + 12 * S, 92 * S, 14 * S)
+    ctx.fillStyle = '#3a3432'
+    ctx.fillRect(x + 34 * S, y + 24 * S, 40 * S, 32 * S)
+    ctx.fillStyle = '#201c20'
+    ctx.fillRect(x + 42 * S, y + 32 * S, 24 * S, 24 * S)
+    ctx.fillStyle = '#a59b86'
+    ctx.fillRect(x + 14 * S, y + 24 * S, 10 * S, 6 * S)
+    ctx.fillRect(x + 86 * S, y + 30 * S, 9 * S, 5 * S)
   }
 
   private drawHuman(
@@ -2741,7 +2918,7 @@ export class Game {
     const work = playerMotion && this.workAnimT > 0 ? Math.sin((this.workAnimT / 0.28) * Math.PI) : 0
     const drawY = y - 22 + 2 - walkBob - jump - work * 1.5
     this.ctx.drawImage(img, this.wx(x - 8), this.wy(drawY), 16 * S, 22 * S)
-    if (playerMotion && work > 0) this.drawWorkPose(x, drawY, dir, work, S)
+    if (playerMotion && work > 0) this.drawWorkPose(x, drawY, dir, work, S, this.currentWorkTool())
     if (exhausted) {
       const t = performance.now() / 300
       this.ctx.fillStyle = '#9fd0ff'
@@ -2749,9 +2926,14 @@ export class Game {
     }
   }
 
-  // One-handed scythe swing. The tool is held in a single hand and arcs from
-  // raised-back to chopped-forward as `t` (0→1→0) drives the swing.
-  private drawWorkPose(x: number, y: number, dir: string, t: number, S: number) {
+  private currentWorkTool(): UpgradeableToolId {
+    const w = this.workTile
+    if (!w || !inBounds(w.x, w.y)) return 'scythe'
+    const ob = this.state.tiles[idx(w.x, w.y)].obstacle
+    return ob === 'rock' || ob === 'copper_ore' || ob === 'iron_ore' ? 'pickaxe' : 'scythe'
+  }
+
+  private drawWorkPose(x: number, y: number, dir: string, t: number, S: number, tool: UpgradeableToolId) {
     const ctx = this.ctx
     const sx = this.wx(x)
     const sy = this.wy(y)
@@ -2768,18 +2950,26 @@ export class Game {
     // Hand gripping the snath.
     ctx.fillStyle = '#f0c79a'
     ctx.fillRect(-2 * S, -2 * S, 4 * S, 4 * S)
-    // Short wooden snath (handle) pointing up from the hand.
+    // Short wooden handle pointing up from the hand.
     ctx.fillStyle = '#9a6a3a'
     ctx.fillRect(-1 * S, -10 * S, 2 * S, 10 * S)
     ctx.fillStyle = '#7a5230'
     ctx.fillRect(-1 * S, -10 * S, 1 * S, 10 * S)
-    // Small curved steel blade hooking off the top.
     ctx.fillStyle = '#cfd3dc'
-    ctx.fillRect(0, -11 * S, 4 * S, 2 * S)
-    ctx.fillStyle = '#eef0f6'
-    ctx.fillRect(0, -11 * S, 4 * S, 1 * S)
-    ctx.fillStyle = '#aeb2bc'
-    ctx.fillRect(3 * S, -11 * S, 2 * S, 3 * S)
+    if (tool === 'pickaxe') {
+      ctx.fillRect(-5 * S, -12 * S, 10 * S, 2 * S)
+      ctx.fillStyle = '#eef0f6'
+      ctx.fillRect(-5 * S, -12 * S, 10 * S, 1 * S)
+      ctx.fillStyle = '#aeb2bc'
+      ctx.fillRect(-5 * S, -10 * S, 2 * S, 3 * S)
+      ctx.fillRect(3 * S, -10 * S, 2 * S, 3 * S)
+    } else {
+      ctx.fillRect(0, -11 * S, 4 * S, 2 * S)
+      ctx.fillStyle = '#eef0f6'
+      ctx.fillRect(0, -11 * S, 4 * S, 1 * S)
+      ctx.fillStyle = '#aeb2bc'
+      ctx.fillRect(3 * S, -11 * S, 2 * S, 3 * S)
+    }
     ctx.restore()
   }
 
@@ -2898,7 +3088,7 @@ export class Game {
       return {
         phase: this.phase, day: 1, clock: '오전 6:00', period: '아침', periodKey: 'morning',
         gold: 0, stamina: 0, maxStamina: 0, inventory: [], toasts: [...this.toasts], shopBuy: [],
-        buildOptions: [], buildPermits: [], fieldPlots: [], cropChoices: [], selectedFieldId: null, cookRecipes: [],
+        buildOptions: [], buildPermits: [], toolUpgrades: [], fieldPlots: [], cropChoices: [], selectedFieldId: null, cookRecipes: [],
         cookQueue: [],
         cookingFire: {
           built: false,
@@ -2993,6 +3183,23 @@ export class Game {
         sprite: def.sprite,
         built,
         locked,
+      }
+    })
+    const toolUpgrades: ToolUpgradeView[] = (['pickaxe', 'scythe'] as UpgradeableToolId[]).map((toolId) => {
+      const next = this.nextToolUpgrade(toolId)
+      const costItems = costViews(next?.costItems ?? [])
+      return {
+        toolId,
+        name: this.toolName(toolId),
+        level: this.toolLevel(toolId),
+        damage: this.toolDamage(toolId),
+        nextName: next?.name ?? null,
+        nextDamage: next?.damage ?? null,
+        costGold: next?.costGold ?? 0,
+        costItems,
+        canUpgrade: !!next && s.gold >= next.costGold && costItems.every((it) => it.ok),
+        maxed: !next,
+        sprite: toolId,
       }
     })
     const fieldLevel = this.fieldExpansionLevel()
@@ -3183,6 +3390,7 @@ export class Game {
       shopBuy,
       buildOptions,
       buildPermits,
+      toolUpgrades,
       fieldPlots,
       cropChoices,
       selectedFieldId,

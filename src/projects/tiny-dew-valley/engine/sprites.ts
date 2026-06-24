@@ -334,6 +334,19 @@ function bakeRock(): HTMLCanvasElement {
   return c
 }
 
+function bakeOreRock(ore: string): HTMLCanvasElement {
+  const c = cv(T, T)
+  const g = ctxOf(c)
+  px(g, 3, 12, 10, 2, 'rgba(0,0,0,0.15)')
+  px(g, 3, 6, 10, 7, '#707884')
+  px(g, 4, 5, 7, 2, '#9aa2ad')
+  px(g, 4, 11, 8, 2, '#555d68')
+  px(g, 5, 8, 2, 2, ore)
+  px(g, 9, 7, 2, 3, ore)
+  dot(g, 6, 8, '#f3d6a8')
+  return c
+}
+
 function bakeWeed(): HTMLCanvasElement {
   const c = cv(T, T)
   const g = ctxOf(c)
@@ -653,6 +666,18 @@ export function bakeItemIcon(sprite: string, color?: string): HTMLCanvasElement 
       px(g, 4, 5, 7, 2, '#a7abb5')
       px(g, 4, 11, 8, 2, '#6e727c')
       break
+    case 'copper_ore':
+      px(g, 3, 6, 10, 7, '#787f8a')
+      px(g, 4, 5, 7, 2, '#a0a6b0')
+      px(g, 5, 8, 3, 3, '#c8753a')
+      px(g, 10, 7, 2, 3, '#e09855')
+      break
+    case 'iron_ore':
+      px(g, 3, 6, 10, 7, '#6f7680')
+      px(g, 4, 5, 7, 2, '#9ba2ac')
+      px(g, 5, 8, 3, 3, '#c8ccd6')
+      px(g, 10, 7, 2, 3, '#eef0f6')
+      break
     case 'daffodil':
       px(g, 7, 9, 1, 4, '#3f8a3a')
       px(g, 6, 4, 4, 4, '#ffe14d')
@@ -873,6 +898,8 @@ export interface Sprites {
   stump: HTMLCanvasElement
   largeStump: HTMLCanvasElement
   rock: HTMLCanvasElement
+  copperOre: HTMLCanvasElement
+  ironOre: HTMLCanvasElement
   weed: HTMLCanvasElement
   flower: HTMLCanvasElement
   sprinkler: HTMLCanvasElement
@@ -940,6 +967,8 @@ export function buildSprites(
     stump: bakeStump(),
     largeStump: bakeLargeStump(),
     rock: bakeRock(),
+    copperOre: bakeOreRock('#c8753a'),
+    ironOre: bakeOreRock('#c8ccd6'),
     weed: bakeWeed(),
     flower: bakeFlower(),
     sprinkler: bakeItemIcon('sprinkler'),
@@ -996,6 +1025,13 @@ function bakeToolIcon(tool: string): HTMLCanvasElement {
       px(g, 3, 3, 6, 1, '#eef0f6')
       px(g, 4, 6, 4, 2, '#aeb2bc')
       px(g, 8, 4, 1, 3, '#c8ccd6')
+      break
+    case 'pickaxe':
+      px(g, 8, 3, 2, 10, '#9a6a3a')
+      px(g, 3, 3, 10, 2, '#c8ccd6')
+      px(g, 3, 2, 10, 1, '#eef0f6')
+      px(g, 3, 5, 2, 2, '#aeb2bc')
+      px(g, 11, 5, 2, 2, '#aeb2bc')
       break
     case 'scythe':
       // long handle + wide sweeping curved blade hooking down at the top
@@ -1143,7 +1179,7 @@ export function iconURL(key: string, color?: string): string {
   let canvas: HTMLCanvasElement
   if (UI_ICONS.has(key)) {
     canvas = bakeUIIcon(key)
-  } else if (['hoe', 'watering_can', 'axe', 'scythe', 'hand', 'backpack'].includes(key)) {
+  } else if (['hoe', 'watering_can', 'axe', 'pickaxe', 'scythe', 'hand', 'backpack'].includes(key)) {
     canvas = bakeToolIcon(key)
   } else {
     canvas = bakeItemIcon(key, color)

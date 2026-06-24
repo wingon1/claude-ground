@@ -271,7 +271,7 @@ function TitleScreen({ game, ui }: { game: Game; ui: UISnapshot }) {
           <button className="tdv-bigbtn" onClick={() => game.newGame()}>새 게임</button>
         </div>
         <div className="help">
-          화면을 탭하면 그 곳으로 걸어가요. 나무·바위·작물 곁에 서면 도구 없이 자동으로 일해요.<br />
+          화면을 탭하면 그 곳으로 걸어가요. 나무·바위·작물 곁에 서면 도구 등급에 맞춰 자동으로 일해요.<br />
           스태미나를 다 쓰면 침대에서 자고, 깨어나면 최대 스태미나가 +1 늘어나요.
         </div>
       </div>
@@ -410,6 +410,32 @@ function BuildModal({ game, ui }: { game: Game; ui: UISnapshot }) {
               )}
             </div>
           </div>
+          {ui.toolUpgrades.map((tool) => (
+            <div className={`tdv-craft${tool.maxed ? ' locked' : ''}`} key={tool.toolId}>
+              <img src={iconURL(tool.sprite)} alt={tool.name} />
+              <div className="info">
+                <div className="nm">{tool.name}</div>
+                <div className="ds">
+                  현재 타격력 {tool.damage}{tool.nextName ? ` · ${tool.nextName} 타격력 ${tool.nextDamage}` : ' · 최대 등급'}
+                </div>
+                <div className="mats">
+                  {!tool.maxed && <span className={`mat${ui.gold >= tool.costGold ? '' : ' miss'}`}>골드 {ui.gold}/{tool.costGold}</span>}
+                  {tool.costItems.map((it) => (
+                    <span className={`mat${it.ok ? '' : ' miss'}`} key={it.itemId}>{it.name} {it.have}/{it.need}</span>
+                  ))}
+                </div>
+              </div>
+              <div className="act">
+                {tool.maxed ? (
+                  <span className="owned">완료</span>
+                ) : (
+                  <button className="tdv-btn gold sm" disabled={!tool.canUpgrade} onClick={() => game.upgradeTool(tool.toolId)}>
+                    강화
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
           {ui.buildPermits.map((permit) => (
             <div className={`tdv-craft${permit.locked ? ' locked' : ''}`} key={permit.itemId}>
               <img src={iconURL(permit.sprite)} alt={permit.name} />

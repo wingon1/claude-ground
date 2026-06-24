@@ -76,7 +76,7 @@ export interface CookJob {
   remainingSecs: number
 }
 
-export type ToolId = 'hoe' | 'watering_can' | 'axe' | 'scythe' | 'hand'
+export type ToolId = 'hoe' | 'watering_can' | 'axe' | 'pickaxe' | 'scythe' | 'hand'
 
 export interface ToolDef {
   id: ToolId
@@ -108,6 +108,8 @@ export type Obstacle =
   | null
   | 'weed'
   | 'rock'
+  | 'copper_ore'
+  | 'iron_ore'
   | 'tree'
   | 'stump'
   | 'large_stump'
