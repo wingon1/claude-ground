@@ -2224,15 +2224,15 @@ export class Game {
       return {
         title: '밀가루 만들기',
         detail: '화로에서 밀 2개를 갈아 밀가루를 만드세요.',
-        progress: Math.min(2, this.countItem('crop_wheat_normal')),
-        max: 2,
+        progress: 0,
+        max: 1,
       }
     }
     if (!this.itemSeen('bread')) {
       return {
         title: '빵 굽기',
         detail: '밀가루를 빵으로 구운 뒤 상점에서 팔아 돈을 모으세요.',
-        progress: Math.min(1, this.countItem('flour')),
+        progress: 0,
         max: 1,
       }
     }
@@ -2267,8 +2267,8 @@ export class Game {
       return {
         title: '토스트 만들기',
         detail: '빵과 달걀로 토스트를 만들어 더 높은 가격에 파세요.',
-        progress: Math.min(2, (this.countItem('bread') > 0 ? 1 : 0) + (this.countItem('egg') > 0 ? 1 : 0)),
-        max: 2,
+        progress: 0,
+        max: 1,
       }
     }
     if (!this.itemSeen('copper_ore')) {
@@ -2310,8 +2310,8 @@ export class Game {
       return {
         title: '딸기쨈 만들기',
         detail: '딸기 2개를 졸여 딸기쨈을 만드세요.',
-        progress: Math.min(2, this.countItem('crop_strawberry_normal')),
-        max: 2,
+        progress: 0,
+        max: 1,
       }
     }
     if (!this.flagEnabled('unlock:dairy')) {
@@ -2345,19 +2345,16 @@ export class Game {
       return {
         title: '버터 만들기',
         detail: '우유 2개를 버터로 가공하세요.',
-        progress: Math.min(2, this.countItem('milk')),
-        max: 2,
+        progress: 0,
+        max: 1,
       }
     }
     if (!this.itemSeen('strawberry_jam_toast')) {
       return {
         title: '딸기쨈 토스트 만들기',
         detail: '빵, 버터, 딸기쨈을 조합해 중반 핵심 상품을 만드세요.',
-        progress: Math.min(3,
-          (this.countItem('bread') > 0 ? 1 : 0) +
-          (this.countItem('butter') > 0 ? 1 : 0) +
-          (this.countItem('strawberry_jam') > 0 ? 1 : 0)),
-        max: 3,
+        progress: 0,
+        max: 1,
       }
     }
     if (!this.cropUnlocked('tomato')) {
@@ -2381,27 +2378,24 @@ export class Game {
       return {
         title: '토마토소스 만들기',
         detail: '토마토 2개를 졸여 피자 재료를 준비하세요.',
-        progress: Math.min(2, this.countItem('crop_tomato_normal')),
-        max: 2,
+        progress: 0,
+        max: 1,
       }
     }
     if (!this.itemSeen('cheese')) {
       return {
         title: '치즈 만들기',
         detail: '우유 2개를 숙성해 피자에 들어갈 치즈를 만드세요.',
-        progress: Math.min(2, this.countItem('milk')),
-        max: 2,
+        progress: 0,
+        max: 1,
       }
     }
     if (!this.itemSeen('pizza')) {
       return {
         title: '피자 만들기',
         detail: '토마토소스, 밀가루, 치즈로 피자를 구우세요.',
-        progress: Math.min(3,
-          (this.countItem('flour') > 0 ? 1 : 0) +
-          (this.countItem('tomato_sauce') > 0 ? 1 : 0) +
-          (this.countItem('cheese') > 0 ? 1 : 0)),
-        max: 3,
+        progress: 0,
+        max: 1,
       }
     }
     if (!this.cropUnlocked('corn')) {
@@ -2425,12 +2419,8 @@ export class Game {
       return {
         title: '콘치즈 피자 만들기',
         detail: '옥수수와 피자 재료를 조합해 후반 판매품을 만드세요.',
-        progress: Math.min(4,
-          (this.countItem('flour') > 0 ? 1 : 0) +
-          (this.countItem('tomato_sauce') > 0 ? 1 : 0) +
-          (this.countItem('cheese') > 0 ? 1 : 0) +
-          (this.countItem('crop_corn_normal') > 0 ? 1 : 0)),
-        max: 4,
+        progress: 0,
+        max: 1,
       }
     }
     return {
