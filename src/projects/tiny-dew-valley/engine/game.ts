@@ -47,6 +47,7 @@ import {
 import {
   BLACKSMITH_NPC_LINES,
   PLAYER_AMBIENT_LINES,
+  PLAYER_FAINT_WAKE_LINES,
   PLAYER_LOCKED_MINE_LINES,
   PLAYER_WEAK_TOOL_LINES,
   SHOP_NPC_LINES,
@@ -764,6 +765,7 @@ export class Game {
     this.state.hp = this.state.maxHp
     this.phase = 'playing'
     this.toast(lost.length ? `기절했어요. 잃어버린 아이템: ${lost.join(', ')}` : '기절했지만 잃어버린 아이템은 없어요.', 'bad')
+    this.say('player', this.pickLine(PLAYER_FAINT_WAKE_LINES), 4.4)
     this.autosave()
     this.emit()
   }

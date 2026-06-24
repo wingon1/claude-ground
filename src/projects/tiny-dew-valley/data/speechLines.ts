@@ -88,3 +88,10 @@ export const PLAYER_LOCKED_MINE_LINES = [
   '입구가 막혀 있네. 다른 목표부터 해야겠다.',
   '여긴 나중에 다시 와야겠어.',
 ]
+
+export const PLAYER_FAINT_WAKE_LINES = [
+  '여기까지 어떻게 왔지..',
+  '너무 강한 상대를 만났군.',
+  '아이템을 잃어버렸어.',
+  '그래도 무사히 집에는 왔어.',
+]
