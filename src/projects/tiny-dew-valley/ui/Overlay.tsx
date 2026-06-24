@@ -552,13 +552,23 @@ function InventoryModal({
 // ---------------- Build ----------------
 function BuildModal({ game, ui }: { game: Game; ui: UISnapshot }) {
   const nextField = ui.fieldPlots.find((field) => field.nextToUnlock && field.rows < 3)
+  const animalPermitOrder = ['permit_chicken', 'permit_dairy', 'permit_pig']
+  const animalPermitRank = (itemId: string) => {
+    const rank = animalPermitOrder.indexOf(itemId)
+    return rank >= 0 ? rank : animalPermitOrder.length
+  }
+  const sortedBuildPermits = [...ui.buildPermits].sort((a, b) =>
+    Number(a.built) - Number(b.built) ||
+    animalPermitRank(a.itemId) - animalPermitRank(b.itemId)
+  )
+  const cookingFireComplete = !ui.cookingFire.nextSlots
   return (
     <div className="tdv-modal-bg" onClick={() => game.closeModal()}>
       <div className="tdv-modal" style={{ width: 'min(420px, 92vw)' }} onClick={(e) => e.stopPropagation()}>
         <h2><Ic k="ui_hammer" /> 건설</h2>
         <div className="sub">화로, 동물농장, 밭 확장을 한 곳에서 관리해요. 밭의 씨앗은 푯말 근처에서 바꿔요.</div>
         <div className="tdv-craftlist">
-          <div className="tdv-craft">
+          <div className="tdv-craft" style={{ order: cookingFireComplete ? 120 : 20 }}>
             <div className="tdv-crafticon"><Ic k="ui_fire" /></div>
             <div className="info">
               <div className="nm">{ui.cookingFire.built ? `화로대 Lv.${ui.cookingFire.level}` : '화로 제작'}</div>
@@ -585,8 +595,12 @@ function BuildModal({ game, ui }: { game: Game; ui: UISnapshot }) {
               )}
             </div>
           </div>
-          {ui.buildPermits.map((permit) => (
-            <div className={`tdv-craft${permit.locked ? ' locked' : ''}`} key={permit.itemId}>
+          {sortedBuildPermits.map((permit) => (
+            <div
+              className={`tdv-craft${permit.locked ? ' locked' : ''}`}
+              key={permit.itemId}
+              style={{ order: (permit.built ? 130 : 30) + animalPermitRank(permit.itemId) }}
+            >
               <img src={iconURL(permit.sprite)} alt={permit.name} />
               <div className="info">
                 <div className="nm">{permit.name}</div>
@@ -613,7 +627,7 @@ function BuildModal({ game, ui }: { game: Game; ui: UISnapshot }) {
             </div>
           ))}
           {nextField ? (
-            <div className="tdv-craft" key={nextField.id}>
+            <div className="tdv-craft" key={nextField.id} style={{ order: 10 }}>
               <div className="tdv-crafticon">밭</div>
               <div className="info">
                 <div className="nm">밭 확장</div>
@@ -633,7 +647,7 @@ function BuildModal({ game, ui }: { game: Game; ui: UISnapshot }) {
               </div>
             </div>
           ) : (
-            <div className="tdv-craft locked">
+            <div className="tdv-craft locked" style={{ order: 110 }}>
               <div className="tdv-crafticon">밭</div>
               <div className="info">
                 <div className="nm">밭 확장</div>
