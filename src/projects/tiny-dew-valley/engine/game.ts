@@ -818,7 +818,9 @@ export class Game {
     for (const entry of floorDef.monsters) {
       const def = MONSTERS[entry.id]
       for (let i = 0; i < entry.count; i++) {
-        const [tx, ty] = spawnTiles[cursor % spawnTiles.length]
+        const [tx, ty] = entry.id === 'mine_guardian'
+          ? [29, 16]
+          : spawnTiles[cursor % spawnTiles.length]
         cursor += 1
         monsters.push({
           uid: `${floor}:${entry.id}:${i}:${cursor}`,
@@ -1095,10 +1097,28 @@ export class Game {
       const qty = drop.minQty + Math.floor(Math.random() * (drop.maxQty - drop.minQty + 1))
       this.dropGroundItemNear(monster.x, monster.y, drop.itemId, qty)
     }
-    this.rollPassiveDrop(def)
-    this.toast(`${def.name} 처치`, 'good')
+    if (monster.id === 'mine_guardian') {
+      this.completeMineGuardianClear(def)
+    } else {
+      this.rollPassiveDrop(def)
+      this.toast(`${def.name} 처치`, 'good')
+    }
     this.audio.sfx('sparkle')
     this.emit()
+  }
+
+  private completeMineGuardianClear(monster: MonsterDef) {
+    const key = 'mine:boss:10:cleared'
+    const firstClear = this.state.flags[key] !== true
+    this.grantPassive(this.pickWeightedPassive(monster).id, firstClear ? 'epic' : 'rare')
+    if (firstClear) {
+      this.state.flags[key] = true
+      this.state.gold += 1000
+      this.toast('광산 10층 클리어! 에픽 패시브와 1000G를 얻었어요.', 'good')
+    } else {
+      this.toast('광산 수호자 처치! 레어 패시브를 얻었어요.', 'good')
+    }
+    this.autosave()
   }
 
   private rollPassiveDrop(monster: MonsterDef) {
@@ -3649,7 +3669,22 @@ export class Game {
     ctx.fillStyle = 'rgba(0,0,0,0.22)'
     ctx.fillRect(this.wx(monster.x - 6), this.wy(monster.y - 3), 12 * S, 3 * S)
     ctx.fillStyle = def.color
-    if (monster.id === 'bat') {
+    if (monster.id === 'mine_guardian') {
+      ctx.fillRect(x + 2 * S, y + 2 * S, 12 * S, 14 * S)
+      ctx.fillRect(x + 0 * S, y + 6 * S, 3 * S, 8 * S)
+      ctx.fillRect(x + 13 * S, y + 6 * S, 3 * S, 8 * S)
+      ctx.fillStyle = def.accent
+      ctx.fillRect(x + 4 * S, y + 0 * S, 8 * S, 2 * S)
+      ctx.fillRect(x + 6 * S, y + 3 * S, 4 * S, 2 * S)
+      ctx.fillStyle = '#302040'
+      ctx.fillRect(x + 5 * S, y + 7 * S, 2 * S, 2 * S)
+      ctx.fillRect(x + 10 * S, y + 7 * S, 2 * S, 2 * S)
+      ctx.fillRect(x + 6 * S, y + 12 * S, 5 * S, 1 * S)
+      if (monster.hp < monster.maxHp) {
+        this.drawWorldHpBar(monster.x - 8, monster.y - 26, monster.hp, monster.maxHp, S)
+      }
+      return
+    } else if (monster.id === 'bat') {
       ctx.fillRect(x + 2 * S, y + 7 * S, 12 * S, 6 * S)
       ctx.fillRect(x - 3 * S, y + 8 * S, 5 * S, 4 * S)
       ctx.fillRect(x + 14 * S, y + 8 * S, 5 * S, 4 * S)

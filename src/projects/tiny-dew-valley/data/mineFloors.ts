@@ -79,7 +79,7 @@ export const MINE_FLOORS: MineFloorDef[] = [
   {
     floor: 10,
     ores: { rock: 2, iron_ore: 8 },
-    monsters: [{ id: 'stone_golem', count: 4 }],
+    monsters: [{ id: 'stone_golem', count: 4 }, { id: 'mine_guardian', count: 1 }],
     passiveDropChance: 0.15,
     rarityChance: { normal: 0.55, rare: 0.35, epic: 0.1 },
   },

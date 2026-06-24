@@ -1,6 +1,6 @@
 import type { PassiveId, PassiveRarity } from './passives'
 
-export type MonsterId = 'slime' | 'bat' | 'mine_rat' | 'stone_golem'
+export type MonsterId = 'slime' | 'bat' | 'mine_rat' | 'stone_golem' | 'mine_guardian'
 
 export interface MonsterDrop {
   itemId: string
@@ -83,6 +83,23 @@ export const MONSTERS: Record<MonsterId, MonsterDef> = {
     drops: [
       { itemId: 'stone', minQty: 2, maxQty: 4, chance: 1 },
       { itemId: 'iron_ore', minQty: 1, maxQty: 2, chance: 0.28 },
+    ],
+  },
+  mine_guardian: {
+    id: 'mine_guardian',
+    name: '광산 수호자',
+    hp: 32,
+    attack: 6,
+    speed: 8,
+    color: '#6a4a8a',
+    accent: '#f0d06a',
+    passiveDropBonus: 0.35,
+    passiveWeights: { attack: 1.5, ore_bonus: 1.4, stamina_save: 1.2 },
+    rarityBonus: { rare: 0.2, epic: 0.15 },
+    drops: [
+      { itemId: 'stone', minQty: 6, maxQty: 10, chance: 1 },
+      { itemId: 'iron_ore', minQty: 3, maxQty: 5, chance: 1 },
+      { itemId: 'copper_ore', minQty: 2, maxQty: 4, chance: 0.75 },
     ],
   },
 }
