@@ -599,33 +599,35 @@
 /* ---------------- Toasts ---------------- */
 .tdv-toasts {
   position: absolute;
-  top: 150px;
-  right: 10px;
+  left: 14px;
+  bottom: 78px;
   display: flex;
   flex-direction: column;
   gap: 5px;
-  align-items: stretch;
+  align-items: flex-start;
   pointer-events: none;
-  width: min(230px, calc(100vw - 20px));
-  max-width: calc(100vw - 20px);
+  width: min(320px, calc(100vw - 28px));
+  max-width: calc(100vw - 28px);
   z-index: 7;
 }
 .tdv-toast {
-  background: var(--panel);
-  border: 2px solid var(--panel-edge);
-  border-radius: 2px;
-  padding: 5px 12px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
   font-size: 12px;
-  font-weight: 700;
-  box-shadow: 0 2px 0 #0003;
+  font-weight: 900;
+  color: #4b3427;
+  box-shadow: none;
+  text-shadow: 0 1px 0 rgba(255, 246, 218, 0.8);
   animation: tdv-pop 0.18s ease;
   width: 100%;
   text-align: left;
   line-height: 1.25;
 }
 .tdv-toast:nth-last-child(n+4) { display: none; }
-.tdv-toast.good { color: var(--good); }
-.tdv-toast.bad { color: var(--bad); }
+.tdv-toast.good,
+.tdv-toast.bad { color: #4b3427; }
 @keyframes tdv-pop {
   from { transform: scale(0.85); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
