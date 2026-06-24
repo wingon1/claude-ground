@@ -3281,6 +3281,7 @@ export class Game {
       flagEnabled: (flag) => this.flagEnabled(flag),
       animalFarmOwned: (farm) => this.animalFarmOwned(farm),
       animalCount: (farm) => this.animalCount(farm),
+      toolLevel: (toolId) => this.toolLevel(toolId),
       currentOrder: () => this.currentOrder(),
       currentWeather: () => this.currentWeather(),
     })

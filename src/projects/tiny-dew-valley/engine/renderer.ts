@@ -44,6 +44,7 @@ export interface RenderHost {
   flagEnabled: (flag: string | undefined) => boolean
   animalFarmOwned: (farm: AnimalFarmDef) => boolean
   animalCount: (farm: AnimalFarmDef) => number
+  toolLevel: (toolId: UpgradeableToolId) => number
   currentOrder: () => OrderView | null
   currentWeather: () => WeatherView | null
 }
@@ -83,6 +84,7 @@ export class GameRenderer {
   private flagEnabled(flag: string | undefined): boolean { return this.host.flagEnabled(flag) }
   private animalFarmOwned(farm: AnimalFarmDef): boolean { return this.host.animalFarmOwned(farm) }
   private animalCount(farm: AnimalFarmDef): number { return this.host.animalCount(farm) }
+  private toolLevel(toolId: UpgradeableToolId): number { return this.host.toolLevel(toolId) }
   private currentOrder(): OrderView | null { return this.host.currentOrder() }
   private currentWeather(): WeatherView | null { return this.host.currentWeather() }
   private wx(worldX: number): number {
@@ -1113,34 +1115,42 @@ export class GameRenderer {
     ctx.fillRect(-1 * S, -10 * S, 2 * S, 10 * S)
     ctx.fillStyle = '#7a5230'
     ctx.fillRect(-1 * S, -10 * S, 1 * S, 10 * S)
-    ctx.fillStyle = '#cfd3dc'
+    const metal = this.toolMetalPalette(tool)
+    ctx.fillStyle = metal.mid
     if (tool === 'sword') {
       ctx.fillRect(-1 * S, -15 * S, 2 * S, 12 * S)
-      ctx.fillStyle = '#eef0f6'
+      ctx.fillStyle = metal.light
       ctx.fillRect(0, -15 * S, 1 * S, 12 * S)
       ctx.fillStyle = '#caa066'
       ctx.fillRect(-4 * S, -4 * S, 8 * S, 1 * S)
     } else if (tool === 'axe') {
       ctx.fillRect(-1 * S, -13 * S, 6 * S, 5 * S)
-      ctx.fillStyle = '#eef0f6'
+      ctx.fillStyle = metal.light
       ctx.fillRect(0, -13 * S, 5 * S, 2 * S)
-      ctx.fillStyle = '#aeb2bc'
+      ctx.fillStyle = metal.dark
       ctx.fillRect(4 * S, -10 * S, 2 * S, 3 * S)
     } else if (tool === 'pickaxe') {
       ctx.fillRect(-5 * S, -12 * S, 10 * S, 2 * S)
-      ctx.fillStyle = '#eef0f6'
+      ctx.fillStyle = metal.light
       ctx.fillRect(-5 * S, -12 * S, 10 * S, 1 * S)
-      ctx.fillStyle = '#aeb2bc'
+      ctx.fillStyle = metal.dark
       ctx.fillRect(-5 * S, -10 * S, 2 * S, 3 * S)
       ctx.fillRect(3 * S, -10 * S, 2 * S, 3 * S)
     } else {
       ctx.fillRect(0, -11 * S, 4 * S, 2 * S)
-      ctx.fillStyle = '#eef0f6'
+      ctx.fillStyle = metal.light
       ctx.fillRect(0, -11 * S, 4 * S, 1 * S)
-      ctx.fillStyle = '#aeb2bc'
+      ctx.fillStyle = metal.dark
       ctx.fillRect(3 * S, -11 * S, 2 * S, 3 * S)
     }
     ctx.restore()
+  }
+
+  private toolMetalPalette(tool: UpgradeableToolId) {
+    const level = Math.max(0, this.toolLevel(tool))
+    if (level >= 2) return { mid: '#8fa4bd', light: '#dce8f4', dark: '#5f7188' }
+    if (level === 1) return { mid: '#c8753a', light: '#f0ad68', dark: '#8f4c2e' }
+    return { mid: '#cfd3dc', light: '#eef0f6', dark: '#aeb2bc' }
   }
 
   private drawWorkHighlight(S: number) {
