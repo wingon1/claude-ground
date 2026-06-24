@@ -1028,19 +1028,26 @@ export class GameRenderer {
     const ctx = this.ctx
     const t = this.nowSecs()
     ctx.save()
-    ctx.fillStyle = 'rgba(40,68,92,0.12)'
+    ctx.fillStyle = 'rgba(40,68,92,0.1)'
     ctx.fillRect(0, 0, bw, bh)
-    ctx.strokeStyle = 'rgba(166,212,236,0.62)'
-    ctx.lineWidth = Math.max(1, S * 0.42)
-    const count = Math.max(42, Math.floor((bw * bh) / 14000))
-    const fall = (t * 460) % (bh + 70 * S)
+    ctx.strokeStyle = 'rgba(172,218,240,0.55)'
+    ctx.lineWidth = Math.max(1, S * 0.34)
+    const count = Math.max(34, Math.floor((bw * bh) / 17500))
     for (let i = 0; i < count; i++) {
-      const seed = i * 97.13
-      const x = ((seed * 19 + t * 52) % (bw + 90 * S)) - 45 * S
-      const y = (seed * 37 + fall) % (bh + 70 * S) - 35 * S
+      const a = this.noise01(i, 11)
+      const b = this.noise01(i, 23)
+      const c = this.noise01(i, 37)
+      const speed = (330 + a * 210) * S
+      const drift = (18 + b * 28) * S
+      const spanY = bh + 42 * S
+      const y = (b * spanY + t * speed) % spanY - 24 * S
+      const x = (c * (bw + 84 * S) - 42 * S + Math.sin(t * 1.7 + i) * 5 * S - t * drift) % (bw + 84 * S)
+      const sx = x < -42 * S ? x + bw + 84 * S : x
+      const len = (5 + this.noise01(i, 51) * 5) * S
+      const slant = (1.3 + this.noise01(i, 67) * 2.1) * S
       ctx.beginPath()
-      ctx.moveTo(Math.round(x), Math.round(y))
-      ctx.lineTo(Math.round(x - 5 * S), Math.round(y + 13 * S))
+      ctx.moveTo(Math.round(sx), Math.round(y))
+      ctx.lineTo(Math.round(sx + slant), Math.round(y + len))
       ctx.stroke()
     }
     ctx.restore()
@@ -1050,15 +1057,17 @@ export class GameRenderer {
     const ctx = this.ctx
     const t = this.nowSecs()
     ctx.save()
-    const count = Math.max(16, Math.floor(bw / 46))
+    const count = Math.max(12, Math.floor(bw / 58))
     for (let i = 0; i < count; i++) {
-      const seed = i * 53.7
-      const x = (seed * 29 + t * 54) % (bw + 60 * S) - 30 * S
-      const y = (seed * 41 + Math.sin(t * 1.6 + i) * 18 * S) % Math.max(1, bh)
-      const spin = t * 5 + i
-      const size = (2.2 + (i % 3) * 0.45) * S
-      ctx.globalAlpha = 0.34 + (i % 4) * 0.08
-      ctx.fillStyle = i % 2 === 0 ? '#79b85a' : '#d5a94f'
+      const a = this.noise01(i, 101)
+      const b = this.noise01(i, 137)
+      const c = this.noise01(i, 163)
+      const x = (a * (bw + 90 * S) + t * (28 + c * 42) * S) % (bw + 90 * S) - 45 * S
+      const y = (b * bh + Math.sin(t * (0.9 + c) + i * 1.7) * (10 + a * 18) * S) % Math.max(1, bh)
+      const spin = t * (2.2 + c * 3.1) + i
+      const size = (1.8 + c * 1.25) * S
+      ctx.globalAlpha = 0.28 + b * 0.26
+      ctx.fillStyle = a > 0.45 ? '#79b85a' : '#d5a94f'
       ctx.save()
       ctx.translate(Math.round(x), Math.round(y))
       ctx.rotate(spin)
@@ -1079,15 +1088,16 @@ export class GameRenderer {
     const ctx = this.ctx
     const t = this.nowSecs()
     ctx.save()
-    const count = Math.max(14, Math.floor((bw * bh) / 42000))
+    const count = Math.max(7, Math.floor((bw * bh) / 84000))
     for (let i = 0; i < count; i++) {
-      const seed = i * 89.3
-      const pulse = (Math.sin(t * 2.7 + i * 1.8) + 1) / 2
-      if (pulse < 0.22) continue
-      const x = (seed * 17 + Math.sin(t * 0.35 + i) * 18 * S) % Math.max(1, bw)
-      const y = (seed * 31 + Math.cos(t * 0.28 + i) * 12 * S) % Math.max(1, bh)
-      const r = (1.1 + pulse * 1.6) * S
-      ctx.globalAlpha = 0.16 + pulse * 0.5
+      const a = this.noise01(i, 211)
+      const b = this.noise01(i, 251)
+      const pulse = (Math.sin(t * (1.7 + a) + i * 2.1) + 1) / 2
+      if (pulse < 0.35) continue
+      const x = (a * bw + Math.sin(t * 0.26 + i) * 14 * S) % Math.max(1, bw)
+      const y = (b * bh + Math.cos(t * 0.22 + i) * 10 * S) % Math.max(1, bh)
+      const r = (0.9 + pulse * 1.25) * S
+      ctx.globalAlpha = 0.12 + pulse * 0.42
       ctx.fillStyle = '#ffe78a'
       ctx.fillRect(Math.round(x - r / 2), Math.round(y - r * 2), Math.max(1, S), Math.round(r * 4))
       ctx.fillRect(Math.round(x - r * 2), Math.round(y - r / 2), Math.round(r * 4), Math.max(1, S))
@@ -1096,6 +1106,11 @@ export class GameRenderer {
     }
     ctx.globalAlpha = 1
     ctx.restore()
+  }
+
+  private noise01(i: number, salt: number): number {
+    const n = Math.sin(i * 127.1 + salt * 311.7) * 43758.5453
+    return n - Math.floor(n)
   }
 
   private glowRect(wx: number, wy: number, color: string, S: number) {
