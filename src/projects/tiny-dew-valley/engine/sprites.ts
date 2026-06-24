@@ -162,10 +162,13 @@ function drawHumanoid(
       px(g, 10, 1, 2, 1, pal.hair)
     }
   } else {
+    // For a twin-tail profile, keep the nose (front) side of the face bare.
+    const bareLeft = style === 'twin' && dir === 'left'
+    const bareRight = style === 'twin' && dir === 'right'
     px(g, 3, 2, 10, 3, pal.hair) // crown
     px(g, 3, 2, 10, 1, hairLite)
-    px(g, 3, 4, 1, 5, pal.hair) // left sideburn
-    px(g, 12, 4, 1, 5, pal.hair) // right sideburn
+    if (!bareLeft) px(g, 3, 4, 1, 5, pal.hair) // left sideburn
+    if (!bareRight) px(g, 12, 4, 1, 5, pal.hair) // right sideburn
     // Side profile: bulk out the back of the head so the silhouette reads.
     if (dir === 'left') {
       px(g, 11, 3, 3, 7, pal.hair) // hair mass at the back (right)
@@ -187,17 +190,21 @@ function drawHumanoid(
       px(g, 4, 4, 8, 2, pal.hair) // full bangs
       px(g, 5, 5, 6, 1, hairLite)
       // Long hair framing the face — fills the gap beside the cheeks.
-      px(g, 3, 4, 1, 7, pal.hair) // left lock to jaw
-      px(g, 12, 4, 1, 7, pal.hair) // right lock to jaw
-      px(g, 2, 5, 1, 5, pal.hair) // fuller side
-      px(g, 13, 5, 1, 5, pal.hair)
-      // Twin tails further out, draping lower.
-      px(g, 1, 6, 2, 6, pal.hair)
-      px(g, 13, 6, 2, 6, pal.hair)
-      px(g, 1, 11, 2, 2, pal.hair)
-      px(g, 13, 11, 2, 2, pal.hair)
-      px(g, 1, 6, 2, 1, hairLite)
-      px(g, 13, 6, 2, 1, hairLite)
+      // Skipped on the nose side when viewed in profile.
+      if (!bareLeft) {
+        px(g, 3, 4, 1, 7, pal.hair) // left lock to jaw
+        px(g, 2, 5, 1, 5, pal.hair) // fuller side
+        px(g, 1, 6, 2, 6, pal.hair) // tail
+        px(g, 1, 11, 2, 2, pal.hair)
+        px(g, 1, 6, 2, 1, hairLite)
+      }
+      if (!bareRight) {
+        px(g, 12, 4, 1, 7, pal.hair) // right lock to jaw
+        px(g, 13, 5, 1, 5, pal.hair) // fuller side
+        px(g, 13, 6, 2, 6, pal.hair) // tail
+        px(g, 13, 11, 2, 2, pal.hair)
+        px(g, 13, 6, 2, 1, hairLite)
+      }
     } else if (style === 'bald') {
       px(g, 3, 3, 10, 1, pal.hair) // receded hairline
       px(g, 3, 4, 1, 4, pal.hair)
@@ -220,11 +227,15 @@ function drawHumanoid(
     px(g, 4, 6, 8, 1, 'rgba(0,0,0,0.18)') // brim shadow on face
   }
 
-  // Hair ribbon (girls).
+  // Hair ribbon (girls) — rides the back tail when in profile.
   if (pal.bow) {
     if (dir === 'up') {
       px(g, 6, 2, 4, 2, pal.bow)
       dot(g, 7, 2, '#ffffff')
+    } else if (dir === 'right') {
+      px(g, 1, 4, 3, 2, pal.bow) // back tail is on the left
+      px(g, 2, 3, 1, 1, lighten(pal.bow))
+      dot(g, 2, 4, '#ffffff')
     } else {
       px(g, 12, 4, 3, 2, pal.bow)
       px(g, 13, 3, 1, 1, lighten(pal.bow))
