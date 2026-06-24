@@ -718,10 +718,28 @@ export function bakeItemIcon(sprite: string, color?: string): HTMLCanvasElement 
       px(g, 6, 4, 4, 2, '#ffffff')
       px(g, 6, 11, 4, 2, '#d8c8a8')
       break
+    case 'golden_egg':
+      px(g, 5, 5, 6, 8, '#f0c44f')
+      px(g, 6, 4, 4, 2, '#fff08a')
+      px(g, 6, 11, 4, 2, '#b88724')
+      dot(g, 8, 8, '#fff7b8')
+      break
+    case 'rich_milk':
+      px(g, 5, 4, 6, 9, '#fff6d8')
+      px(g, 5, 4, 6, 2, '#d7a45a')
+      px(g, 6, 7, 4, 3, '#ffffff')
+      px(g, 7, 11, 2, 1, '#f0d48a')
+      break
     case 'bacon':
       px(g, 4, 5, 8, 8, '#c86462')
       px(g, 5, 5, 2, 8, '#f0b0a0')
       px(g, 9, 5, 1, 8, '#8f3f42')
+      break
+    case 'premium_bacon':
+      px(g, 4, 5, 8, 8, '#a83e48')
+      px(g, 5, 5, 2, 8, '#ffd08a')
+      px(g, 9, 5, 1, 8, '#6d2930')
+      px(g, 4, 4, 8, 1, '#fff08a')
       break
     case 'butter':
       px(g, 4, 7, 8, 5, '#f5d35f')

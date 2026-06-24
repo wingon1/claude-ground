@@ -50,6 +50,12 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
             <Ic k="ui_coin" cls="sm" />
             <span className="tdv-gold">{ui.gold}G</span>
           </div>
+          {ui.weather && (
+            <div className="tdv-weather" title={ui.weather.desc}>
+              <span>{ui.weather.icon}</span>
+              <b>{ui.weather.name}</b>
+            </div>
+          )}
         </div>
 
         <div className="tdv-rightcol">
@@ -663,32 +669,36 @@ function SeedModal({ game, ui }: { game: Game; ui: UISnapshot }) {
 }
 
 function OrderModal({ game, ui }: { game: Game; ui: UISnapshot }) {
-  const order = ui.order
+  const orders = ui.orders.length ? ui.orders : ui.order ? [ui.order] : []
   return (
     <div className="tdv-modal-bg" onClick={() => game.closeOrder()}>
       <div className="tdv-modal" style={{ width: 'min(420px, 92vw)' }} onClick={(e) => e.stopPropagation()}>
         <h2><Ic k="ui_receipt" /> 오늘의 주문</h2>
-        <div className="sub">상점 주인이 매일 하나씩 필요한 요리를 주문합니다.</div>
-        {!order && (
+        <div className="sub">상점 주인이 매일 필요한 요리를 주문합니다. 가능한 주문부터 골라 납품하세요.</div>
+        {orders.length === 0 && (
           <div className="tdv-order-empty">
             첫 빵을 만들어 보면 주문을 받을 수 있어요.
           </div>
         )}
-        {order && (
-          <div className={`tdv-order-card ${order.completed ? 'done' : ''}`}>
-            <img src={iconURL(order.sprite, order.color)} alt={order.itemName} />
-            <div className="info">
-              <div className="nm">{order.itemName} ×{order.qty}</div>
-              <div className="ds">{order.hint}</div>
-              <div className="mats">
-                <span className={`mat${order.have >= order.qty ? '' : ' miss'}`}>보유 {order.have}/{order.qty}</span>
-                <span className="mat">보상 {order.rewardGold}G</span>
-                {order.completed && <span className="mat">완료</span>}
+        {orders.length > 0 && (
+          <div className="tdv-order-list">
+            {orders.map((order) => (
+              <div className={`tdv-order-card ${order.completed ? 'done' : ''}`} key={order.slot}>
+                <img src={iconURL(order.sprite, order.color)} alt={order.itemName} />
+                <div className="info">
+                  <div className="nm">{order.itemName} ×{order.qty}</div>
+                  <div className="ds">{order.hint}</div>
+                  <div className="mats">
+                    <span className={`mat${order.have >= order.qty ? '' : ' miss'}`}>보유 {order.have}/{order.qty}</span>
+                    <span className="mat">보상 {order.rewardGold}G</span>
+                    {order.completed && <span className="mat">완료</span>}
+                  </div>
+                </div>
+                <button className="tdv-btn gold sm" disabled={!order.canComplete} onClick={() => game.completeOrder(order.slot)}>
+                  납품
+                </button>
               </div>
-            </div>
-            <button className="tdv-btn gold sm" disabled={!order.canComplete} onClick={() => game.completeOrder()}>
-              납품
-            </button>
+            ))}
           </div>
         )}
         <div className="tdv-row">

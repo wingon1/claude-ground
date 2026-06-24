@@ -175,6 +175,23 @@
         "h": 6
       }
     ],
+    "rareProducts": [
+      {
+        "farmId": "chicken",
+        "itemId": "golden_egg",
+        "chance": 0.07
+      },
+      {
+        "farmId": "cow",
+        "itemId": "rich_milk",
+        "chance": 0.06
+      },
+      {
+        "farmId": "pig",
+        "itemId": "premium_bacon",
+        "chance": 0.05
+      }
+    ],
     "upgrades": [
       {
         "id": "chicken_speed",
@@ -589,6 +606,38 @@
       }
     ]
   },
+  "weather": {
+    "types": [
+      {
+        "id": "sunny",
+        "name": "맑음",
+        "icon": "☀",
+        "desc": "동물 생산 시간이 10% 줄어듭니다.",
+        "animalDropMultiplier": 0.9
+      },
+      {
+        "id": "rain",
+        "name": "비",
+        "icon": "☂",
+        "desc": "작물이 20% 빠르게 자랍니다.",
+        "cropGrowthMultiplier": 0.8
+      },
+      {
+        "id": "wind",
+        "name": "바람",
+        "icon": "≋",
+        "desc": "나무와 광석 채집 시 추가 재료가 나올 수 있습니다.",
+        "resourceBonusChance": 0.25
+      },
+      {
+        "id": "lucky",
+        "name": "행운",
+        "icon": "★",
+        "desc": "희귀 부산물 확률이 조금 오릅니다.",
+        "rareAnimalProductChanceBonus": 0.04
+      }
+    ]
+  },
   "mine": {
     "maxFloor": 10,
     "monsters": {
@@ -993,6 +1042,9 @@
       "egg": 24,
       "milk": 38,
       "bacon": 120,
+      "golden_egg": 180,
+      "rich_milk": 260,
+      "premium_bacon": 700,
       "butter": 58,
       "cheese": 68,
       "bread": 55,

@@ -66,5 +66,7 @@ export const TUTORIAL_REWARDS = [
 ]
 
 export const ORDER_ITEM_POOL = balance.orders.pool
+export const WEATHER_TYPES = balance.weather.types
+export const RARE_ANIMAL_PRODUCTS = balance.animals.rareProducts
 
 export const LEGACY_ID_MAP: Record<string, string> = balance.legacyIdMap

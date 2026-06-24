@@ -19,11 +19,13 @@ import {
   INV_SIZE,
   LEGACY_ID_MAP,
   ORDER_ITEM_POOL,
+  RARE_ANIMAL_PRODUCTS,
   RESPAWN_SECS,
   STAGE_SECS_PER_DAY,
   START_MAX_STAMINA,
   TUTORIAL_REWARDS,
   WALK_SPEED,
+  WEATHER_TYPES,
   WORK_COST,
   WORK_INTERVAL,
 } from '../data/gameBalance'
@@ -77,6 +79,7 @@ import type {
   ToastMsg,
   UIPhase,
   UISnapshot,
+  WeatherView,
 } from './uiSnapshot'
 
 const WORK_RANGE = T * 1.5 // how close to a node before auto-working
@@ -833,6 +836,7 @@ export class Game {
       const drop = OBSTACLE_DROP[ob]
       if (drop) {
         this.giveItem(drop.itemId, drop.qty)
+        if (Math.random() < this.resourceBonusChance()) this.giveItem(drop.itemId, 1)
         if (mining && Math.random() < this.passiveEffect('ore_bonus')) this.giveItem(drop.itemId, 1)
       }
       if (ob === 'copper_ore' || ob === 'iron_ore') this.giveItem('stone', 1)
@@ -910,7 +914,7 @@ export class Game {
       if (t.growthStage >= crop.stages - 1) continue
       const grow = ((t.metadata.growT as number) || 0) + dt
       t.metadata.growT = grow
-      const matureSecs = crop.growDays * STAGE_SECS_PER_DAY
+      const matureSecs = crop.growDays * STAGE_SECS_PER_DAY * this.cropGrowthMultiplier()
       const stage = Math.min(crop.stages - 1, Math.floor((grow / matureSecs) * (crop.stages - 1)))
       if (stage !== t.growthStage) {
         t.growthStage = stage
@@ -1089,7 +1093,7 @@ export class Game {
       this.audio.sfx('reject')
       return
     }
-    this.ensureDailyOrder()
+    this.ensureDailyOrders()
     this.phase = 'order'
     this.target = null
     this.audio.resume()
@@ -1205,9 +1209,12 @@ export class Game {
     }
   }
 
-  completeOrder() {
+  completeOrder(slot = 0) {
     if (this.phase !== 'order') return
-    const order = this.currentOrder()
+    const orders = this.currentOrders()
+    const order = orders.find((candidate) => candidate.slot === slot)
+      ?? orders.find((candidate) => candidate.canComplete)
+      ?? orders[0]
     if (!order) {
       this.toast('아직 맡길 주문이 없어요.', 'info')
       return
@@ -1223,7 +1230,7 @@ export class Game {
     }
     this.removeItem(order.itemId, order.qty)
     this.state.gold += order.rewardGold
-    this.state.flags[this.orderCompletedKey(this.state.day)] = true
+    this.state.flags[this.orderCompletedKey(this.state.day, order.slot)] = true
     this.toast(`주문 완료! ${order.rewardGold}G`, 'good')
     this.audio.sfx('coin')
     this.autosave()
@@ -1712,7 +1719,8 @@ export class Game {
     this.exhaustedNotified = false
     s.day++
     s.timeMinutes = 360
-    this.ensureDailyOrder()
+    this.ensureDailyOrders()
+    this.ensureDailyWeather()
     s.player.x = LOCATIONS.spawn.x * T + T / 2
     s.player.y = LOCATIONS.spawn.y * T + T
     this.target = null
@@ -2022,75 +2030,160 @@ export class Game {
     })
   }
 
+  private weatherDayKey(): string {
+    return 'dailyWeather:day'
+  }
+
+  private weatherIdKey(): string {
+    return 'dailyWeather:id'
+  }
+
+  private ensureDailyWeather() {
+    if (this.state.flags[this.weatherDayKey()] === this.state.day) {
+      const id = this.state.flags[this.weatherIdKey()]
+      if (typeof id === 'string' && WEATHER_TYPES.some((weather) => weather.id === id)) return
+    }
+    const pick = WEATHER_TYPES[(this.state.day * 5 + 1) % WEATHER_TYPES.length]
+    this.state.flags[this.weatherDayKey()] = this.state.day
+    this.state.flags[this.weatherIdKey()] = pick.id
+  }
+
+  private currentWeatherDef(): (typeof WEATHER_TYPES)[number] | null {
+    this.ensureDailyWeather()
+    const id = this.state.flags[this.weatherIdKey()]
+    return typeof id === 'string'
+      ? WEATHER_TYPES.find((weather) => weather.id === id) ?? null
+      : null
+  }
+
+  private currentWeather(): WeatherView | null {
+    const weather = this.currentWeatherDef()
+    if (!weather) return null
+    return {
+      id: weather.id,
+      name: weather.name,
+      icon: weather.icon,
+      desc: weather.desc,
+    }
+  }
+
+  private cropGrowthMultiplier(): number {
+    return this.currentWeatherDef()?.cropGrowthMultiplier ?? 1
+  }
+
+  private animalDropMultiplier(): number {
+    return this.currentWeatherDef()?.animalDropMultiplier ?? 1
+  }
+
+  private resourceBonusChance(): number {
+    return this.currentWeatherDef()?.resourceBonusChance ?? 0
+  }
+
+  private rareAnimalProductChanceBonus(): number {
+    return this.currentWeatherDef()?.rareAnimalProductChanceBonus ?? 0
+  }
+
   private orderDayKey(): string {
     return 'dailyOrder:day'
   }
 
-  private orderItemKey(): string {
-    return 'dailyOrder:itemId'
+  private orderChoiceCountKey(): string {
+    return 'dailyOrder:choiceCount'
   }
 
-  private orderQtyKey(): string {
-    return 'dailyOrder:qty'
+  private orderItemKey(slot: number): string {
+    return `dailyOrder:itemId:${slot}`
   }
 
-  private orderRewardKey(): string {
-    return 'dailyOrder:rewardGold'
+  private orderQtyKey(slot: number): string {
+    return `dailyOrder:qty:${slot}`
   }
 
-  private orderCompletedKey(day: number): string {
-    return `dailyOrder:completed:${day}`
+  private orderRewardKey(slot: number): string {
+    return `dailyOrder:rewardGold:${slot}`
+  }
+
+  private orderCompletedKey(day: number, slot: number): string {
+    return `dailyOrder:completed:${day}:${slot}`
   }
 
   private availableOrderPool() {
     return ORDER_ITEM_POOL.filter((order) => this.itemSeen(order.itemId))
   }
 
-  private ensureDailyOrder() {
-    if (this.state.flags[this.orderDayKey()] === this.state.day) return
+  private ensureDailyOrders() {
+    if (
+      this.state.flags[this.orderDayKey()] === this.state.day &&
+      typeof this.state.flags[this.orderChoiceCountKey()] === 'number'
+    ) return
     const pool = this.availableOrderPool()
     if (pool.length === 0) {
       this.state.flags[this.orderDayKey()] = this.state.day
-      delete this.state.flags[this.orderItemKey()]
-      delete this.state.flags[this.orderQtyKey()]
-      delete this.state.flags[this.orderRewardKey()]
+      this.state.flags[this.orderChoiceCountKey()] = 0
+      for (let slot = 0; slot < 3; slot++) {
+        delete this.state.flags[this.orderItemKey(slot)]
+        delete this.state.flags[this.orderQtyKey(slot)]
+        delete this.state.flags[this.orderRewardKey(slot)]
+      }
       return
     }
-    const pick = pool[(this.state.day * 7 + pool.length * 3) % pool.length]
-    const span = pick.maxQty - pick.minQty + 1
-    const qty = pick.minQty + ((this.state.day * 5 + pick.itemId.length) % span)
-    const item = getItem(pick.itemId)
-    const rewardGold = Math.round((item?.sellPrice ?? 10) * qty * 1.35 + 25)
+    const count = Math.min(3, pool.length)
+    const start = (this.state.day * 7 + pool.length * 3) % pool.length
     this.state.flags[this.orderDayKey()] = this.state.day
-    this.state.flags[this.orderItemKey()] = pick.itemId
-    this.state.flags[this.orderQtyKey()] = qty
-    this.state.flags[this.orderRewardKey()] = rewardGold
+    this.state.flags[this.orderChoiceCountKey()] = count
+    for (let slot = 0; slot < 3; slot++) {
+      delete this.state.flags[this.orderItemKey(slot)]
+      delete this.state.flags[this.orderQtyKey(slot)]
+      delete this.state.flags[this.orderRewardKey(slot)]
+    }
+    for (let slot = 0; slot < count; slot++) {
+      const pick = pool[(start + slot) % pool.length]
+      const span = pick.maxQty - pick.minQty + 1
+      const qty = pick.minQty + ((this.state.day * 5 + pick.itemId.length + slot * 2) % span)
+      const item = getItem(pick.itemId)
+      const rewardGold = Math.round((item?.sellPrice ?? 10) * qty * (1.25 + slot * 0.08) + 25 + slot * 15)
+      this.state.flags[this.orderItemKey(slot)] = pick.itemId
+      this.state.flags[this.orderQtyKey(slot)] = qty
+      this.state.flags[this.orderRewardKey(slot)] = rewardGold
+    }
+  }
+
+  private currentOrders(): OrderView[] {
+    this.ensureDailyOrders()
+    const rawCount = this.state.flags[this.orderChoiceCountKey()]
+    const count = typeof rawCount === 'number' ? Math.max(0, Math.min(3, Math.floor(rawCount))) : 0
+    const orders: OrderView[] = []
+    for (let slot = 0; slot < count; slot++) {
+      const itemId = this.state.flags[this.orderItemKey(slot)]
+      const qty = this.state.flags[this.orderQtyKey(slot)]
+      const rewardGold = this.state.flags[this.orderRewardKey(slot)]
+      if (typeof itemId !== 'string' || typeof qty !== 'number' || typeof rewardGold !== 'number') continue
+      const item = getItem(itemId)
+      if (!item) continue
+      const pool = ORDER_ITEM_POOL.find((order) => order.itemId === itemId)
+      const have = this.countItem(itemId)
+      const completed = this.state.flags[this.orderCompletedKey(this.state.day, slot)] === true
+      orders.push({
+        slot,
+        day: this.state.day,
+        itemId,
+        itemName: item.name,
+        sprite: item.sprite,
+        color: item.cropId ? CROPS[item.cropId].color : undefined,
+        qty,
+        have,
+        rewardGold,
+        hint: pool?.hint ?? '주문을 완료하면 다음 생산 목표를 잡기 쉬워요.',
+        completed,
+        canComplete: !completed && have >= qty,
+      })
+    }
+    return orders
   }
 
   private currentOrder(): OrderView | null {
-    this.ensureDailyOrder()
-    const itemId = this.state.flags[this.orderItemKey()]
-    const qty = this.state.flags[this.orderQtyKey()]
-    const rewardGold = this.state.flags[this.orderRewardKey()]
-    if (typeof itemId !== 'string' || typeof qty !== 'number' || typeof rewardGold !== 'number') return null
-    const item = getItem(itemId)
-    if (!item) return null
-    const pool = ORDER_ITEM_POOL.find((order) => order.itemId === itemId)
-    const have = this.countItem(itemId)
-    const completed = this.state.flags[this.orderCompletedKey(this.state.day)] === true
-    return {
-      day: this.state.day,
-      itemId,
-      itemName: item.name,
-      sprite: item.sprite,
-      color: item.cropId ? CROPS[item.cropId].color : undefined,
-      qty,
-      have,
-      rewardGold,
-      hint: pool?.hint ?? '주문을 완료하면 다음 생산 목표를 잡기 쉬워요.',
-      completed,
-      canComplete: !completed && have >= qty,
-    }
+    const orders = this.currentOrders()
+    return orders.find((order) => !order.completed) ?? orders[0] ?? null
   }
 
   private catalogPrice(itemId: string): number {
@@ -2393,7 +2486,7 @@ export class Game {
 
   private animalDropSeconds(farm: AnimalFarmDef): number {
     const speedLevel = this.farmUpgradeLevel(farm, 'speed')
-    return Math.max(2, Math.round(farm.dropSeconds * (1 - speedLevel * 0.15) * 10) / 10)
+    return Math.max(2, Math.round(farm.dropSeconds * (1 - speedLevel * 0.15) * this.animalDropMultiplier() * 10) / 10)
   }
 
   private animalProductQty(farm: AnimalFarmDef): number {
@@ -2403,6 +2496,14 @@ export class Game {
     if (Math.random() < chance) qty += 1
     if (yieldLevel >= 3 && Math.random() < 0.15) qty += 1
     return qty
+  }
+
+  private animalProductDrop(farm: AnimalFarmDef): { itemId: string; qty: number } {
+    const rare = RARE_ANIMAL_PRODUCTS.find((product) => product.farmId === farm.id)
+    if (rare && Math.random() < rare.chance + this.rareAnimalProductChanceBonus()) {
+      return { itemId: rare.itemId, qty: 1 }
+    }
+    return { itemId: farm.productItemId, qty: this.animalProductQty(farm) }
   }
 
   private groundItemId(t: Tile): string | null {
@@ -2440,8 +2541,9 @@ export class Game {
     }
     for (let i = 0; i < count; i++) {
       const t = candidates[i]
-      t.metadata.groundItemId = farm.productItemId
-      t.metadata.groundItemQty = this.animalProductQty(farm)
+      const drop = this.animalProductDrop(farm)
+      t.metadata.groundItemId = drop.itemId
+      t.metadata.groundItemQty = drop.qty
       t.metadata.animalDropFarm = farm.id
     }
     return true
@@ -2945,6 +3047,8 @@ export class Game {
       currentObjective: () => this.currentObjective(),
       objectiveTasks: (current) => this.objectiveTasks(current),
       currentOrder: () => this.currentOrder(),
+      currentOrders: () => this.currentOrders(),
+      currentWeather: () => this.currentWeather(),
       nearMineExit: () => this.nearMineExit(),
       nearMineDown: () => this.nearMineDown(),
       selectedAnimalFarm: () => this.selectedAnimalFarm(),

@@ -178,6 +178,7 @@ export interface ObjectiveTaskView extends ObjectiveView {
 }
 
 export interface OrderView {
+  slot: number
   day: number
   itemId: string
   itemName: string
@@ -189,6 +190,13 @@ export interface OrderView {
   hint: string
   completed: boolean
   canComplete: boolean
+}
+
+export interface WeatherView {
+  id: string
+  name: string
+  icon: string
+  desc: string
 }
 
 export interface ContextActionView {
@@ -224,6 +232,8 @@ export interface UISnapshot {
   objective: ObjectiveView | null
   objectives: ObjectiveTaskView[]
   order: OrderView | null
+  orders: OrderView[]
+  weather: WeatherView | null
   contextAction: string | null
   contextActionId: ContextActionView['id'] | null
   contextActions: ContextActionView[]

@@ -48,6 +48,7 @@ import type {
   ToolUpgradeView,
   UIPhase,
   UISnapshot,
+  WeatherView,
 } from './uiSnapshot'
 
 type RecipeDef = (typeof RECIPES)[number]
@@ -100,6 +101,8 @@ export interface SnapshotHost {
   currentObjective(): ObjectiveView | null
   objectiveTasks(current: ObjectiveView | null): ObjectiveTaskView[]
   currentOrder(): OrderView | null
+  currentOrders(): OrderView[]
+  currentWeather(): WeatherView | null
   nearMineExit(): boolean
   nearMineDown(): boolean
   selectedAnimalFarm(): AnimalFarmDef | null
@@ -151,6 +154,8 @@ function emptySnapshot(host: SnapshotHost): UISnapshot {
     objective: null,
     objectives: [],
     order: null,
+    orders: [],
+    weather: null,
     contextAction: null,
     contextActionId: null,
     contextActions: [],
@@ -540,6 +545,8 @@ export function buildUISnapshot(host: SnapshotHost): UISnapshot {
     objective,
     objectives: host.objectiveTasks(objective),
     order: host.currentOrder(),
+    orders: host.currentOrders(),
+    weather: host.currentWeather(),
     contextAction,
     contextActionId,
     contextActions,
