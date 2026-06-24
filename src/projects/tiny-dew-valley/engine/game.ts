@@ -3115,16 +3115,13 @@ export class Game {
     const sy = Math.max(4 * S, this.wy(y - 24) - h)
     ctx.fillStyle = '#fff4d6'
     ctx.fillRect(sx, sy, w, h)
-    ctx.fillStyle = '#6f4a2d'
-    ctx.fillRect(sx, sy, w, 1 * S)
-    ctx.fillRect(sx, sy + h - 1 * S, w, 1 * S)
-    ctx.fillRect(sx, sy, 1 * S, h)
-    ctx.fillRect(sx + w - 1 * S, sy, 1 * S, h)
-    ctx.fillStyle = '#fff4d6'
-    ctx.fillRect(this.wx(x) - 2 * S, sy + h - 1 * S, 4 * S, 4 * S)
-    ctx.fillStyle = '#6f4a2d'
-    ctx.fillRect(this.wx(x) - 2 * S, sy + h - 1 * S, 1 * S, 3 * S)
-    ctx.fillRect(this.wx(x) + 1 * S, sy + h - 1 * S, 1 * S, 3 * S)
+    const tailX = Math.max(sx + 10 * S, Math.min(sx + w - 10 * S, this.wx(x)))
+    ctx.beginPath()
+    ctx.moveTo(tailX - 4 * S, sy + h - 1 * S)
+    ctx.lineTo(tailX + 4 * S, sy + h - 1 * S)
+    ctx.lineTo(tailX, sy + h + 5 * S)
+    ctx.closePath()
+    ctx.fill()
     ctx.fillStyle = '#4b3427'
     ctx.fillText(text, sx + padX, sy + h / 2 + 0.5 * S)
     ctx.restore()
