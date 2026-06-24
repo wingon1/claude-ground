@@ -166,6 +166,16 @@ function drawHumanoid(
     px(g, 3, 2, 10, 1, hairLite)
     px(g, 3, 4, 1, 5, pal.hair) // left sideburn
     px(g, 12, 4, 1, 5, pal.hair) // right sideburn
+    // Side profile: bulk out the back of the head so the silhouette reads.
+    if (dir === 'left') {
+      px(g, 11, 3, 3, 7, pal.hair) // hair mass at the back (right)
+      px(g, 13, 5, 1, 4, pal.hair)
+      px(g, 11, 3, 3, 1, hairLite)
+    } else if (dir === 'right') {
+      px(g, 2, 3, 3, 7, pal.hair) // hair mass at the back (left)
+      px(g, 2, 5, 1, 4, pal.hair)
+      px(g, 2, 3, 3, 1, hairLite)
+    }
     if (style === 'spiky') {
       px(g, 4, 4, 2, 2, pal.hair)
       px(g, 7, 4, 2, 2, pal.hair)
@@ -176,12 +186,18 @@ function drawHumanoid(
     } else if (style === 'twin') {
       px(g, 4, 4, 8, 2, pal.hair) // full bangs
       px(g, 5, 5, 6, 1, hairLite)
-      px(g, 1, 5, 2, 6, pal.hair) // twin tails
-      px(g, 13, 5, 2, 6, pal.hair)
-      px(g, 1, 10, 2, 2, pal.hair)
-      px(g, 13, 10, 2, 2, pal.hair)
-      px(g, 1, 5, 2, 1, hairLite)
-      px(g, 13, 5, 2, 1, hairLite)
+      // Long hair framing the face — fills the gap beside the cheeks.
+      px(g, 3, 4, 1, 7, pal.hair) // left lock to jaw
+      px(g, 12, 4, 1, 7, pal.hair) // right lock to jaw
+      px(g, 2, 5, 1, 5, pal.hair) // fuller side
+      px(g, 13, 5, 1, 5, pal.hair)
+      // Twin tails further out, draping lower.
+      px(g, 1, 6, 2, 6, pal.hair)
+      px(g, 13, 6, 2, 6, pal.hair)
+      px(g, 1, 11, 2, 2, pal.hair)
+      px(g, 13, 11, 2, 2, pal.hair)
+      px(g, 1, 6, 2, 1, hairLite)
+      px(g, 13, 6, 2, 1, hairLite)
     } else if (style === 'bald') {
       px(g, 3, 3, 10, 1, pal.hair) // receded hairline
       px(g, 3, 4, 1, 4, pal.hair)
@@ -232,12 +248,12 @@ function drawHumanoid(
     px(g, 6, 7, 1, 2, eyeC)
     px(g, 4, 8, 1, 1, pal.skinShade) // nose
     px(g, 5, 10, 2, 1, '#bd6a60')
-    dot(g, 4, 8, '#f0a6a6')
+    dot(g, 8, 9, '#f0a6a6') // cheek blush
   } else if (dir === 'right') {
     px(g, 9, 7, 1, 2, eyeC)
     px(g, 11, 8, 1, 1, pal.skinShade)
     px(g, 9, 10, 2, 1, '#bd6a60')
-    dot(g, 11, 8, '#f0a6a6')
+    dot(g, 7, 9, '#f0a6a6') // cheek blush
   }
 
   // ---- Beard / stubble (older men) ----
