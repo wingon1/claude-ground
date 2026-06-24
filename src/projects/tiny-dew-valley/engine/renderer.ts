@@ -856,47 +856,87 @@ export class GameRenderer {
       ctx.fillStyle = c
       ctx.fillRect(x + px * S, y + py * S, w * S, h * S)
     }
-    ctx.fillStyle = 'rgba(0,0,0,0.16)'
-    ctx.fillRect(x + 2 * S, y + 48 * S, 60 * S, 5 * S)
+    // Single contact shadow so the whole site sits on the ground.
+    ctx.fillStyle = 'rgba(0,0,0,0.18)'
+    ctx.fillRect(x + 5 * S, y + 43 * S, 54 * S, 4 * S)
 
-    // Foundation stones.
-    R(4, 36, 52, 8, '#8b8f99')
-    R(4, 36, 52, 2, '#a7abb5')
-    R(8, 40, 10, 1, '#6e727c')
-    R(24, 40, 12, 1, '#6e727c')
-    R(42, 40, 9, 1, '#6e727c')
-
-    // Stacked logs hinting at future construction.
-    const logs: [number, number, number][] = [
-      [7, 26, 0], [10, 22, 1], [13, 18, 0], [18, 27, 1], [21, 23, 0],
-    ]
-    for (const [lx, ly, shade] of logs) {
-      R(lx, ly, 28, 4, shade ? '#8a5a32' : '#9a6a3a')
-      R(lx, ly, 28, 1, '#b98248')
-      R(lx, ly + 3, 28, 1, '#6e4426')
-      R(lx, ly, 3, 4, '#d0a067')
-      R(lx + 25, ly, 3, 4, '#6e4426')
-      R(lx + 1, ly + 1, 1, 1, '#8a5a32')
+    // Leveled gravel foundation pad (the prepared building site).
+    R(3, 39, 58, 5, '#94949c')
+    R(3, 39, 58, 1, '#b0b0b8')
+    R(3, 43, 58, 1, '#74747c')
+    for (const [sx, sy] of [[8, 41], [16, 42], [26, 41], [34, 42], [44, 41], [52, 42], [57, 41]]) {
+      R(sx, sy, 1, 1, '#7c7c84')
     }
 
-    // Supply crates.
-    R(42, 23, 12, 12, '#9a6a3a')
-    R(42, 23, 12, 2, '#c08a4b')
-    R(42, 33, 12, 2, '#6e4426')
-    R(47, 23, 2, 12, '#7a5230')
-    R(43, 28, 10, 2, '#7a5230')
-    R(51, 31, 9, 9, '#8a5a32')
-    R(51, 31, 9, 2, '#b98248')
-    R(55, 31, 1, 9, '#6e4426')
-    R(51, 35, 9, 1, '#6e4426')
+    // Stacked lumber (left) with end-grain rings on the near ends.
+    const beams: [number, number, number][] = [
+      [5, 36, 26], [6, 32, 26], [5, 28, 26], [8, 24, 22],
+    ]
+    for (const [bx, by, bw] of beams) {
+      R(bx, by, bw, 4, '#a8743f')
+      R(bx, by, bw, 1, '#c08a4b') // top light
+      R(bx, by + 3, bw, 1, '#7a5230') // bottom shade
+      R(bx + bw - 1, by, 1, 4, '#6e4426') // far end shade
+      R(bx, by, 3, 4, '#c89a5a') // end grain
+      R(bx, by + 1, 2, 2, '#9a6a3a')
+      R(bx + 1, by + 2, 1, 1, '#6e4426')
+    }
 
-    // Leaning tools and a small marker stake.
-    R(30, 9, 2, 28, '#7a5230')
-    R(27, 8, 8, 2, '#aeb2bc')
-    R(26, 8, 2, 2, '#e6ebf2')
-    R(58, 18, 2, 24, '#7a5230')
-    R(55, 18, 8, 2, '#d6aa63')
-    R(56, 21, 6, 1, '#8f6230')
+    // Supply sacks (cement) bridging the pile and the crates.
+    R(32, 33, 7, 7, '#d8cda0')
+    R(32, 33, 7, 1, '#e8e0c0')
+    R(32, 39, 7, 1, '#b8ad80')
+    R(34, 31, 3, 2, '#cfc290') // tied top
+    R(35, 32, 1, 1, '#8a7a4a')
+    R(36, 36, 6, 4, '#cdc193') // smaller sack in front
+    R(36, 36, 6, 1, '#e0d8b4')
+    R(36, 39, 6, 1, '#a89d72')
+
+    // Big supply crate (right).
+    R(40, 28, 15, 12, '#9a6a3a')
+    R(40, 28, 15, 2, '#b88a52') // lid highlight
+    R(40, 28, 1, 12, '#b88a52') // left light edge
+    R(53, 28, 2, 12, '#6e4426') // right shade
+    R(40, 28, 2, 12, '#6e4426') // left corner post
+    R(40, 33, 15, 1, '#6e4426') // mid band
+    R(42, 36, 2, 2, '#7a5230') // diagonal brace
+    R(44, 34, 2, 2, '#7a5230')
+    R(46, 33, 2, 2, '#7a5230')
+    R(48, 31, 2, 2, '#7a5230')
+    R(50, 30, 2, 2, '#7a5230')
+    R(41, 29, 1, 1, '#4a3420') // nails
+    R(53, 29, 1, 1, '#4a3420')
+    R(41, 38, 1, 1, '#4a3420')
+    R(53, 38, 1, 1, '#4a3420')
+
+    // Small crate stacked in front.
+    R(51, 33, 10, 7, '#a8743f')
+    R(51, 33, 10, 2, '#c08a4b')
+    R(59, 33, 2, 7, '#6e4426')
+    R(51, 33, 2, 7, '#6e4426')
+    R(51, 36, 10, 1, '#6e4426')
+    R(52, 34, 1, 1, '#4a3420')
+    R(59, 34, 1, 1, '#4a3420')
+
+    // ---- rope-only barrier across the front ----
+    ctx.fillStyle = 'rgba(0,0,0,0.14)'
+    ctx.fillRect(x + 10 * S, y + 53 * S, 46 * S, 2 * S)
+    // two short stakes
+    for (const stake of [12, 52]) {
+      R(stake, 44, 2, 9, '#8a6038')
+      R(stake, 43, 2, 1, '#a8743f') // pointed cap highlight
+      R(stake, 44, 1, 9, '#9e7c44')
+      R(stake + 1, 44, 1, 9, '#6f5230')
+    }
+    // draped rope (per-column catenary so it stays continuous)
+    for (let cx = 13; cx <= 52; cx++) {
+      const t = (cx - 32.5) / 19.5
+      const ry = 46 + Math.round(4 * (1 - t * t))
+      R(cx, ry, 1, 2, '#ddcc9c')
+      R(cx, ry + 2, 1, 1, '#b6a474')
+    }
+    R(12, 45, 2, 1, '#b6a474') // knots
+    R(52, 45, 2, 1, '#b6a474')
   }
 
   private drawSpeechBubbles(S: number) {
