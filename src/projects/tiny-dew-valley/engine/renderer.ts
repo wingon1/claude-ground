@@ -309,11 +309,13 @@ export class GameRenderer {
 
   private orderNpcPosition(): { x: number; y: number; dir: Direction } {
     const t = this.nowSecs()
-    const dx = Math.sin(t * 0.35) * 7
-    const dy = Math.sin(t * 0.22 + 1.4) * 4
-    const dir: Direction = Math.abs(dx) > Math.abs(dy)
-      ? (dx >= 0 ? 'right' : 'left')
-      : (dy >= 0 ? 'down' : 'up')
+    const dx = Math.sin(t * 0.11) * 18
+    const dy = Math.sin(t * 0.08 + 1.4) * 10
+    const vx = Math.cos(t * 0.11) * 0.11 * 18
+    const vy = Math.cos(t * 0.08 + 1.4) * 0.08 * 10
+    const dir: Direction = Math.abs(vx) > Math.abs(vy)
+      ? (vx >= 0 ? 'right' : 'left')
+      : (vy >= 0 ? 'down' : 'up')
     return {
       x: ORDER_NPC.x * T + T / 2 + dx,
       y: ORDER_NPC.y * T + T + dy,
@@ -325,7 +327,7 @@ export class GameRenderer {
     const npc = this.orderNpcPosition()
     const x = npc.x
     const y = npc.y
-    this.drawHuman(this.sprites.barnaby, x, y, npc.dir, true, false, this.nowSecs(), false)
+    this.drawHuman(this.sprites.barnaby, x, y, npc.dir, true, false, this.nowSecs(), false, 0.35)
     const order = this.currentOrder()
     if (!order || order.completed) return
     const ctx = this.ctx
@@ -347,11 +349,13 @@ export class GameRenderer {
 
   private blacksmithNpcPosition(): { x: number; y: number; dir: Direction } {
     const t = this.nowSecs()
-    const dx = Math.sin(t * 0.18 + 0.6) * 4
-    const dy = Math.sin(t * 0.15 + 2.2) * 3
-    const dir: Direction = Math.abs(dx) > Math.abs(dy)
-      ? (dx >= 0 ? 'right' : 'left')
-      : (dy >= 0 ? 'down' : 'up')
+    const dx = Math.sin(t * 0.07 + 0.6) * 14
+    const dy = Math.sin(t * 0.06 + 2.2) * 9
+    const vx = Math.cos(t * 0.07 + 0.6) * 0.07 * 14
+    const vy = Math.cos(t * 0.06 + 2.2) * 0.06 * 9
+    const dir: Direction = Math.abs(vx) > Math.abs(vy)
+      ? (vx >= 0 ? 'right' : 'left')
+      : (vy >= 0 ? 'down' : 'up')
     return {
       x: BLACKSMITH_NPC.x * T + T / 2 + dx,
       y: BLACKSMITH_NPC.y * T + T + dy,
@@ -361,7 +365,7 @@ export class GameRenderer {
 
   private drawBlacksmithNpc(S: number) {
     const npc = this.blacksmithNpcPosition()
-    this.drawHuman(this.sprites.barnaby, npc.x, npc.y, npc.dir, true, false, this.nowSecs() + 1.4, false)
+    this.drawHuman(this.sprites.barnaby, npc.x, npc.y, npc.dir, true, false, this.nowSecs() + 1.4, false, 0.35)
     const ctx = this.ctx
     const sx = this.wx(npc.x + 5)
     const sy = this.wy(npc.y - 17)
@@ -860,12 +864,13 @@ export class GameRenderer {
     exhausted: boolean,
     animTime: number,
     playerMotion = true,
+    walkAnimScale = 1,
   ) {
     const S = this.scale
     let frame = 0
-    if (moving) frame = Math.floor(animTime * 10) % 2 === 0 ? 1 : 2
+    if (moving) frame = Math.floor(animTime * 10 * walkAnimScale) % 2 === 0 ? 1 : 2
     const img = sheet[`${dir}_${frame}`] ?? sheet['down_0']
-    const walkBob = moving ? Math.abs(Math.sin(animTime * 18)) * 1.2 : 0
+    const walkBob = moving ? Math.abs(Math.sin(animTime * 18 * walkAnimScale)) * (playerMotion ? 1.2 : 0.5) : 0
     const jump = playerMotion && this.jumpT > 0 ? Math.sin((this.jumpT / 0.22) * Math.PI) * 7 : 0
     const work = playerMotion && this.workAnimT > 0 ? Math.sin((this.workAnimT / 0.28) * Math.PI) : 0
     const drawY = y - 22 + 2 - walkBob - jump - work * 1.5
