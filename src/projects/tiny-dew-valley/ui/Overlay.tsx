@@ -376,104 +376,99 @@ function InventoryModal({
 
 // ---------------- Build ----------------
 function BuildModal({ game, ui }: { game: Game; ui: UISnapshot }) {
-  const [tab, setTab] = useState<'build' | 'farm'>('build')
+  const nextField = ui.fieldPlots.find((field) => field.nextToUnlock && field.rows < 3)
   return (
     <div className="tdv-modal-bg" onClick={() => game.closeModal()}>
       <div className="tdv-modal" style={{ width: 'min(420px, 92vw)' }} onClick={(e) => e.stopPropagation()}>
         <h2><Ic k="ui_hammer" /> 건설</h2>
-        <div className="sub">건설과 농장 확장을 관리해요. 밭의 씨앗은 푯말 근처에서 바꿔요.</div>
-        <div className="tdv-tabs">
-          <button className={`tdv-tab ${tab === 'build' ? 'on' : ''}`} onClick={() => setTab('build')}>건설</button>
-          <button className={`tdv-tab ${tab === 'farm' ? 'on' : ''}`} onClick={() => setTab('farm')}>농장</button>
-        </div>
-        {tab === 'build' && (
-          <div className="tdv-craftlist">
-            <div className="tdv-craft">
-              <div className="tdv-crafticon"><Ic k="ui_fire" /></div>
+        <div className="sub">화로, 동물농장, 밭 확장을 한 곳에서 관리해요. 밭의 씨앗은 푯말 근처에서 바꿔요.</div>
+        <div className="tdv-craftlist">
+          <div className="tdv-craft">
+            <div className="tdv-crafticon"><Ic k="ui_fire" /></div>
+            <div className="info">
+              <div className="nm">{ui.cookingFire.built ? `화로대 Lv.${ui.cookingFire.level}` : '화로 제작'}</div>
+              <div className="ds">{ui.cookingFire.built ? `요리 작업칸 ${ui.cookingFire.slots}칸 사용 가능` : '나무 5개로 첫 요리 화로를 만듭니다.'}</div>
+              {ui.cookingFire.nextSlots ? (
+                <div className="mats">
+                  <span className={`mat${ui.gold >= ui.cookingFire.costGold ? '' : ' miss'}`}>골드 {ui.gold}/{ui.cookingFire.costGold}</span>
+                  {ui.cookingFire.costItems.map((it) => (
+                    <span className={`mat${it.ok ? '' : ' miss'}`} key={it.itemId}>{it.name} {it.have}/{it.need}</span>
+                  ))}
+                  <span className="mat">칸 {ui.cookingFire.slots} → {ui.cookingFire.nextSlots}</span>
+                </div>
+              ) : (
+                <div className="mats"><span className="mat">최대 레벨</span></div>
+              )}
+            </div>
+            <div className="act">
+              {ui.cookingFire.nextSlots ? (
+                <button className="tdv-btn gold sm" disabled={!ui.cookingFire.canUpgrade} onClick={() => game.upgradeCookingFire()}>
+                  {ui.cookingFire.built ? '업그레이드' : '제작'}
+                </button>
+              ) : (
+                <span className="owned">완료</span>
+              )}
+            </div>
+          </div>
+          {ui.buildPermits.map((permit) => (
+            <div className={`tdv-craft${permit.locked ? ' locked' : ''}`} key={permit.itemId}>
+              <img src={iconURL(permit.sprite)} alt={permit.name} />
               <div className="info">
-                <div className="nm">{ui.cookingFire.built ? `화로대 Lv.${ui.cookingFire.level}` : '화로 제작'}</div>
-                <div className="ds">{ui.cookingFire.built ? `요리 작업칸 ${ui.cookingFire.slots}칸 사용 가능` : '나무 5개로 첫 요리 화로를 만듭니다.'}</div>
-                {ui.cookingFire.nextSlots ? (
-                  <div className="mats">
-                    <span className={`mat${ui.gold >= ui.cookingFire.costGold ? '' : ' miss'}`}>
-                      골드 {ui.gold}/{ui.cookingFire.costGold}
-                    </span>
-                    {ui.cookingFire.costItems.map((it) => (
-                      <span className={`mat${it.ok ? '' : ' miss'}`} key={it.itemId}>
-                        {it.name} {it.have}/{it.need}
-                      </span>
-                    ))}
-                    <span className="mat">칸 {ui.cookingFire.slots} → {ui.cookingFire.nextSlots}</span>
-                  </div>
-                ) : (
-                  <div className="mats"><span className="mat">최대 레벨</span></div>
-                )}
+                <div className="nm">{permit.name}</div>
+                <div className="ds">{permit.desc}</div>
+                <div className="mats">
+                  <span className={`mat${ui.gold >= permit.price ? '' : ' miss'}`}>골드 {ui.gold}/{permit.price}</span>
+                  {permit.costItems.map((it) => (
+                    <span className={`mat${it.ok ? '' : ' miss'}`} key={it.itemId}>{it.name} {it.have}/{it.need}</span>
+                  ))}
+                  {permit.locked && <span className="mat miss">이전 농장 필요</span>}
+                </div>
               </div>
               <div className="act">
-                {ui.cookingFire.nextSlots ? (
-                  <button className="tdv-btn gold sm" disabled={!ui.cookingFire.canUpgrade} onClick={() => game.upgradeCookingFire()}>
-                    {ui.cookingFire.built ? '업그레이드' : '제작'}
-                  </button>
-                ) : (
+                {permit.built ? (
                   <span className="owned">완료</span>
+                ) : permit.locked ? (
+                  <span className="lock">잠김</span>
+                ) : (
+                  <button className="tdv-btn gold sm" disabled={!permit.affordable} onClick={() => game.buyBuildPermit(permit.itemId)}>
+                    건설
+                  </button>
                 )}
               </div>
             </div>
-            {ui.buildPermits.map((permit) => (
-              <div className={`tdv-craft${permit.locked ? ' locked' : ''}`} key={permit.itemId}>
-                <img src={iconURL(permit.sprite)} alt={permit.name} />
-                <div className="info">
-                  <div className="nm">{permit.name}</div>
-                  <div className="ds">{permit.desc}</div>
-                  <div className="mats">
-                    <span className={`mat${ui.gold >= permit.price ? '' : ' miss'}`}>골드 {ui.gold}/{permit.price}</span>
-                    {permit.locked && <span className="mat miss">이전 농장 필요</span>}
-                  </div>
-                </div>
-                <div className="act">
-                  {permit.built ? (
-                    <span className="owned">완료</span>
-                  ) : permit.locked ? (
-                    <span className="lock">잠김</span>
-                  ) : (
-                    <button className="tdv-btn gold sm" disabled={!permit.affordable} onClick={() => game.buyBuildPermit(permit.itemId)}>
-                      건설
-                    </button>
-                  )}
+          ))}
+          {nextField ? (
+            <div className="tdv-craft" key={nextField.id}>
+              <div className="tdv-crafticon">밭</div>
+              <div className="info">
+                <div className="nm">밭 확장</div>
+                <div className="ds">{nextField.selectedCropName} 자동 재배 구역을 한 줄 넓힙니다.</div>
+                <div className="mats">
+                  <span className="mat">해금 {nextField.rows}/3줄</span>
+                  <span className={`mat${ui.gold >= nextField.costGold ? '' : ' miss'}`}>골드 {ui.gold}/{nextField.costGold}</span>
+                  {nextField.costItems.map((it) => (
+                    <span className={`mat${it.ok ? '' : ' miss'}`} key={it.itemId}>{it.name} {it.have}/{it.need}</span>
+                  ))}
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-        {tab === 'farm' && (
-          <div className="tdv-craftlist">
-            {ui.fieldPlots.map((field) => (
-              <div className={`tdv-craft${field.nextToUnlock || field.rows === 3 ? '' : ' locked'}`} key={field.id}>
-                <div className="tdv-crafticon">밭</div>
-                <div className="info">
-                  <div className="nm">{field.name}</div>
-                  <div className="ds">{field.rows === 0 ? '비활성 밭' : `${field.selectedCropName} 자동 재배`}</div>
-                  <div className="mats">
-                    <span className="mat">해금 {field.rows}/3줄</span>
-                    <span className={`mat${ui.gold >= field.costGold ? '' : ' miss'}`}>골드 {ui.gold}/{field.costGold}</span>
-                    {field.costItems.map((it) => (
-                      <span className={`mat${it.ok ? '' : ' miss'}`} key={it.itemId}>{it.name} {it.have}/{it.need}</span>
-                    ))}
-                  </div>
-                </div>
-                <div className="act">
-                  {field.rows === 3 ? (
-                    <span className="owned">완료</span>
-                  ) : (
-                    <button className="tdv-btn gold sm" disabled={!field.canBuyRow} onClick={() => game.buyFieldRow(field.id)}>
-                      구매
-                    </button>
-                  )}
-                </div>
+              <div className="act">
+                <button className="tdv-btn gold sm" disabled={!nextField.canBuyRow} onClick={() => game.buyFieldRow(nextField.id)}>
+                  확장
+                </button>
               </div>
-            ))}
-          </div>
-        )}
+            </div>
+          ) : (
+            <div className="tdv-craft locked">
+              <div className="tdv-crafticon">밭</div>
+              <div className="info">
+                <div className="nm">밭 확장</div>
+                <div className="ds">모든 밭 확장이 완료되었습니다.</div>
+                <div className="mats"><span className="mat">완료</span></div>
+              </div>
+              <div className="act"><span className="owned">완료</span></div>
+            </div>
+          )}
+        </div>
         <div className="tdv-row">
           <button className="tdv-btn ghost" onClick={() => game.closeModal()}>닫기</button>
         </div>
@@ -574,7 +569,7 @@ function CookingModal({ game, ui }: { game: Game; ui: UISnapshot }) {
   }))
   return (
     <div className="tdv-modal-bg" onClick={() => game.closeModal()}>
-      <div className="tdv-modal" style={{ width: 'min(420px, 92vw)' }} onClick={(e) => e.stopPropagation()}>
+      <div className="tdv-modal tdv-cook-modal" style={{ width: 'min(420px, 92vw)' }} onClick={(e) => e.stopPropagation()}>
         <h2><Ic k="ui_pan" /> 요리</h2>
         <div className="sub">같은 음식은 한 칸에서 최대 20개까지 묶어 조리돼요.</div>
         <div className="tdv-cookslots">
@@ -631,7 +626,7 @@ function CookingModal({ game, ui }: { game: Game; ui: UISnapshot }) {
             </div>
           ))}
         </div>
-        <div className="tdv-row">
+        <div className="tdv-row tdv-modal-actions">
           <button className="tdv-btn ghost" onClick={() => game.closeModal()}>닫기</button>
         </div>
       </div>

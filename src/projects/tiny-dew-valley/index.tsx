@@ -30,6 +30,8 @@ export default function TinyDewValley() {
     const onKeyUp = (e: KeyboardEvent) => g.onKeyUp(e)
     const onResize = () => g.resize()
     const onPointerDown = (e: PointerEvent) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      e.preventDefault()
       const rect = canvas.getBoundingClientRect()
       g.tap(e.clientX - rect.left, e.clientY - rect.top)
     }

@@ -1,4 +1,4 @@
-import type { CookJob, GameState, InventorySlot, Tile } from '../types'
+import type { CookJob, Direction, GameState, InventorySlot, Tile } from '../types'
 import { CROPS, CROP_LIST } from '../data/crops'
 import { cropItemId, getItem } from '../data/items'
 import { SHOP_CATALOG } from '../data/shopCatalog'
@@ -8,8 +8,6 @@ import { ANIMAL_UPGRADES, type AnimalUpgradeDef } from '../data/animalUpgrades'
 import {
   DEFAULT_FIELD_CROP,
   FIELD_PLOTS,
-  FIELD_ROW_COST_GOLD,
-  FIELD_ROW_COST_WOOD,
   FIELD_SIZE,
 } from '../data/fields'
 import {
@@ -113,7 +111,11 @@ const LEGACY_ID_MAP: Record<string, string> = {
 
 // Stamina costs per auto-work hit.
 const COST = { chop: 1, harvest: 1, plant: 1 }
-const START_MAX_STAMINA = 40
+const START_MAX_STAMINA = 20
+const FIELD_ROW_BASE_GOLD = 45
+const FIELD_ROW_GOLD_STEP = 35
+const FIELD_ROW_BASE_WOOD = 6
+const FIELD_ROW_WOOD_STEP = 4
 
 // ---------- UI snapshot ----------
 export type UIPhase = 'title' | 'playing' | 'shop' | 'build' | 'cook' | 'seed' | 'order' | 'sleepConfirm'
@@ -166,6 +168,7 @@ export interface BuildPermitView {
   name: string
   desc: string
   price: number
+  costItems: CostItemView[]
   affordable: boolean
   sprite: string
   built: boolean
@@ -1120,17 +1123,18 @@ export class Game {
       this.audio.sfx('reject')
       return
     }
-    const costItems = [{ itemId: 'wood', qty: FIELD_ROW_COST_WOOD }]
-    if (!this.canPayCost(FIELD_ROW_COST_GOLD, costItems)) {
+    const costGold = this.fieldRowCostGold()
+    const costItems = [{ itemId: 'wood', qty: this.fieldRowCostWood() }]
+    if (!this.canPayCost(costGold, costItems)) {
       this.toast('땅을 살 재료가 부족해요.', 'bad')
       this.audio.sfx('reject')
       return
     }
-    this.payCost(FIELD_ROW_COST_GOLD, costItems)
+    this.payCost(costGold, costItems)
     this.state.flags[this.fieldRowsKey(fieldId)] = rows + 1
     if (!this.fieldCrop(fieldId)) this.state.flags[this.fieldCropKey(fieldId)] = DEFAULT_FIELD_CROP
     this.applyFieldRows()
-    this.toast(`${plot.name} ${rows + 1}/${FIELD_SIZE}줄 해금!`, 'good')
+    this.toast(`밭 확장 완료! ${rows + 1}/${FIELD_SIZE}줄 해금`, 'good')
     this.audio.sfx('sparkle')
     this.autosave()
     this.emit()
@@ -1263,12 +1267,13 @@ export class Game {
       this.toast('이미 건설된 농장이에요.', 'info')
       return
     }
-    if (this.state.gold < entry.buyPrice) {
-      this.toast('골드가 부족해요.', 'bad')
+    const costItems = entry.costItems ?? []
+    if (!this.canPayCost(entry.buyPrice, costItems)) {
+      this.toast('건설 재료가 부족해요.', 'bad')
       this.audio.sfx('reject')
       return
     }
-    this.state.gold -= entry.buyPrice
+    this.payCost(entry.buyPrice, costItems)
     this.state.flags[entry.grantsFlag] = true
     this.applyAnimalFarms()
     const def = getItem(itemId)
@@ -1389,10 +1394,13 @@ export class Game {
 
   // ---------------- sleep ----------------
   requestSleep() {
-    if (this.phase === 'playing') {
+    if (this.phase === 'playing' && this.canSleep()) {
       this.phase = 'sleepConfirm'
       this.target = null
       this.emit()
+    } else if (this.phase === 'playing') {
+      this.toast('스태미나가 0일 때만 잠을 잘 수 있어요.', 'info')
+      this.audio.sfx('reject')
     }
   }
   cancelSleep() {
@@ -1432,6 +1440,10 @@ export class Game {
     const p = this.playerTile()
     const b = LOCATIONS.bed
     return Math.abs(p.x - b.x) <= 1 && Math.abs(p.y - b.y) <= 1
+  }
+
+  private canSleep(): boolean {
+    return this.state.stamina <= 0
   }
 
   private nearStore(): boolean {
@@ -2127,6 +2139,22 @@ export class Game {
     return null
   }
 
+  private unlockedFieldRowsTotal(): number {
+    return FIELD_PLOTS.reduce((sum, plot) => sum + this.fieldRows(plot.id), 0)
+  }
+
+  private fieldExpansionStep(): number {
+    return Math.max(0, this.unlockedFieldRowsTotal() - 1)
+  }
+
+  private fieldRowCostGold(step = this.fieldExpansionStep()): number {
+    return FIELD_ROW_BASE_GOLD + step * FIELD_ROW_GOLD_STEP
+  }
+
+  private fieldRowCostWood(step = this.fieldExpansionStep()): number {
+    return FIELD_ROW_BASE_WOOD + step * FIELD_ROW_WOOD_STEP
+  }
+
   private cropForTile(t: Tile): string | null {
     const fieldId = t.metadata.fieldId
     if (typeof fieldId !== 'string') return null
@@ -2435,7 +2463,7 @@ export class Game {
         if (this.groundItemId(t)) draws.push({ y: ty * T + T, fn: () => this.drawGroundItem(t, S) })
       }
     }
-    draws.push({ y: ORDER_NPC.y * T + T, fn: () => this.drawOrderNpc(S) })
+    draws.push({ y: this.orderNpcPosition().y, fn: () => this.drawOrderNpc(S) })
     draws.push({ y: p.y, fn: () => this.drawHuman(this.sprites.farmer, p.x, p.y, p.dir, p.moving, p.exhausted, p.animTime) })
     draws.sort((a, b) => a.y - b.y)
     for (const d of draws) d.fn()
@@ -2458,6 +2486,7 @@ export class Game {
     else if (t.terrain === 'path') img = this.sprites.path
     else if (t.terrain === 'blocked') {
       this.ctx.drawImage(this.sprites.grass[(t.x * 7 + t.y * 13) % 3], dx, dy, sz, sz)
+      if (t.metadata.invisibleBlock === true) return
       if (t.metadata.animalFence === true) {
         // Small animal-pen fence: pick straight/corner piece and rotate it.
         const piece = t.metadata.animalFenceKind === 'corner' ? this.sprites.fenceCorner : this.sprites.fenceSmall
@@ -2523,10 +2552,25 @@ export class Game {
     ctx.fillRect(x + 4 * S, y + 7 * S, 6 * S, 1 * S)
   }
 
+  private orderNpcPosition(): { x: number; y: number; dir: Direction } {
+    const t = this.nowSecs()
+    const dx = Math.sin(t * 0.35) * 7
+    const dy = Math.sin(t * 0.22 + 1.4) * 4
+    const dir: Direction = Math.abs(dx) > Math.abs(dy)
+      ? (dx >= 0 ? 'right' : 'left')
+      : (dy >= 0 ? 'down' : 'up')
+    return {
+      x: ORDER_NPC.x * T + T / 2 + dx,
+      y: ORDER_NPC.y * T + T + dy,
+      dir,
+    }
+  }
+
   private drawOrderNpc(S: number) {
-    const x = ORDER_NPC.x * T + T / 2
-    const y = ORDER_NPC.y * T + T
-    this.drawHuman(this.sprites.barnaby, x, y, 'down', false, false, 0, false)
+    const npc = this.orderNpcPosition()
+    const x = npc.x
+    const y = npc.y
+    this.drawHuman(this.sprites.barnaby, x, y, npc.dir, true, false, this.nowSecs(), false)
     const order = this.currentOrder()
     if (!order || order.completed) return
     const ctx = this.ctx
@@ -2772,8 +2816,8 @@ export class Game {
     ctx.fillRect(0, 0, bw, bh)
     if (period === 'night') {
       ctx.globalCompositeOperation = 'lighter'
-      this.glowRect(31 * T, 6 * T + 10, 6, 6, '#ffd65c', S)
-      this.glowRect(24 * T + 6, 6 * T + 8, 6, 6, '#ffd07a', S)
+      this.glowRect(31 * T, 6 * T + 10, '#ffd65c', S)
+      this.glowRect(24 * T + 6, 6 * T + 8, '#ffd07a', S)
       for (const f of this.fireflies) {
         const sx = this.wx(f.x)
         const sy = this.wy(f.y)
@@ -2789,7 +2833,7 @@ export class Game {
     }
   }
 
-  private glowRect(wx: number, wy: number, w: number, h: number, color: string, S: number) {
+  private glowRect(wx: number, wy: number, color: string, S: number) {
     const ctx = this.ctx
     const sx = this.wx(wx)
     const sy = this.wy(wy)
@@ -2800,8 +2844,6 @@ export class Game {
     ctx.globalAlpha = 0.6
     ctx.fillRect(sx - 14 * S, sy - 14 * S, 28 * S, 28 * S)
     ctx.globalAlpha = 1
-    ctx.fillStyle = color
-    ctx.fillRect(sx, sy, w * S, h * S)
   }
 
   private renderTitle() {
@@ -2922,24 +2964,6 @@ export class Game {
         owned: !!upgrade && this.animalUpgradeLevel(upgrade) >= upgrade.maxLevel,
       }
     })
-    const buildPermits: BuildPermitView[] = SHOP_CATALOG.filter((e) =>
-      this.isAnimalPermitEntry(e),
-    ).map((e) => {
-      const def = getItem(e.itemId)!
-      const built = this.flagEnabled(e.grantsFlag)
-      const locked = !this.flagEnabled(e.requiresFlag)
-      const price = e.buyPrice ?? 0
-      return {
-        itemId: e.itemId,
-        name: def.name,
-        desc: def.description,
-        price,
-        affordable: !built && !locked && s.gold >= price,
-        sprite: def.sprite,
-        built,
-        locked,
-      }
-    })
     const costViews = (items: { itemId: string; qty: number }[]): CostItemView[] =>
       items.map((it) => {
         const have = this.countItem(it.itemId)
@@ -2951,6 +2975,26 @@ export class Game {
           ok: have >= it.qty,
         }
       })
+    const buildPermits: BuildPermitView[] = SHOP_CATALOG.filter((e) =>
+      this.isAnimalPermitEntry(e),
+    ).map((e) => {
+      const def = getItem(e.itemId)!
+      const built = this.flagEnabled(e.grantsFlag)
+      const locked = !this.flagEnabled(e.requiresFlag)
+      const price = e.buyPrice ?? 0
+      const costItems = costViews(e.costItems ?? [])
+      return {
+        itemId: e.itemId,
+        name: def.name,
+        desc: def.description,
+        price,
+        costItems,
+        affordable: !built && !locked && s.gold >= price && costItems.every((it) => it.ok),
+        sprite: def.sprite,
+        built,
+        locked,
+      }
+    })
     const fieldLevel = this.fieldExpansionLevel()
     const buildOptions: BuildOptionView[] = BUILD_OPTIONS.map((option) => {
       const costItems = costViews(option.costItems)
@@ -2973,7 +3017,8 @@ export class Game {
     })
     const selectedFieldId = this.selectedFieldId()
     const nextFieldId = this.nextUnlockFieldId()
-    const rowCostItems = costViews([{ itemId: 'wood', qty: FIELD_ROW_COST_WOOD }])
+    const rowCostGold = this.fieldRowCostGold()
+    const rowCostItems = costViews([{ itemId: 'wood', qty: this.fieldRowCostWood() }])
     const fieldPlots: FieldPlotView[] = FIELD_PLOTS.map((plot) => {
       const rows = this.fieldRows(plot.id)
       const cropId = this.fieldCrop(plot.id) ?? DEFAULT_FIELD_CROP
@@ -2990,9 +3035,9 @@ export class Game {
         canBuyRow:
           rows < FIELD_SIZE &&
           nextToUnlock &&
-          s.gold >= FIELD_ROW_COST_GOLD &&
+          s.gold >= rowCostGold &&
           rowCostItems.every((it) => it.ok),
-        costGold: FIELD_ROW_COST_GOLD,
+        costGold: rowCostGold,
         costItems: rowCostItems,
       }
     })
@@ -3101,7 +3146,7 @@ export class Game {
     const contextActions: ContextActionView[] = []
     if (this.phase === 'playing') {
       const animalFarm = this.selectedAnimalFarm()
-      if (this.nearBed()) {
+      if (this.nearBed() && this.canSleep()) {
         contextAction = '잠자기'
         contextActionId = 'sleep'
         contextActions.push({ id: 'sleep', label: '잠자기' })

@@ -217,6 +217,8 @@ export interface ShopEntry {
   itemId: string
   /** Buy price; if omitted not buyable. */
   buyPrice?: number
+  /** Additional item costs for non-inventory purchases such as construction. */
+  costItems?: CostItem[]
   /** Buys one animal for an unlocked animal farm. Price may scale by count. */
   animalFarmId?: string
   /** Buys one level of a farm production upgrade. Price may scale by level. */

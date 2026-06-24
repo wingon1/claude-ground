@@ -84,6 +84,7 @@ export function stampStore(tiles: Tile[]) {
     t.terrain = 'blocked'
     t.obstacle = null
     t.cropId = null
+    t.metadata.invisibleBlock = true
   })
   // Open interior + front. No fence here so the player can walk straight in
   // from the village square and up to the counter where Barnaby stands.
@@ -91,6 +92,7 @@ export function stampStore(tiles: Tile[]) {
     t.terrain = 'grass'
     t.obstacle = null
     t.cropId = null
+    delete t.metadata.invisibleBlock
   })
   // Mark every interior/front tile so the shop opens however the player
   // approaches: standing inside, or facing the counter from the square.
@@ -109,16 +111,19 @@ export function stampFarmhouse(tiles: Tile[]) {
     t.terrain = 'grass'
     t.obstacle = null
     t.cropId = null
+    delete t.metadata.invisibleBlock
   })
   // Block the tent footprint (30–32 × 7–8).
   rect(tiles, 30, 7, 32, 8, (t) => {
     t.terrain = 'blocked'
     t.obstacle = null
     t.cropId = null
+    t.metadata.invisibleBlock = true
   })
   const bed = tiles[idx(LOCATIONS.bed.x, LOCATIONS.bed.y)]
   bed.metadata.bed = true
   bed.terrain = 'grass'
+  delete bed.metadata.invisibleBlock
 }
 
 export function stampCookingFire(tiles: Tile[], built = true) {
