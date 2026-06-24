@@ -1821,10 +1821,18 @@ export class Game {
 
   private activeSpeechBubbles(): SpeechBubble[] {
     const now = this.nowSecs()
-    return this.speechBubbles.filter((bubble) => bubble.until > now)
+    const latestBySpeaker = new Map<SpeechSpeaker, SpeechBubble>()
+    for (const bubble of this.speechBubbles) {
+      if (bubble.until <= now) continue
+      if (bubble.speaker === 'player' && this.state.player.exhausted) continue
+      const previous = latestBySpeaker.get(bubble.speaker)
+      if (!previous || bubble.until >= previous.until) latestBySpeaker.set(bubble.speaker, bubble)
+    }
+    return [...latestBySpeaker.values()]
   }
 
   private say(speaker: SpeechSpeaker, text: string, seconds = 4.2) {
+    if (speaker === 'player' && this.state.player.exhausted) return
     const now = this.nowSecs()
     this.speechBubbles = this.speechBubbles.filter((bubble) => bubble.until > now && bubble.speaker !== speaker)
     this.speechBubbles.push({ speaker, text, until: now + seconds })
@@ -1842,6 +1850,9 @@ export class Game {
   private updateSpeech() {
     const now = this.nowSecs()
     this.speechBubbles = this.speechBubbles.filter((bubble) => bubble.until > now)
+    if (this.state.player.exhausted) {
+      this.speechBubbles = this.speechBubbles.filter((bubble) => bubble.speaker !== 'player')
+    }
     if (this.phase !== 'playing') return
     if (this.area === 'farm') {
       this.updateNpcSpeech(now)
@@ -1866,6 +1877,7 @@ export class Game {
   }
 
   private updateLockedMineSpeech(now: number) {
+    if (this.state.player.exhausted) return
     if (this.mineUnlocked()) return
     if (!this.nearTileMetadata('mineEntrance') && !this.nearTileMetadata('mineBoard')) return
     if (now < this.nextSpeechAt.lockedMine) return
@@ -1874,6 +1886,7 @@ export class Game {
   }
 
   private updatePlayerAmbientSpeech(now: number) {
+    if (this.state.player.exhausted) return
     if (now < this.nextSpeechAt.player || this.hasSpeech('player')) return
     this.nextSpeechAt.player = now + 16 + Math.random() * 18
     if (Math.random() < 0.22) this.say('player', this.pickLine(PLAYER_AMBIENT_LINES), 3.8)
@@ -1907,6 +1920,7 @@ export class Game {
   }
 
   private maybeSayWeakTool(work: { t: Tile; kind: WorkKind }) {
+    if (this.state.player.exhausted) return
     if (work.kind !== 'chop' && work.kind !== 'harvest') return
     const now = this.nowSecs()
     if (now < this.nextSpeechAt.weakTool || this.hasSpeech('player')) return
