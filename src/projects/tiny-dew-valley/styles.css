@@ -599,12 +599,13 @@
 /* ---------------- Toasts ---------------- */
 .tdv-toasts {
   position: absolute;
-  left: 14px;
-  bottom: 104px;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   flex-direction: column;
   gap: 5px;
-  align-items: flex-start;
+  align-items: center;
   pointer-events: none;
   width: min(320px, calc(100vw - 28px));
   max-width: calc(100vw - 28px);
@@ -622,7 +623,7 @@
   text-shadow: 0 1px 0 rgba(255, 246, 218, 0.8);
   animation: tdv-pop 0.18s ease;
   width: 100%;
-  text-align: left;
+  text-align: center;
   line-height: 1.25;
 }
 .tdv-toast:nth-last-child(n+4) { display: none; }
