@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import type { Game, UISnapshot } from '../engine/game'
+import type { Game } from '../engine/game'
+import type { UISnapshot } from '../engine/uiSnapshot'
 import { iconURL } from '../engine/sprites'
 import { ITEMS } from '../data/items'
 

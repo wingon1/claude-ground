@@ -1,4 +1,4 @@
-import type { CookJob, Direction, GameState, InventorySlot, Obstacle, Tile, ToolId } from '../types'
+import type { CookJob, Direction, GameState, InventorySlot, Tile } from '../types'
 import { CROPS, CROP_LIST } from '../data/crops'
 import { cropItemId, getItem } from '../data/items'
 import { SHOP_CATALOG } from '../data/shopCatalog'
@@ -6,7 +6,27 @@ import { BUILD_OPTIONS } from '../data/buildOptions'
 import { ANIMAL_FARMS, ANIMAL_FARM_MAX_ANIMALS, type AnimalFarmDef } from '../data/animalFarms'
 import { ANIMAL_UPGRADES, type AnimalUpgradeDef } from '../data/animalUpgrades'
 import { MINE_MAX_FLOOR, mineFloorDef } from '../data/mineFloors'
-import { MONSTERS, type MonsterDef, type MonsterId } from '../data/monsters'
+import { MONSTERS, type MonsterDef } from '../data/monsters'
+import {
+  COOK_BATCH_MAX,
+  COOKING_FIRE_BUILD_COST,
+  COOKING_FIRE_BUILT_FLAG,
+  FIELD_ROW_BASE_GOLD,
+  FIELD_ROW_BASE_WOOD,
+  FIELD_ROW_GOLD_STEP,
+  FIELD_ROW_WOOD_STEP,
+  GAME_MIN_PER_SEC,
+  INV_SIZE,
+  LEGACY_ID_MAP,
+  ORDER_ITEM_POOL,
+  RESPAWN_SECS,
+  STAGE_SECS_PER_DAY,
+  START_MAX_STAMINA,
+  TUTORIAL_REWARDS,
+  WALK_SPEED,
+  WORK_COST,
+  WORK_INTERVAL,
+} from '../data/gameBalance'
 import {
   PASSIVES,
   PASSIVE_RARITIES,
@@ -47,367 +67,35 @@ import {
 import { bakeItemIcon, buildSprites, T, type Sprites } from './sprites'
 import { AudioEngine } from './audio'
 import { deleteSave, loadGame, saveGame, SAVE_VERSION } from './save'
+import { TOOL_BASE, TOOL_UPGRADES, UPGRADEABLE_TOOLS, type UpgradeableToolId } from '../data/toolUpgrades'
+import type { Firefly, MineMonster, Particle, Period, WorkKind } from './gameTypes'
+import { buildMineMonsters, buildMineTiles } from './mineRuntime'
+import type {
+  BuildOptionView,
+  BuildPermitView,
+  ContextActionView,
+  CookJobView,
+  CookRecipeView,
+  CookingFireView,
+  CostItemView,
+  CropChoiceView,
+  FieldPlotView,
+  InvSlotView,
+  ObjectiveTaskView,
+  ObjectiveView,
+  OrderView,
+  PassiveSlotView,
+  PassiveView,
+  ShopBuyView,
+  ToastMsg,
+  ToolUpgradeView,
+  UIPhase,
+  UISnapshot,
+} from './uiSnapshot'
 
-const INV_SIZE = 24
-const WALK_SPEED = 74 // art px / sec
-const GAME_MIN_PER_SEC = 1200 / 240 // cosmetic day/night only
-const WORK_INTERVAL = 0.42 // seconds between auto-work hits
 const WORK_RANGE = T * 1.5 // how close to a node before auto-working
-const RESPAWN_SECS = 80 // trees/rocks/stumps regrow after this
-const STAGE_SECS_PER_DAY = 22 // real seconds per crop "grow day"
-const COOK_BATCH_MAX = 20
-const COOKING_FIRE_BUILT_FLAG = 'build:cookingFire'
-const COOKING_FIRE_BUILD_COST = [{ itemId: 'wood', qty: 5 }]
 const ORDER_NPC = { x: LOCATIONS.storeStand.x, y: LOCATIONS.storeStand.y }
 const BLACKSMITH_NPC = { x: LOCATIONS.blacksmithNpc.x, y: LOCATIONS.blacksmithNpc.y }
-
-const TUTORIAL_REWARDS = [
-  {
-    id: 'wood5',
-    title: '나무 5개 모으기',
-    detail: '화로를 만들 첫 재료를 모읍니다.',
-    rewardGold: 20,
-    rewardItems: [] as { itemId: string; qty: number }[],
-    rewardText: '20G',
-  },
-  {
-    id: 'build_fire',
-    title: '화로 제작하기',
-    detail: '건설탭에서 나무 5개로 화로를 만듭니다.',
-    rewardGold: 0,
-    rewardItems: [{ itemId: 'crop_wheat_normal', qty: 2 }],
-    rewardText: '밀 2개',
-  },
-  {
-    id: 'first_bread',
-    title: '첫 빵 굽기',
-    detail: '밀가루로 첫 빵을 만들어 판매 루프를 시작합니다.',
-    rewardGold: 80,
-    rewardItems: [] as { itemId: string; qty: number }[],
-    rewardText: '80G',
-  },
-  {
-    id: 'first_toast',
-    title: '첫 토스트 만들기',
-    detail: '빵과 달걀을 조합해 닭장 이후의 핵심 상품을 만듭니다.',
-    rewardGold: 150,
-    rewardItems: [] as { itemId: string; qty: number }[],
-    rewardText: '150G',
-  },
-]
-
-const ORDER_ITEM_POOL = [
-  { itemId: 'bread', minQty: 2, maxQty: 4, hint: '빵 주문은 닭장 자금을 모으기 좋아요.' },
-  { itemId: 'toast', minQty: 1, maxQty: 3, hint: '토스트 수익으로 딸기 재배권을 노려보세요.' },
-  { itemId: 'strawberry_jam', minQty: 1, maxQty: 3, hint: '딸기쨈은 다음 목장 확장의 징검다리예요.' },
-  { itemId: 'strawberry_milk', minQty: 1, maxQty: 2, hint: '우유 라인을 돌리면 고급 디저트가 빨라져요.' },
-  { itemId: 'strawberry_jam_toast', minQty: 1, maxQty: 2, hint: '딸기쨈 토스트 다음은 토마토와 피자예요.' },
-  { itemId: 'pizza', minQty: 1, maxQty: 2, hint: '피자 수익으로 옥수수 후반 라인을 열어보세요.' },
-  { itemId: 'butter_corn', minQty: 1, maxQty: 2, hint: '옥수수는 후반 요리의 좋은 보조 재료예요.' },
-  { itemId: 'corn_pizza', minQty: 1, maxQty: 2, hint: '콘치즈 피자는 후반 주문 보상이 큽니다.' },
-  { itemId: 'bacon_toast', minQty: 1, maxQty: 2, hint: '돼지농장까지 열면 베이컨 주문도 준비해보세요.' },
-]
-
-const LEGACY_ID_MAP: Record<string, string> = {
-  parsnip: 'tomato',
-  golden_pumpkin: 'corn',
-  seed_parsnip: 'seed_tomato',
-  seed_golden_pumpkin: 'seed_corn',
-  crop_parsnip_normal: 'crop_tomato_normal',
-  crop_golden_pumpkin_normal: 'crop_corn_normal',
-  crop_golden_pumpkin_silver: 'crop_corn_normal',
-  crop_golden_pumpkin_gold: 'crop_corn_normal',
-  crop_golden_pumpkin_perfect: 'crop_corn_normal',
-  parsnip_soup: 'tomato_sauce',
-  cream_stew: 'pizza',
-  pumpkin_soup: 'butter_corn',
-  pumpkin_pie: 'corn_pizza',
-}
-
-// Stamina costs per auto-work hit.
-const COST = { chop: 1, harvest: 1, plant: 1 }
-const START_MAX_STAMINA = 20
-const FIELD_ROW_BASE_GOLD = 45
-const FIELD_ROW_GOLD_STEP = 35
-const FIELD_ROW_BASE_WOOD = 6
-const FIELD_ROW_WOOD_STEP = 4
-type UpgradeableToolId = Extract<ToolId, 'pickaxe' | 'scythe'> | 'sword'
-const TOOL_BASE: Record<UpgradeableToolId, { name: string; damage: number }> = {
-  pickaxe: { name: '낡은 곡괭이', damage: 1 },
-  scythe: { name: '낡은 낫', damage: 1 },
-  sword: { name: '낡은 검', damage: 1 },
-}
-const TOOL_UPGRADES: Record<UpgradeableToolId, {
-  level: number
-  name: string
-  damage: number
-  costGold: number
-  costItems: { itemId: string; qty: number }[]
-}[]> = {
-  pickaxe: [
-    { level: 1, name: '구리 곡괭이', damage: 2, costGold: 300, costItems: [{ itemId: 'stone', qty: 20 }, { itemId: 'copper_ore', qty: 8 }] },
-    { level: 2, name: '철 곡괭이', damage: 3, costGold: 900, costItems: [{ itemId: 'stone', qty: 50 }, { itemId: 'copper_ore', qty: 18 }, { itemId: 'iron_ore', qty: 10 }] },
-  ],
-  scythe: [
-    { level: 1, name: '구리 낫', damage: 2, costGold: 260, costItems: [{ itemId: 'stone', qty: 14 }, { itemId: 'copper_ore', qty: 6 }] },
-    { level: 2, name: '철 낫', damage: 3, costGold: 760, costItems: [{ itemId: 'stone', qty: 35 }, { itemId: 'copper_ore', qty: 12 }, { itemId: 'iron_ore', qty: 8 }] },
-  ],
-  sword: [
-    { level: 1, name: '구리 검', damage: 2, costGold: 500, costItems: [{ itemId: 'stone', qty: 20 }, { itemId: 'copper_ore', qty: 12 }] },
-    { level: 2, name: '철 검', damage: 3, costGold: 1200, costItems: [{ itemId: 'stone', qty: 40 }, { itemId: 'copper_ore', qty: 15 }, { itemId: 'iron_ore', qty: 18 }] },
-  ],
-}
-
-// ---------- UI snapshot ----------
-export type UIPhase = 'title' | 'playing' | 'shop' | 'build' | 'blacksmith' | 'blacksmithBuy' | 'cook' | 'seed' | 'order' | 'sleepConfirm'
-
-export interface ToastMsg {
-  id: number
-  text: string
-  kind: 'info' | 'good' | 'bad'
-}
-export interface InvSlotView {
-  index: number
-  itemId: string | null
-  qty: number
-  name: string
-  sprite: string
-  color?: string
-  sellPrice: number
-  type: string
-  desc: string
-}
-export interface ShopBuyView {
-  itemId: string
-  name: string
-  price: number
-  affordable: boolean
-  sprite: string
-  color?: string
-  desc: string
-  owned?: boolean
-}
-export interface CostItemView {
-  itemId: string
-  name: string
-  have: number
-  need: number
-  ok: boolean
-}
-export interface BuildOptionView {
-  id: string
-  name: string
-  desc: string
-  costGold: number
-  costItems: CostItemView[]
-  canBuild: boolean
-  built: boolean
-  locked: boolean
-}
-export interface BuildPermitView {
-  itemId: string
-  name: string
-  desc: string
-  price: number
-  costItems: CostItemView[]
-  affordable: boolean
-  sprite: string
-  built: boolean
-  locked: boolean
-}
-export interface ToolUpgradeView {
-  toolId: UpgradeableToolId
-  name: string
-  level: number
-  damage: number
-  nextName: string | null
-  nextDamage: number | null
-  costGold: number
-  costItems: CostItemView[]
-  canUpgrade: boolean
-  maxed: boolean
-  sprite: string
-}
-export interface PassiveView {
-  id: PassiveId
-  rarity: PassiveRarity
-  key: string
-  name: string
-  rarityLabel: string
-  effectText: string
-  desc: string
-  qty: number
-  equipped: boolean
-}
-export interface PassiveSlotView {
-  index: number
-  unlocked: boolean
-  passive: PassiveView | null
-}
-export interface CropChoiceView {
-  id: string
-  name: string
-  color: string
-  selected: boolean
-  unlocked: boolean
-  lockText: string | null
-}
-export interface FieldPlotView {
-  id: string
-  name: string
-  rows: number
-  selectedCropId: string
-  selectedCropName: string
-  selected: boolean
-  nextToUnlock: boolean
-  canBuyRow: boolean
-  costGold: number
-  costItems: CostItemView[]
-}
-export interface CookRecipeView {
-  id: string
-  name: string
-  desc: string
-  outputName: string
-  outputSprite: string
-  outputColor?: string
-  outputQty: number
-  inputs: CostItemView[]
-  canCook: boolean
-  maxCookQty: number
-  unlocked: boolean
-  lockText: string | null
-  craftSeconds: number
-  difficulty: number
-  sellPrice: number
-  mystery?: boolean
-}
-export interface CookJobView {
-  id: string
-  recipeName: string
-  outputName: string
-  outputSprite: string
-  outputColor?: string
-  remainingSecs: number
-  remainingQty: number
-  totalQty: number
-  totalRemainingSecs: number
-  totalSecs: number
-  progress: number
-  ready: boolean
-}
-export interface CookingFireView {
-  built: boolean
-  level: number
-  maxLevel: number
-  slots: number
-  usedSlots: number
-  nextSlots: number | null
-  costGold: number
-  costItems: CostItemView[]
-  canUpgrade: boolean
-}
-export interface ObjectiveView {
-  title: string
-  detail: string
-  progress: number
-  max: number
-}
-export interface ObjectiveTaskView extends ObjectiveView {
-  id: string
-  rewardText: string | null
-  completed: boolean
-  claimed: boolean
-  current: boolean
-}
-export interface OrderView {
-  day: number
-  itemId: string
-  itemName: string
-  sprite: string
-  color?: string
-  qty: number
-  have: number
-  rewardGold: number
-  hint: string
-  completed: boolean
-  canComplete: boolean
-}
-export interface ContextActionView {
-  id: 'sleep' | 'animal' | 'seed' | 'shop' | 'cook' | 'order' | 'blacksmith' | 'blacksmithBuy' | 'mineEnter' | 'mineExit' | 'mineDown'
-  label: string
-}
-export interface UISnapshot {
-  phase: UIPhase
-  day: number
-  clock: string
-  period: string
-  periodKey: 'morning' | 'afternoon' | 'golden' | 'night'
-  gold: number
-  stamina: number
-  maxStamina: number
-  inventory: InvSlotView[]
-  toasts: ToastMsg[]
-  shopBuy: ShopBuyView[]
-  blacksmithBuy: ShopBuyView[]
-  buildOptions: BuildOptionView[]
-  buildPermits: BuildPermitView[]
-  toolUpgrades: ToolUpgradeView[]
-  passives: PassiveView[]
-  passiveSlots: PassiveSlotView[]
-  passiveSlotCount: number
-  fieldPlots: FieldPlotView[]
-  cropChoices: CropChoiceView[]
-  selectedFieldId: string | null
-  cookRecipes: CookRecipeView[]
-  cookQueue: CookJobView[]
-  cookingFire: CookingFireView
-  objective: ObjectiveView | null
-  objectives: ObjectiveTaskView[]
-  order: OrderView | null
-  contextAction: string | null
-  contextActionId: 'sleep' | 'animal' | 'seed' | 'shop' | 'cook' | 'order' | 'blacksmith' | 'blacksmithBuy' | 'mineEnter' | 'mineExit' | 'mineDown' | null
-  contextActions: ContextActionView[]
-  nearBed: boolean
-  nearStore: boolean
-  nearBuild: boolean
-  nearCooking: boolean
-  exhausted: boolean
-  muted: boolean
-  musicOn: boolean
-  hasSave: boolean
-}
-
-interface Particle {
-  x: number
-  y: number
-  vx: number
-  vy: number
-  life: number
-  max: number
-  color: string
-  size: number
-  gravity: number
-  additive: boolean
-}
-interface Firefly {
-  x: number
-  y: number
-  phase: number
-  speed: number
-}
-type Period = 'morning' | 'afternoon' | 'golden' | 'night'
-type WorkKind = 'pickup' | 'harvest' | 'chop' | 'plant'
-interface MineMonster {
-  uid: string
-  id: MonsterId
-  x: number
-  y: number
-  hp: number
-  maxHp: number
-  hitT: number
-  attackT: number
-}
 
 export class Game {
   private canvas: HTMLCanvasElement
@@ -759,82 +447,6 @@ export class Game {
     this.mineMonsters = []
     this.mineFloor = 1
     this.farmReturn = null
-  }
-
-  private makeRuntimeTile(x: number, y: number, terrain: Tile['terrain']): Tile {
-    return {
-      x,
-      y,
-      terrain,
-      cropId: null,
-      growthStage: 0,
-      wateredToday: false,
-      wateredYesterday: false,
-      daysUnwatered: 0,
-      obstacle: null,
-      hasFertilizer: false,
-      metadata: {},
-    }
-  }
-
-  private buildMineTiles(floor: number): Tile[] {
-    const tiles: Tile[] = []
-    const floorDef = mineFloorDef(floor)
-    for (let y = 0; y < WORLD_H; y++) {
-      for (let x = 0; x < WORLD_W; x++) {
-        const inside = x >= 20 && x <= 37 && y >= 10 && y <= 24
-        const wall = !inside || x === 20 || x === 37 || y === 10 || y === 24
-        tiles.push(this.makeRuntimeTile(x, y, wall ? 'blocked' : 'grass'))
-      }
-    }
-    const exit = tiles[idx(27, 22)]
-    exit.metadata.mineExit = true
-    const stairs = tiles[idx(29, 22)]
-    stairs.metadata.mineDown = true
-    const spots: [number, number][] = [
-      [23, 12], [27, 12], [33, 12], [35, 15], [22, 16], [28, 16],
-      [32, 18], [24, 20], [35, 21], [22, 22], [31, 22],
-    ]
-    const orePlan: Exclude<Obstacle, null>[] = []
-    for (const [obstacle, count] of Object.entries(floorDef.ores)) {
-      for (let i = 0; i < (count ?? 0); i++) orePlan.push(obstacle as Exclude<Obstacle, null>)
-    }
-    spots.forEach(([x, y], i) => {
-      const t = tiles[idx(x, y)]
-      setObstacle(t, orePlan[i] ?? 'rock')
-      t.metadata.mineNode = true
-    })
-    return tiles
-  }
-
-  private buildMineMonsters(floor: number): MineMonster[] {
-    const floorDef = mineFloorDef(floor)
-    const spawnTiles: [number, number][] = [
-      [22, 12], [25, 13], [31, 13], [35, 14], [23, 17],
-      [30, 17], [34, 18], [25, 21], [33, 21], [36, 22],
-    ]
-    const monsters: MineMonster[] = []
-    let cursor = 0
-    for (const entry of floorDef.monsters) {
-      const def = MONSTERS[entry.id]
-      for (let i = 0; i < entry.count; i++) {
-        const [tx, ty] = entry.id === 'mine_guardian'
-          ? [29, 16]
-          : spawnTiles[cursor % spawnTiles.length]
-        cursor += 1
-        monsters.push({
-          uid: `${floor}:${entry.id}:${i}:${cursor}`,
-          id: entry.id,
-          x: tx * T + T / 2,
-          y: ty * T + T,
-          hp: def.hp,
-          maxHp: def.hp,
-          hitT: 0,
-          attackT: 0.8 + Math.random() * 0.6,
-        })
-      }
-    }
-    return monsters
   }
 
   private deepestMineFloor(): number {
@@ -1200,7 +812,7 @@ export class Game {
     const px = t.x * T + T / 2
     const py = t.y * T + T / 2
     if (ob === 'weed') {
-      if (!this.spendStamina(COST.chop)) return
+      if (!this.spendStamina(WORK_COST.chop)) return
       this.clearObs(t)
       this.giveItem('fiber', 1)
       this.audio.sfx('harvest')
@@ -1209,7 +821,7 @@ export class Game {
       return
     }
     if (ob === 'flower') {
-      if (!this.spendStamina(COST.harvest)) return
+      if (!this.spendStamina(WORK_COST.harvest)) return
       this.clearObs(t)
       this.giveItem('daffodil', 1)
       this.audio.sfx('harvest')
@@ -1226,7 +838,7 @@ export class Game {
         return
       }
     }
-    if (!this.spendStamina(COST.chop)) return
+    if (!this.spendStamina(WORK_COST.chop)) return
     const damage = mining ? this.toolDamage('pickaxe') : 1
     t.hp = (t.hp ?? OBSTACLE_HP[ob]) - damage
     this.audio.sfx(mining ? 'crack' : 'chop')
@@ -1296,7 +908,7 @@ export class Game {
     if (!cropId) return
     const crop = CROPS[cropId]
     if (!crop) return
-    if (!this.spendStamina(COST.plant)) return
+    if (!this.spendStamina(WORK_COST.plant)) return
     t.cropId = crop.id
     t.growthStage = 0
     t.metadata.growT = 0
@@ -1338,7 +950,7 @@ export class Game {
       this.audio.sfx('reject')
       return
     }
-    if (!this.spendStamina(COST.harvest)) return
+    if (!this.spendStamina(WORK_COST.harvest)) return
     const maxHp = this.cropHarvestHp(crop.id)
     const hp = typeof t.metadata.harvestHp === 'number' ? t.metadata.harvestHp : maxHp
     const nextHp = hp - this.toolDamage('scythe')
@@ -1542,8 +1154,8 @@ export class Game {
     this.farmReturn = { x: p.x, y: p.y, dir: p.dir }
     this.area = 'mine'
     this.mineFloor = 1
-    this.mineTiles = this.buildMineTiles(this.mineFloor)
-    this.mineMonsters = this.buildMineMonsters(this.mineFloor)
+    this.mineTiles = buildMineTiles(this.mineFloor)
+    this.mineMonsters = buildMineMonsters(this.mineFloor)
     this.setDeepestMineFloor(this.mineFloor)
     p.x = 28 * T + T / 2
     p.y = 23 * T
@@ -1584,8 +1196,8 @@ export class Game {
       return
     }
     this.mineFloor += 1
-    this.mineTiles = this.buildMineTiles(this.mineFloor)
-    this.mineMonsters = this.buildMineMonsters(this.mineFloor)
+    this.mineTiles = buildMineTiles(this.mineFloor)
+    this.mineMonsters = buildMineMonsters(this.mineFloor)
     this.setDeepestMineFloor(this.mineFloor)
     const p = this.state.player
     p.x = 28 * T + T / 2
@@ -4383,7 +3995,7 @@ export class Game {
         locked,
       }
     })
-    const toolUpgrades: ToolUpgradeView[] = (['pickaxe', 'scythe', 'sword'] as UpgradeableToolId[]).map((toolId) => {
+    const toolUpgrades: ToolUpgradeView[] = UPGRADEABLE_TOOLS.map((toolId) => {
       const next = this.nextToolUpgrade(toolId)
       const costItems = costViews(next?.costItems ?? [])
       const owned = toolId !== 'sword' || this.countItem('sword') > 0
