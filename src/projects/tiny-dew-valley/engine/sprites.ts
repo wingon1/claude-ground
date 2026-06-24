@@ -940,34 +940,33 @@ export function bakeItemIcon(sprite: string, color?: string): HTMLCanvasElement 
       px(g, 5, 8, 6, 3, '#f5e6bd') // label
       dot(g, 8, 9, '#caa24a')
       break
-    case 'bacon':
-      // two wavy rashers (stepped rows)
-      px(g, 3, 4, 4, 2, '#c25048')
-      px(g, 6, 5, 4, 2, '#c25048')
-      px(g, 9, 4, 4, 2, '#c25048')
-      px(g, 3, 4, 4, 1, '#e88a7a') // fat
-      px(g, 6, 5, 4, 1, '#e88a7a')
-      px(g, 9, 4, 4, 1, '#e88a7a')
-      px(g, 3, 9, 4, 2, '#a83e3a')
-      px(g, 6, 10, 4, 2, '#a83e3a')
-      px(g, 9, 9, 4, 2, '#a83e3a')
-      px(g, 3, 9, 4, 1, '#d2706a')
-      px(g, 6, 10, 4, 1, '#d2706a')
-      px(g, 9, 9, 4, 1, '#d2706a')
+    case 'bacon': {
+      // two continuous wavy rashers (drawn per-column so there are no gaps)
+      const wave1 = [4, 4, 5, 5, 5, 5, 5, 4, 4, 4]
+      const wave2 = [9, 9, 10, 10, 10, 10, 10, 9, 9, 9]
+      for (let i = 0; i < 10; i++) {
+        const x = 3 + i
+        px(g, x, wave1[i], 1, 3, '#c25048')
+        dot(g, x, wave1[i], '#e88a7a') // fat streak on top
+        dot(g, x, wave1[i] + 2, '#a83e3a') // bottom shade
+        px(g, x, wave2[i], 1, 3, '#c25048')
+        dot(g, x, wave2[i], '#e88a7a')
+        dot(g, x, wave2[i] + 2, '#a83e3a')
+      }
       break
-    case 'premium_bacon':
-      // one bold marbled rasher + shine
-      px(g, 3, 5, 4, 3, '#a83e48')
-      px(g, 6, 6, 4, 3, '#a83e48')
-      px(g, 9, 5, 4, 3, '#a83e48')
-      px(g, 3, 5, 4, 1, '#ffd08a') // fat marbling
-      px(g, 6, 6, 4, 1, '#ffd08a')
-      px(g, 9, 5, 4, 1, '#ffd08a')
-      px(g, 3, 7, 4, 1, '#d2706a')
-      px(g, 6, 8, 4, 1, '#d2706a')
-      px(g, 9, 7, 4, 1, '#d2706a')
+    }
+    case 'premium_bacon': {
+      // one bold continuous marbled rasher + sheen
+      const wave = [5, 5, 6, 6, 6, 6, 6, 5, 5, 5]
+      for (let i = 0; i < 10; i++) {
+        const x = 3 + i
+        px(g, x, wave[i], 1, 4, '#a83e48')
+        dot(g, x, wave[i], '#ffd08a') // fat marbling
+        dot(g, x, wave[i] + 2, '#d2706a')
+      }
       dot(g, 11, 5, '#fff0a0') // sheen
       break
+    }
     case 'butter':
       px(g, 3, 9, 10, 3, '#efe6c8') // wrapper
       px(g, 3, 9, 10, 1, '#fff7e0')
