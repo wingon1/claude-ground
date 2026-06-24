@@ -151,7 +151,7 @@ export function stampCookingFire(tiles: Tile[], built = true) {
   })
 }
 
-export function stampMine(tiles: Tile[]) {
+export function stampMine(tiles: Tile[], active = false) {
   // Clear the quarry pad so old saves gain a stable mining area.
   rect(tiles, 43, 4, 54, 14, (t) => {
     t.terrain = 'grass'
@@ -160,6 +160,9 @@ export function stampMine(tiles: Tile[]) {
     t.growthStage = 0
     delete t.metadata.mineEntrance
     delete t.metadata.mineWall
+    delete t.metadata.mineBoard
+    delete t.metadata.mineNode
+    delete t.metadata.renewable
   })
 
   // Cave back wall and entrance silhouette.
@@ -177,6 +180,16 @@ export function stampMine(tiles: Tile[]) {
     t.metadata.mineEntrance = true
     t.metadata.invisibleBlock = true
   })
+  if (!active) {
+    rect(tiles, 47, 7, 49, 8, (t) => {
+      t.terrain = 'grass'
+      clearObstacle(t)
+      t.cropId = null
+      t.growthStage = 0
+      t.metadata.mineBoard = true
+    })
+    return
+  }
   rect(tiles, 44, 8, 53, 13, (t) => {
     t.terrain = 'grass'
     t.cropId = null
@@ -240,7 +253,7 @@ export function generateWorld(): Tile[] {
   stampStore(tiles)
 
   stampCookingFire(tiles, false)
-  stampMine(tiles)
+  stampMine(tiles, false)
 
   // ---- Western woods: trees, stumps, daffodils, weeds ----
   const w = LOCATIONS.woods

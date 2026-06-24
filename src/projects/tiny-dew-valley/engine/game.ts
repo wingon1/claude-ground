@@ -445,10 +445,7 @@ export class Game {
     this.applyFieldRows()
     this.applyAnimalFarms()
     this.applyFieldExpansions()
-    if (this.state.flags['migration:mine:v1'] !== true) {
-      stampMine(this.state.tiles)
-      this.state.flags['migration:mine:v1'] = true
-    }
+    this.applyMineState()
     stampFarmhouse(this.state.tiles)
     stampCookingFire(this.state.tiles, this.cookingFireBuilt())
     this.initRuntime()
@@ -1654,7 +1651,22 @@ export class Game {
   }
 
   private markItemSeen(itemId: string) {
-    if (getItem(itemId)) this.state.flags[this.seenItemKey(itemId)] = true
+    if (!getItem(itemId)) return
+    const wasSeen = this.itemSeen(itemId)
+    this.state.flags[this.seenItemKey(itemId)] = true
+    if (itemId === 'toast' && !wasSeen) this.applyMineState(true)
+  }
+
+  private mineUnlocked(): boolean {
+    return this.itemSeen('toast')
+  }
+
+  private applyMineState(force = false) {
+    const active = this.mineUnlocked()
+    const key = 'mine:stampedActive'
+    if (!force && this.state.flags[key] === active) return
+    stampMine(this.state.tiles, active)
+    this.state.flags[key] = active
   }
 
   private migrateSeenItems() {
@@ -2495,6 +2507,15 @@ export class Game {
     this.autosave()
     this.emit()
   }
+  grantTestItem(itemId: string, qty = 10) {
+    if (this.phase !== 'playing') return
+    const item = getItem(itemId)
+    if (!item) return
+    const added = this.giveItem(itemId, qty)
+    this.toast(`${item.name} ${added}개 추가`, added > 0 ? 'good' : 'bad')
+    this.autosave()
+    this.emit()
+  }
 
   // ---------------- particles ----------------
   private dirtPuff(x: number, y: number, color: string) {
@@ -2910,6 +2931,16 @@ export class Game {
     ctx.fillStyle = '#a59b86'
     ctx.fillRect(x + 14 * S, y + 24 * S, 10 * S, 6 * S)
     ctx.fillRect(x + 86 * S, y + 30 * S, 9 * S, 5 * S)
+    if (!this.mineUnlocked()) {
+      ctx.fillStyle = '#6e4426'
+      ctx.fillRect(x + 38 * S, y + 35 * S, 32 * S, 5 * S)
+      ctx.fillRect(x + 36 * S, y + 45 * S, 36 * S, 5 * S)
+      ctx.fillStyle = '#9a6a3a'
+      ctx.fillRect(x + 38 * S, y + 35 * S, 32 * S, 2 * S)
+      ctx.fillRect(x + 36 * S, y + 45 * S, 36 * S, 2 * S)
+      ctx.fillStyle = '#52331d'
+      ctx.fillRect(x + 49 * S, y + 33 * S, 4 * S, 20 * S)
+    }
   }
 
   private drawHuman(

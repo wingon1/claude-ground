@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Game, UISnapshot } from '../engine/game'
 import { iconURL } from '../engine/sprites'
+import { ITEMS } from '../data/items'
 
 // Pixel-art icon, used everywhere emoji used to be.
 function Ic({ k, cls }: { k: string; cls?: string }) {
@@ -13,6 +14,8 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
   const [invSel, setInvSel] = useState<number | null>(null)
   const [objectiveOpen, setObjectiveOpen] = useState(false)
   const [hiddenObjectiveKey, setHiddenObjectiveKey] = useState<string | null>(null)
+  const [settingsTapCount, setSettingsTapCount] = useState(0)
+  const testMode = settingsTapCount >= 5
 
   if (ui.phase === 'title') return <TitleScreen game={game} ui={ui} />
 
@@ -131,7 +134,12 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
         <button
           className="tdv-navbtn"
           title="설정 열기"
-          onClick={() => { setMenuOpen(true); setInvOpen(false); setObjectiveOpen(false) }}
+          onClick={() => {
+            setSettingsTapCount((count) => Math.min(5, count + 1))
+            setMenuOpen(true)
+            setInvOpen(false)
+            setObjectiveOpen(false)
+          }}
         >
           <span><Ic k="ui_settings" /></span>
           <small>설정</small>
@@ -146,7 +154,13 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
       {ui.phase === 'order' && <OrderModal game={game} ui={ui} />}
       {ui.phase === 'sleepConfirm' && <SleepConfirm game={game} ui={ui} />}
       {menuOpen && ui.phase === 'playing' && (
-        <SettingsModal game={game} ui={ui} onClose={() => setMenuOpen(false)} />
+        <SettingsModal
+          game={game}
+          ui={ui}
+          testMode={testMode}
+          onSecretTap={() => setSettingsTapCount((count) => Math.min(5, count + 1))}
+          onClose={() => setMenuOpen(false)}
+        />
       )}
       {invOpen && ui.phase === 'playing' && (
         <InventoryModal ui={ui} sel={invSel} setSel={setInvSel} onClose={() => setInvOpen(false)} />
@@ -179,11 +193,24 @@ function ObjectiveCard({
   pinned?: boolean
   onClose?: () => void
 }) {
+  if (pinned) {
+    return (
+      <div className="tdv-objective pinned">
+        <div className="compact">
+          <div className="title">{objective.title}</div>
+          <div className="progress">{objective.progress}/{objective.max}</div>
+          <button className="close" onClick={onClose} aria-label="목표 숨기기">×</button>
+        </div>
+        <div className="bar">
+          <span style={{ width: `${objectiveProgress(objective)}%` }} />
+        </div>
+      </div>
+    )
+  }
   return (
-    <div className={`tdv-objective ${pinned ? 'pinned' : 'inline'}`}>
+    <div className="tdv-objective inline">
       <div className="head">
         <div className="label">목표</div>
-        {pinned && <button className="close" onClick={onClose} aria-label="목표 숨기기">×</button>}
       </div>
       <div className="title">{objective.title}</div>
       <div className="detail">{objective.detail}</div>
@@ -244,16 +271,25 @@ function ObjectiveModal({
 function SettingsModal({
   game,
   ui,
+  testMode,
+  onSecretTap,
   onClose,
 }: {
   game: Game
   ui: UISnapshot
+  testMode: boolean
+  onSecretTap: () => void
   onClose: () => void
 }) {
+  const testItems = Object.values(ITEMS).filter((item) => item.type !== 'misc')
   return (
     <div className="tdv-modal-bg" onClick={onClose}>
       <div className="tdv-modal" style={{ width: 'min(360px, 92vw)' }} onClick={(e) => e.stopPropagation()}>
-        <h2><Ic k="ui_settings" /> 설정</h2>
+        <h2>
+          <button className="tdv-title-secret" onClick={onSecretTap} aria-label="설정">
+            <Ic k="ui_settings" /> 설정
+          </button>
+        </h2>
         <div className="sub">저장, 소리, 이동 복구를 관리합니다.</div>
         <div className="tdv-settings-list">
           <button className="tdv-btn" onClick={() => { game.saveNow(); onClose() }}><Ic k="ui_save" cls="sm" /> 저장</button>
@@ -270,6 +306,15 @@ function SettingsModal({
             }}
           ><Ic k="ui_trash" cls="sm" /> 저장 삭제</button>
         </div>
+        {testMode && (
+          <div className="tdv-test-panel">
+            {testItems.map((item) => (
+              <button className="tdv-test-btn" key={item.id} onClick={() => game.grantTestItem(item.id, 10)}>
+                +10 {item.name}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="tdv-row">
           <button className="tdv-btn ghost" onClick={onClose}>닫기</button>
         </div>
