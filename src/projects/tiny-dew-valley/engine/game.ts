@@ -47,7 +47,6 @@ import {
 import {
   BLACKSMITH_NPC_LINES,
   PLAYER_AMBIENT_LINES,
-  PLAYER_FAINT_WAKE_LINES,
   PLAYER_LOCKED_MINE_LINES,
   PLAYER_WEAK_TOOL_LINES,
   SHOP_NPC_LINES,
@@ -100,6 +99,16 @@ const MINE_DOWN_REVEAL_LINES = [
   '내려가는 길이 생겼다!',
   '아래층으로 갈 수 있겠어.',
   '길이 열렸어. 더 내려가 보자.',
+]
+const PLAYER_FAINT_WAKE_LOST_LINES = [
+  '여기까지 어떻게 왔지.. 아이템을 잃어버렸어.',
+  '너무 강한 상대를 만났군. 그래도 무사히 집에는 왔어.',
+  '아이템을 잃어버렸어. 다음엔 더 조심해야겠어.',
+]
+const PLAYER_FAINT_WAKE_SAFE_LINES = [
+  '여기까지 어떻게 왔지.. 그래도 무사히 집에는 왔어.',
+  '너무 강한 상대를 만났군. 장비를 더 챙겨야겠어.',
+  '간신히 돌아왔어. 다음엔 무리하지 말자.',
 ]
 
 export class Game {
@@ -818,7 +827,7 @@ export class Game {
     this.playerFaintT = 0
     this.phase = 'playing'
     this.toast(lost.length ? `기절했어요. 잃어버린 아이템: ${lost.join(', ')}` : '기절했지만 잃어버린 아이템은 없어요.', 'bad')
-    this.say('player', this.pickLine(PLAYER_FAINT_WAKE_LINES), 4.4)
+    this.say('player', this.pickLine(lost.length ? PLAYER_FAINT_WAKE_LOST_LINES : PLAYER_FAINT_WAKE_SAFE_LINES), 5.2)
     this.autosave()
     this.emit()
   }
