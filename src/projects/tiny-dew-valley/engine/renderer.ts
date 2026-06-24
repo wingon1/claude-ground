@@ -858,9 +858,9 @@ export class GameRenderer {
     ctx.textBaseline = 'middle'
     ctx.textAlign = 'left'
     const maxWidth = 150 * S
-    const padX = 7 * S
-    const padY = 5 * S
-    const lineHeight = Math.max(11, 9 * S)
+    const padX = 5 * S
+    const padY = 3 * S
+    const lineHeight = Math.max(10, 8 * S)
     const lines = this.wrapSpeech(text, maxWidth, ctx)
     const textWidth = Math.max(...lines.map((line) => ctx.measureText(line).width), 16 * S)
     const w = Math.min(this.canvas.width - 8 * S, Math.ceil(textWidth + padX * 2))
@@ -868,13 +868,16 @@ export class GameRenderer {
     const anchorX = this.wx(x)
     const sx = Math.max(4 * S, Math.min(this.canvas.width - w - 4 * S, anchorX - w / 2))
     const sy = Math.max(4 * S, this.wy(y) - h)
+    const radius = Math.min(7 * S, h / 2)
     ctx.fillStyle = 'rgba(255, 246, 218, 0.94)'
-    ctx.fillRect(sx, sy, w, h)
+    ctx.beginPath()
+    ctx.roundRect(sx, sy, w, h, radius)
+    ctx.fill()
     const tailX = Math.max(sx + 10 * S, Math.min(sx + w - 10 * S, anchorX))
     ctx.beginPath()
-    ctx.moveTo(tailX - 5 * S, sy + h - 1 * S)
-    ctx.lineTo(tailX + 5 * S, sy + h - 1 * S)
-    ctx.lineTo(tailX, sy + h + 6 * S)
+    ctx.moveTo(tailX - 4 * S, sy + h - 1 * S)
+    ctx.lineTo(tailX + 4 * S, sy + h - 1 * S)
+    ctx.lineTo(tailX, sy + h + 5 * S)
     ctx.closePath()
     ctx.fill()
     ctx.fillStyle = '#4b3427'
