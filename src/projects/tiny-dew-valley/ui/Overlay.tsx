@@ -63,8 +63,6 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
         </div>
       </div>
 
-      {ui.exhausted && <div className="tdv-exhaust">지쳤어요 — 침대에서 잠을 자요</div>}
-
       {!modalOpen && objectivePinned && ui.objective && (
         <ObjectiveCard
           objective={ui.objective}

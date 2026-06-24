@@ -988,7 +988,6 @@ export class Game {
     if (cost <= 0) return true
     if (s.stamina < cost) {
       if (!this.exhaustedNotified) {
-        this.toast('너무 지쳤어요. 침대에서 잠을 자요.', 'bad')
         this.audio.sfx('reject')
         this.exhaustedNotified = true
       }
@@ -3091,7 +3090,36 @@ export class Game {
       const t = performance.now() / 300
       this.ctx.fillStyle = '#9fd0ff'
       this.ctx.fillRect(this.wx(x + 5), this.wy(drawY + 2 + Math.sin(t) * 2), 2 * S, 3 * S)
+      if (playerMotion) this.drawExhaustBubble(x, drawY, S)
     }
+  }
+
+  private drawExhaustBubble(x: number, y: number, S: number) {
+    const ctx = this.ctx
+    const text = '피곤해.. 잠을 자야해'
+    ctx.save()
+    ctx.font = `${Math.max(10, 7 * S)}px sans-serif`
+    ctx.textBaseline = 'middle'
+    const padX = 6 * S
+    const w = Math.ceil(ctx.measureText(text).width + padX * 2)
+    const h = 16 * S
+    const sx = Math.max(4 * S, Math.min(this.canvas.width - w - 4 * S, this.wx(x) - w / 2))
+    const sy = Math.max(4 * S, this.wy(y - 24) - h)
+    ctx.fillStyle = '#fff4d6'
+    ctx.fillRect(sx, sy, w, h)
+    ctx.fillStyle = '#6f4a2d'
+    ctx.fillRect(sx, sy, w, 1 * S)
+    ctx.fillRect(sx, sy + h - 1 * S, w, 1 * S)
+    ctx.fillRect(sx, sy, 1 * S, h)
+    ctx.fillRect(sx + w - 1 * S, sy, 1 * S, h)
+    ctx.fillStyle = '#fff4d6'
+    ctx.fillRect(this.wx(x) - 2 * S, sy + h - 1 * S, 4 * S, 4 * S)
+    ctx.fillStyle = '#6f4a2d'
+    ctx.fillRect(this.wx(x) - 2 * S, sy + h - 1 * S, 1 * S, 3 * S)
+    ctx.fillRect(this.wx(x) + 1 * S, sy + h - 1 * S, 1 * S, 3 * S)
+    ctx.fillStyle = '#4b3427'
+    ctx.fillText(text, sx + padX, sy + h / 2 + 0.5 * S)
+    ctx.restore()
   }
 
   private currentWorkTool(): UpgradeableToolId {
