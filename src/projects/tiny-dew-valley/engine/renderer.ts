@@ -1205,9 +1205,10 @@ export class GameRenderer {
     }
     // Short wooden handle pointing up from the hand.
     ctx.fillStyle = '#9a6a3a'
-    ctx.fillRect(-1 * S, -10 * S, 2 * S, 10 * S)
+    const handleTop = tool === 'scythe' ? -16 : tool === 'pickaxe' ? -13 : -10
+    ctx.fillRect(-1 * S, handleTop * S, 2 * S, -handleTop * S)
     ctx.fillStyle = '#7a5230'
-    ctx.fillRect(-1 * S, -10 * S, 1 * S, 10 * S)
+    ctx.fillRect(-1 * S, handleTop * S, 1 * S, -handleTop * S)
     const metal = this.toolMetalPalette(tool)
     ctx.fillStyle = metal.mid
     if (tool === 'sword') {
@@ -1223,18 +1224,21 @@ export class GameRenderer {
       ctx.fillStyle = metal.dark
       ctx.fillRect(4 * S, -10 * S, 2 * S, 3 * S)
     } else if (tool === 'pickaxe') {
-      ctx.fillRect(-5 * S, -12 * S, 10 * S, 2 * S)
+      ctx.fillRect(-8 * S, -15 * S, 16 * S, 2 * S)
       ctx.fillStyle = metal.light
-      ctx.fillRect(-5 * S, -12 * S, 10 * S, 1 * S)
+      ctx.fillRect(-7 * S, -16 * S, 14 * S, 1 * S)
       ctx.fillStyle = metal.dark
-      ctx.fillRect(-5 * S, -10 * S, 2 * S, 3 * S)
-      ctx.fillRect(3 * S, -10 * S, 2 * S, 3 * S)
-    } else {
-      ctx.fillRect(0, -11 * S, 4 * S, 2 * S)
+      ctx.fillRect(-9 * S, -14 * S, 2 * S, 3 * S)
+      ctx.fillRect(7 * S, -14 * S, 2 * S, 3 * S)
+    } else if (tool === 'scythe') {
+      ctx.fillRect(0, -18 * S, 2 * S, 6 * S)
+      ctx.fillRect(2 * S, -18 * S, 6 * S, 2 * S)
+      ctx.fillRect(7 * S, -16 * S, 2 * S, 3 * S)
+      ctx.fillRect(5 * S, -13 * S, 2 * S, 2 * S)
       ctx.fillStyle = metal.light
-      ctx.fillRect(0, -11 * S, 4 * S, 1 * S)
+      ctx.fillRect(1 * S, -18 * S, 6 * S, 1 * S)
       ctx.fillStyle = metal.dark
-      ctx.fillRect(3 * S, -11 * S, 2 * S, 3 * S)
+      ctx.fillRect(7 * S, -15 * S, 1 * S, 3 * S)
     }
     ctx.restore()
   }
