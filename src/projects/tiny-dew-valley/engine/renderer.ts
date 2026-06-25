@@ -1,6 +1,6 @@
 import type { CropDef, Direction, GameState, Tile } from '../types'
 import { CROPS } from '../data/crops'
-import { getItem } from '../data/items'
+import { cropItemId, getItem } from '../data/items'
 import { ANIMAL_FARMS, ANIMAL_FARM_MAX_ANIMALS, type AnimalFarmDef } from '../data/animalFarms'
 import { MONSTERS } from '../data/monsters'
 import { DEFAULT_FIELD_CROP, FIELD_PLOTS, FIELD_SIZE } from '../data/fields'
@@ -415,7 +415,7 @@ export class GameRenderer {
   private drawFieldSigns(S: number) {
     for (const plot of FIELD_PLOTS) {
       const crop = this.fieldCropForSign(plot.id)
-      this.drawSign(plot.sign.x, plot.sign.y, S, crop.seedItemId)
+      this.drawSign(plot.sign.x, plot.sign.y, S, cropItemId(crop.id, 'normal'))
     }
   }
 
@@ -456,40 +456,38 @@ export class GameRenderer {
     }
   }
 
-  private drawSign(tx: number, ty: number, S: number, seedItemId: string) {
+  private drawSign(tx: number, ty: number, S: number, cropIconItemId: string) {
     const ctx = this.ctx
-    const x = this.wx(tx * T - 3)
-    const y = this.wy(ty * T - 5)
+    const x = this.wx(tx * T)
+    const y = this.wy(ty * T - 1)
     const R = (px: number, py: number, w: number, h: number, c: string) => {
       ctx.fillStyle = c
       ctx.fillRect(x + px * S, y + py * S, w * S, h * S)
     }
 
     ctx.fillStyle = 'rgba(0,0,0,0.16)'
-    ctx.fillRect(x + 5 * S, y + 20 * S, 15 * S, 3 * S)
-    R(7, 18, 10, 3, '#6e4626')
+    ctx.fillRect(x + 5 * S, y + 15 * S, 9 * S, 2 * S)
+    R(6, 14, 6, 2, '#6e4626')
 
     // post
-    R(10, 10, 3, 10, '#7a4c2a')
-    R(10, 10, 1, 10, '#90643a')
-    R(10, 16, 3, 1, '#5e3a1e')
+    R(8, 8, 2, 7, '#7a4c2a')
+    R(8, 8, 1, 7, '#90643a')
+    R(8, 12, 2, 1, '#5e3a1e')
 
     // board with grain + nails
-    R(1, 1, 22, 13, '#c89c5e')
-    R(1, 1, 22, 1, '#ddb878')
-    R(1, 13, 22, 1, '#9a6e38')
-    R(1, 1, 1, 13, '#b88c50')
-    R(22, 1, 1, 13, '#a87c44')
-    R(4, 3, 16, 9, '#f1dfb5')
-    R(4, 3, 16, 1, '#fff0c7')
-    R(4, 11, 16, 1, '#d1b17a')
-    R(3, 3, 1, 1, '#5e4a30')
-    R(20, 3, 1, 1, '#5e4a30')
-    R(3, 11, 1, 1, '#5e4a30')
-    R(20, 11, 1, 1, '#5e4a30')
+    R(2, 1, 14, 9, '#c89c5e')
+    R(2, 1, 14, 1, '#ddb878')
+    R(2, 9, 14, 1, '#9a6e38')
+    R(2, 1, 1, 9, '#b88c50')
+    R(15, 1, 1, 9, '#a87c44')
+    R(4, 2, 10, 7, '#f1dfb5')
+    R(4, 2, 10, 1, '#fff0c7')
+    R(4, 8, 10, 1, '#d1b17a')
+    R(3, 2, 1, 1, '#5e4a30')
+    R(14, 2, 1, 1, '#5e4a30')
 
     ctx.imageSmoothingEnabled = false
-    ctx.drawImage(this.itemIcon(seedItemId), x + 6 * S, y + 3 * S, 11 * S, 11 * S)
+    ctx.drawImage(this.itemIcon(cropIconItemId), x + 5 * S, y + 2 * S, 8 * S, 8 * S)
   }
 
   private orderNpcPosition(): { x: number; y: number; dir: Direction } {

@@ -9,7 +9,7 @@ import {
 } from '../data/cookingFire'
 import { CROPS, CROP_LIST } from '../data/crops'
 import { DEFAULT_FIELD_CROP, FIELD_PLOTS, FIELD_SIZE } from '../data/fields'
-import { getItem } from '../data/items'
+import { cropItemId, getItem } from '../data/items'
 import {
   PASSIVES,
   PASSIVE_RARITIES,
@@ -411,6 +411,7 @@ export function buildUISnapshot(host: SnapshotHost): UISnapshot {
     const cropId = host.fieldCrop(plot.id) ?? DEFAULT_FIELD_CROP
     const crop = CROPS[cropId] ?? CROPS[DEFAULT_FIELD_CROP]
     const nextToUnlock = nextFieldId === plot.id
+    const cropSprite = getItem(cropItemId(crop.id, 'normal'))?.sprite ?? `crop_${crop.id}`
     return {
       id: plot.id,
       name: plot.name,
@@ -418,7 +419,7 @@ export function buildUISnapshot(host: SnapshotHost): UISnapshot {
       selectedCropId: crop.id,
       selectedCropName: crop.name,
       selectedCropColor: crop.color,
-      selectedCropSprite: crop.seedItemId,
+      selectedCropSprite: cropSprite,
       selected: selectedFieldId === plot.id,
       nextToUnlock,
       canBuyRow:
@@ -435,7 +436,7 @@ export function buildUISnapshot(host: SnapshotHost): UISnapshot {
     id: crop.id,
     name: crop.name,
     color: crop.color,
-    sprite: crop.seedItemId,
+    sprite: getItem(cropItemId(crop.id, 'normal'))?.sprite ?? `crop_${crop.id}`,
     selected: crop.id === selectedCropId,
     unlocked: host.cropUnlocked(crop.id),
     lockText: host.cropUnlocked(crop.id) ? null : '상점에서 해금',
