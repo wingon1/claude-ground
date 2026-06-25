@@ -980,7 +980,7 @@ function CookingModal({ game, ui }: { game: Game; ui: UISnapshot }) {
                 <button className="tdv-btn gold sm" disabled={!r.canCook} onClick={() => game.cook(r.id, 1)}>
                   1개
                 </button>
-                <button className="tdv-btn gold sm" disabled={!r.canCook || r.maxCookQty <= 1} onClick={() => game.cook(r.id, r.maxCookQty)}>
+                <button className="tdv-btn gold sm" disabled={!r.canCook} onClick={() => game.cook(r.id, r.maxCookQty)}>
                   ×{r.maxCookQty}
                 </button>
               </div>}

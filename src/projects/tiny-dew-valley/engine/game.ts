@@ -1849,8 +1849,6 @@ export class Game {
       if (nextRemaining <= 0 && this.canAccept(recipe.output.itemId, recipe.output.qty)) {
         this.giveItem(recipe.output.itemId, recipe.output.qty)
         const nextQty = remainingQty - 1
-        this.toast(`${recipe.name} 완성!`, 'good')
-        this.audio.sfx('sparkle')
         completed = true
         if (nextQty > 0) {
           remaining.push({
@@ -1859,6 +1857,9 @@ export class Game {
             remainingQty: nextQty,
             remainingSecs: recipe.craftSeconds,
           })
+        } else {
+          this.toast(`${recipe.name} 완성!`, 'good')
+          this.audio.sfx('sparkle')
         }
       } else {
         remaining.push({
