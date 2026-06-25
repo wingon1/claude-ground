@@ -847,14 +847,18 @@ export class GameRenderer {
     const y = this.wy(monster.y - spriteH + (hit ? -2 : 0))
     const tt = performance.now() / 1000
     const ph = monster.x * 0.7 + monster.y * 0.3 // de-sync animation per monster
+    const unit = S * monsterScale
+    // Snap every rect to the integer pixel grid by rounding its edges. With the
+    // boss' non-integer scale (2.4) un-snapped rects land on fractional pixels and
+    // fillRect antialiases their edges, leaving thin seams between the stacked
+    // body bands. Rounding shared edges makes adjacent rows tile gap-free.
     const r = (px: number, py: number, w: number, h: number, c: string) => {
+      const x0 = Math.round(x + px * unit)
+      const y0 = Math.round(y + py * unit)
+      const x1 = Math.round(x + (px + w) * unit)
+      const y1 = Math.round(y + (py + h) * unit)
       ctx.fillStyle = c
-      ctx.fillRect(
-        x + px * S * monsterScale,
-        y + py * S * monsterScale,
-        w * S * monsterScale,
-        h * S * monsterScale,
-      )
+      ctx.fillRect(x0, y0, x1 - x0, y1 - y0)
     }
     // contact shadow
     ctx.fillStyle = 'rgba(0,0,0,0.22)'
@@ -1046,9 +1050,9 @@ export class GameRenderer {
       }
       // Two beady glowing eyes peering above the maw.
       const eyeGlow = 0.7 + 0.3 * Math.sin(tt * 4 + ph) + cast * 0.5
-      ctx.fillStyle = `rgba(220,255,140,${Math.min(1, eyeGlow)})`
-      ctx.fillRect(x + 9 * S * monsterScale, y + 3 * S * monsterScale, 2 * S * monsterScale, 2 * S * monsterScale)
-      ctx.fillRect(x + 13 * S * monsterScale, y + 3 * S * monsterScale, 1 * S * monsterScale, 2 * S * monsterScale)
+      const eyeCol = `rgba(220,255,140,${Math.min(1, eyeGlow)})`
+      r(9, 3, 2, 2, eyeCol)
+      r(13, 3, 1, 2, eyeCol)
       r(9, 3, 1, 1, '#1c2a10') // pupils
       r(13, 3, 1, 1, '#1c2a10')
       // Dark outline freckles / grime so it reads as filthy ooze.
@@ -1562,74 +1566,71 @@ export class GameRenderer {
     ctx.strokeRect(this.wx(w.x * T) + 1, this.wy(w.y * T) + 1, T * S - 2, T * S - 2)
   }
 
+  // Chunky pixel ellipse on a stable cell grid — keeps the slime FX in the same
+  // dot-art style as the sprites instead of smooth canvas arcs. colorFor returns
+  // a CSS color per cell, or null to leave it empty.
+  private pixelEllipse(
+    cx: number,
+    cy: number,
+    hw: number,
+    hh: number,
+    cell: number,
+    colorFor: (i: number, j: number, e: number) => string | null,
+  ) {
+    const ctx = this.ctx
+    const ox = Math.round(cx / cell) * cell
+    const oy = Math.round(cy / cell) * cell
+    const hwd = (hw + 0.4) * (hw + 0.4)
+    const hhd = (hh + 0.4) * (hh + 0.4)
+    for (let j = -hh; j <= hh; j++) {
+      for (let i = -hw; i <= hw; i++) {
+        const e = (i * i) / hwd + (j * j) / hhd
+        if (e > 1) continue
+        const c = colorFor(i, j, e)
+        if (!c) continue
+        ctx.fillStyle = c
+        ctx.fillRect(ox + i * cell, oy + j * cell, cell, cell)
+      }
+    }
+  }
+
   private drawSlimeTrails(S: number) {
     const ctx = this.ctx
     const tt = performance.now() / 1000
+    const cell = Math.max(2, Math.round(S * 1.5)) // big chunky puddle dots
     for (const tr of this.slimeTrails) {
       const a = Math.max(0, tr.life / tr.max)
-      const sx = this.wx(tr.x)
-      const sy = this.wy(tr.y)
-      const wob = 1 + 0.08 * Math.sin(tt * 3 + tr.seed)
-      const rad = tr.r * S * wob
-      ctx.globalAlpha = a * 0.42
-      ctx.fillStyle = '#327d33'
-      ctx.beginPath()
-      ctx.ellipse(sx, sy, rad, rad * 0.5, 0, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.globalAlpha = a * 0.4
-      ctx.fillStyle = '#5fbf52'
-      ctx.beginPath()
-      ctx.ellipse(sx - rad * 0.15, sy - rad * 0.06, rad * 0.62, rad * 0.3, 0, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.globalAlpha = a * 0.3
-      ctx.fillStyle = '#9bf07a'
-      ctx.beginPath()
-      ctx.ellipse(sx - rad * 0.22, sy - rad * 0.1, rad * 0.24, rad * 0.12, 0, 0, Math.PI * 2)
-      ctx.fill()
+      const wob = 1 + 0.07 * Math.sin(tt * 3 + tr.seed)
+      const hw = Math.max(2, Math.round((tr.r * S * wob) / cell))
+      const hh = Math.max(1, Math.round(hw * 0.5))
+      ctx.globalAlpha = a * 0.6
+      this.pixelEllipse(this.wx(tr.x), this.wy(tr.y), hw, hh, cell, (i, j, e) => {
+        if (i < -hw * 0.15 && j < 0 && e < 0.35) return '#9bf07a' // wet sheen
+        if (e > 0.72) return '#2f7a32'
+        if (e > 0.4) return '#3f9a3f'
+        return '#5fbf52'
+      })
     }
     ctx.globalAlpha = 1
   }
 
   private drawSlimeBlob(b: SlimeBlob, S: number) {
     const ctx = this.ctx
-    const sx = this.wx(b.x)
-    const sy = this.wy(b.y)
-    const wob = 1 + 0.18 * Math.sin(b.spin)
-    const r = b.r * S * wob
+    const cell = Math.max(2, Math.round(S))
+    const wob = 1 + 0.16 * Math.sin(b.spin)
+    const hw = Math.max(1, Math.round((b.r * S * wob) / cell))
     const a = Math.max(0, Math.min(1, b.life / b.max))
-    // Ground shadow under the airborne glob.
-    ctx.globalAlpha = a * 0.25
-    ctx.fillStyle = '#000000'
-    ctx.beginPath()
-    ctx.ellipse(sx, this.wy(b.y + b.r * 1.2), r * 0.9, r * 0.4, 0, 0, Math.PI * 2)
-    ctx.fill()
+    // Pixel ground shadow under the airborne glob.
+    ctx.globalAlpha = a * 0.22
+    this.pixelEllipse(this.wx(b.x), this.wy(b.y + b.r * 1.2), hw, Math.max(1, Math.round(hw * 0.5)), cell, () => '#000000')
+    // The dirty-liquid glob itself.
     ctx.globalAlpha = a
-    // Filthy outer goo.
-    ctx.fillStyle = '#1f6e2c'
-    ctx.beginPath()
-    ctx.arc(sx, sy, r, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.fillStyle = '#46a83f'
-    ctx.beginPath()
-    ctx.arc(sx + r * 0.12, sy + r * 0.12, r * 0.72, 0, Math.PI * 2)
-    ctx.fill()
-    // Muddy fleck so the liquid reads as "dirty".
-    ctx.fillStyle = '#6a5a2c'
-    ctx.beginPath()
-    ctx.arc(sx + r * 0.28, sy + r * 0.22, r * 0.28, 0, Math.PI * 2)
-    ctx.fill()
-    // Wet highlight.
-    ctx.fillStyle = '#9bf07a'
-    ctx.beginPath()
-    ctx.arc(sx - r * 0.34, sy - r * 0.34, r * 0.3, 0, Math.PI * 2)
-    ctx.fill()
-    // A couple of droplets shed in the wake of travel.
-    ctx.fillStyle = '#3a9a37'
-    const tx = sx - Math.cos(b.spin * 0.3) * r * 1.6
-    const ty = sy - Math.sin(b.spin * 0.3) * r * 1.0
-    ctx.beginPath()
-    ctx.arc(tx, ty, r * 0.3, 0, Math.PI * 2)
-    ctx.fill()
+    this.pixelEllipse(this.wx(b.x), this.wy(b.y), hw, hw, cell, (i, j, e) => {
+      if (i <= -1 && j <= -1 && e < 0.45) return '#9bf07a' // wet highlight
+      if (i >= 1 && j >= 1 && e > 0.25 && e < 0.85) return '#6a5a2c' // muddy fleck
+      if (e > 0.6) return '#1f6e2c' // filthy rim
+      return '#46a83f'
+    })
     ctx.globalAlpha = 1
   }
 

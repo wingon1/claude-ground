@@ -23,6 +23,9 @@ export class AudioEngine {
   muted = false
   musicOn = true
   private battleMode = false
+  // Currently-scheduled BGM source nodes, so a mode switch can silence the old
+  // loop instead of letting its already-queued notes ring out over the new one.
+  private musicNodes: AudioScheduledSourceNode[] = []
 
   private ensure() {
     if (this.ctx) return
@@ -81,11 +84,46 @@ export class AudioEngine {
     g.connect(this.musicGain)
     src.start(when)
     src.stop(when + dur)
+    this.musicNodes.push(src)
+  }
+
+  // Noise hit routed through the music bus (tracked), for the battle percussion.
+  private musicNoise(when: number, dur: number, freq: number, q: number, gain: number, type: BiquadFilterType) {
+    if (!this.ctx || !this.musicGain) return
+    const ctx = this.ctx
+    const n = Math.floor(ctx.sampleRate * dur)
+    const buf = ctx.createBuffer(1, n, ctx.sampleRate)
+    const d = buf.getChannelData(0)
+    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n)
+    const src = ctx.createBufferSource()
+    src.buffer = buf
+    const filt = ctx.createBiquadFilter()
+    filt.type = type
+    filt.frequency.value = freq
+    filt.Q.value = q
+    const g = ctx.createGain()
+    g.gain.value = gain
+    src.connect(filt)
+    filt.connect(g)
+    g.connect(this.musicGain)
+    src.start(when)
+    src.stop(when + dur + 0.02)
+    this.musicNodes.push(src)
+  }
+
+  // Cut every queued BGM note immediately (used on stop / mode switch).
+  private stopMusicNodes() {
+    for (const node of this.musicNodes) {
+      try { node.stop() } catch { /* already stopped */ }
+    }
+    this.musicNodes = []
   }
 
   private scheduleBgm() {
     if (!this.ctx || !this.musicGain) return
     if (!this.musicOn) return
+    // Track only this loop's notes; the previous loop's tail finishes on its own.
+    this.musicNodes = []
     if (this.battleMode) { this.scheduleBattleBgm(); return }
     // A breezy 4-bar major loop in C, fingerpicked.
     const ctx = this.ctx
@@ -139,9 +177,9 @@ export class AudioEngine {
         this.pulseBass(t, root, beat * 0.5)
         const note = ch[arp[i] % ch.length]
         this.pluck(note, t, 0.42, i % 2 === 0 ? 0.34 : 0.24)
-        // Backbeat percussion hit.
-        if (i === 2 || i === 6) this.noiseBurst(t, 0.1, 2600, 0.7, 0.18, 'highpass')
-        if (i % 2 === 0) this.noiseBurst(t, 0.06, 140, 1.0, 0.32, 'lowpass') // kick
+        // Backbeat percussion hit (tracked so it stops with the loop).
+        if (i === 2 || i === 6) this.musicNoise(t, 0.1, 2600, 0.7, 0.18, 'highpass')
+        if (i % 2 === 0) this.musicNoise(t, 0.06, 140, 1.0, 0.32, 'lowpass') // kick
         t += beat / 2
       }
     }
@@ -168,6 +206,7 @@ export class AudioEngine {
     g.connect(this.musicGain)
     osc.start(when)
     osc.stop(when + dur + 0.02)
+    this.musicNodes.push(osc)
   }
 
   // Switch between the peaceful and battle loops, restarting instantly.
@@ -176,6 +215,7 @@ export class AudioEngine {
     this.battleMode = on
     if (!this.musicOn) return
     this.ensure()
+    this.stopMusicNodes() // silence the outgoing loop so the two don't overlap
     if (this.bgmTimer != null) {
       clearTimeout(this.bgmTimer)
       this.bgmTimer = null
@@ -195,6 +235,7 @@ export class AudioEngine {
       clearTimeout(this.bgmTimer)
       this.bgmTimer = null
     }
+    this.stopMusicNodes()
   }
 
   toggleMusic(): boolean {
