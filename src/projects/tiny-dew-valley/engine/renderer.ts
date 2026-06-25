@@ -421,7 +421,6 @@ export class GameRenderer {
     const lit = '#9a6e3e' // raised top/left edge
     const litS = '#946339'
     const shade = '#4e3320' // recessed bottom/right edge
-    const groove = '#3f2a18' // rounded-corner notch
 
     for (const plot of FIELD_PLOTS) {
       for (let ty = plot.y; ty < plot.y + FIELD_SIZE; ty++) {
@@ -438,15 +437,6 @@ export class GameRenderer {
           r(0, 0, 1, 16, litS)
           r(0, 15, 16, 1, shade)
           r(15, 0, 1, 16, shade)
-          // Pixel-rounded corners (small notch on each corner).
-          r(0, 0, 2, 1, groove)
-          r(0, 1, 1, 1, groove)
-          r(14, 0, 2, 1, groove)
-          r(15, 1, 1, 1, groove)
-          r(0, 15, 2, 1, groove)
-          r(0, 14, 1, 1, groove)
-          r(14, 15, 2, 1, groove)
-          r(15, 14, 1, 1, groove)
         }
       }
     }
