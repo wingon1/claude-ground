@@ -14,6 +14,19 @@ import type { OrderView, UIPhase, WeatherView } from './uiSnapshot'
 const ORDER_NPC = { x: LOCATIONS.storeStand.x, y: LOCATIONS.storeStand.y }
 const BLACKSMITH_NPC = { x: LOCATIONS.blacksmithNpc.x, y: LOCATIONS.blacksmithNpc.y }
 
+interface AnimalMotionState {
+  x: number
+  y: number
+  tx: number
+  ty: number
+  speed: number
+  seed: number
+  lastT: number
+  nextDecisionAt: number
+  moving: boolean
+  stepPhase: number
+}
+
 export interface RenderHost {
   ctx: CanvasRenderingContext2D
   canvas: HTMLCanvasElement
@@ -54,6 +67,7 @@ export class GameRenderer {
   private host!: RenderHost
   private waterAnim = 0
   private itemIconCache = new Map<string, HTMLCanvasElement>()
+  private animalMotion = new Map<string, AnimalMotionState>()
 
   private get ctx() { return this.host.ctx }
   private get canvas() { return this.host.canvas }
@@ -587,15 +601,119 @@ export class GameRenderer {
       ctx.fillStyle = '#8a5a32'; ctx.fillRect(x + 8 * S, y + 11 * S, 6 * S, 1 * S)
       const count = Math.min(ANIMAL_FARM_MAX_ANIMALS, this.animalCount(farm))
       const now = performance.now() / 1000
+      const bounds = this.animalWanderBounds(farm)
       for (let i = 0; i < count; i++) {
-        const seed = (farm.id.charCodeAt(0) * 17 + i * 37) / 10
-        const innerW = Math.max(1, (farm.w - 2) * T - 16)
-        const innerH = Math.max(1, (farm.h - 2) * T - 16)
-        const px = (farm.x + 1) * T + 8 + ((Math.sin(now * 0.9 + seed) + 1) / 2) * innerW
-        const py = (farm.y + 1) * T + 8 + ((Math.cos(now * 0.65 + seed * 1.7) + 1) / 2) * innerH
-        this.drawAnimal(farm, px, py, S)
+        const animal = this.updateAnimalMotion(farm, i, bounds, now)
+        const bob = Math.sin(animal.stepPhase) * (animal.moving ? 0.7 : 0.2)
+        this.drawAnimal(farm, animal.x, animal.y + bob, S)
       }
     }
+  }
+
+  private animalWanderBounds(farm: AnimalFarmDef) {
+    return {
+      x: (farm.x + 1) * T + 8,
+      y: (farm.y + 1) * T + 8,
+      w: Math.max(1, (farm.w - 2) * T - 16),
+      h: Math.max(1, (farm.h - 2) * T - 16),
+    }
+  }
+
+  private updateAnimalMotion(
+    farm: AnimalFarmDef,
+    index: number,
+    bounds: { x: number; y: number; w: number; h: number },
+    now: number,
+  ): AnimalMotionState {
+    const key = `${farm.id}:${index}`
+    let state = this.animalMotion.get(key)
+    if (!state) {
+      const seed = this.animalSeed(key)
+      const x = bounds.x + this.seededUnit(seed, 1) * bounds.w
+      const y = bounds.y + this.seededUnit(seed, 2) * bounds.h
+      state = {
+        x,
+        y,
+        tx: x,
+        ty: y,
+        speed: this.animalBaseSpeed(farm, seed),
+        seed,
+        lastT: now,
+        nextDecisionAt: now + this.seededRange(seed, 3, 0.2, 1.8),
+        moving: false,
+        stepPhase: this.seededRange(seed, 4, 0, Math.PI * 2),
+      }
+      this.animalMotion.set(key, state)
+      return state
+    }
+
+    const dt = Math.min(0.08, Math.max(0, now - state.lastT))
+    state.lastT = now
+    state.x = Math.max(bounds.x, Math.min(bounds.x + bounds.w, state.x))
+    state.y = Math.max(bounds.y, Math.min(bounds.y + bounds.h, state.y))
+
+    if (!state.moving && now >= state.nextDecisionAt) {
+      if (Math.random() < 0.38) {
+        state.nextDecisionAt = now + this.randomRange(0.7, 2.5)
+      } else {
+        state.tx = bounds.x + Math.random() * bounds.w
+        state.ty = bounds.y + Math.random() * bounds.h
+        state.speed = this.animalBaseSpeed(farm, state.seed) * this.randomRange(0.75, 1.25)
+        state.moving = true
+      }
+    }
+
+    if (state.moving) {
+      const dx = state.tx - state.x
+      const dy = state.ty - state.y
+      const dist = Math.hypot(dx, dy)
+      const step = state.speed * dt
+      if (dist <= step || dist < 0.4) {
+        state.x = state.tx
+        state.y = state.ty
+        state.moving = false
+        state.nextDecisionAt = now + this.randomRange(0.45, 2.2)
+      } else {
+        state.x += (dx / dist) * step
+        state.y += (dy / dist) * step
+      }
+    }
+
+    const stepSpeed = farm.id === 'chicken' ? 7.5 : farm.id === 'pig' ? 5.2 : 4.2
+    state.stepPhase += dt * (state.moving ? stepSpeed : 1.1) * this.seededRange(state.seed, 5, 0.85, 1.25)
+    return state
+  }
+
+  private animalBaseSpeed(farm: AnimalFarmDef, seed: number): number {
+    const base = farm.id === 'chicken' ? 8.5 : farm.id === 'pig' ? 6.5 : 5.5
+    return base * this.seededRange(seed, 6, 0.85, 1.2)
+  }
+
+  private animalSeed(key: string): number {
+    let hash = 2166136261
+    for (let i = 0; i < key.length; i++) {
+      hash ^= key.charCodeAt(i)
+      hash = Math.imul(hash, 16777619)
+    }
+    return hash >>> 0
+  }
+
+  private seededUnit(seed: number, salt: number): number {
+    let value = seed + salt * 0x9e3779b9
+    value ^= value >>> 16
+    value = Math.imul(value, 0x7feb352d)
+    value ^= value >>> 15
+    value = Math.imul(value, 0x846ca68b)
+    value ^= value >>> 16
+    return (value >>> 0) / 4294967295
+  }
+
+  private seededRange(seed: number, salt: number, min: number, max: number): number {
+    return min + this.seededUnit(seed, salt) * (max - min)
+  }
+
+  private randomRange(min: number, max: number): number {
+    return min + Math.random() * (max - min)
   }
 
   private drawAnimal(farm: AnimalFarmDef, x: number, y: number, S: number) {
