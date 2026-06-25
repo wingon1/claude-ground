@@ -139,6 +139,7 @@ export class GameRenderer {
     if (this.area === 'farm') {
       this.drawBuilding(this.sprites.farmhouse, 30, 7, S, -16)
       this.drawBuilding(this.sprites.store, LOCATIONS.storeStand.x - 2, LOCATIONS.storeStand.y - 2, S, -14)
+      this.drawTentSideProps(S)
       this.drawAnimalFarms(S)
       this.drawFieldSigns(S)
       this.drawCookingFire(S)
@@ -317,6 +318,51 @@ export class GameRenderer {
 
   private drawBuilding(img: HTMLCanvasElement, tx: number, ty: number, S: number, yOff: number) {
     this.ctx.drawImage(img, this.wx(tx * T), this.wy(ty * T + yOff), img.width * S, img.height * S)
+  }
+
+  private drawTentSideProps(S: number) {
+    const ctx = this.ctx
+    const x = this.wx(27 * T)
+    const y = this.wy(8 * T)
+    const R = (px: number, py: number, w: number, h: number, c: string) => {
+      ctx.fillStyle = c
+      ctx.fillRect(x + px * S, y + py * S, w * S, h * S)
+    }
+
+    // Soft ground contact shadow for the small campsite clutter.
+    ctx.fillStyle = 'rgba(0,0,0,0.14)'
+    ctx.fillRect(x + 1 * S, y + 38 * S, 40 * S, 4 * S)
+
+    // Small clothesline: two stakes, rope, and patched fabric.
+    R(2, 4, 3, 33, '#7a5230')
+    R(35, 2, 3, 35, '#7a5230')
+    R(2, 4, 3, 2, '#a8743f')
+    R(35, 2, 3, 2, '#a8743f')
+    R(4, 8, 33, 2, '#d8cda0')
+    R(8, 10, 9, 13, '#d8c8a4')
+    R(8, 10, 9, 2, '#f0e4be')
+    R(20, 10, 8, 12, '#7fbf9f')
+    R(20, 10, 8, 2, '#a7d9bf')
+    R(30, 10, 5, 8, '#b78a52')
+
+    // Wooden crate, useful later if this becomes storage or mail.
+    R(8, 27, 15, 12, '#9a6a3a')
+    R(8, 27, 15, 2, '#c08a4b')
+    R(8, 37, 15, 2, '#6e4426')
+    R(8, 27, 2, 12, '#6e4426')
+    R(21, 27, 2, 12, '#6e4426')
+    R(10, 32, 11, 1, '#6e4426')
+    R(13, 29, 2, 8, '#7a5230')
+    R(16, 29, 2, 8, '#7a5230')
+    R(10, 29, 1, 1, '#4a3420')
+    R(20, 29, 1, 1, '#4a3420')
+
+    // Cloth bundle from the escape, tied and tucked beside the tent.
+    R(25, 31, 12, 7, '#d8c8a4')
+    R(24, 34, 15, 5, '#bda879')
+    R(27, 29, 7, 3, '#efe0bd')
+    R(30, 30, 2, 9, '#7a5a32')
+    R(25, 36, 13, 2, '#8f7a55')
   }
 
   private drawFieldSigns(S: number) {

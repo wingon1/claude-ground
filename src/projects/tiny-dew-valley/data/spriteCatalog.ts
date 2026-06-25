@@ -1,7 +1,8 @@
 // Pixel-art catalogue for Tiny Dew Valley.
 //
 // This file is intentionally a reference/index only. The actual procedural
-// sprite drawing still lives in engine/sprites.ts and engine/game.ts.
+// sprite drawing still lives in engine/sprites.ts, engine/renderer.ts, and a
+// few older game.ts runtime hooks.
 // Use `id` or `sourceFn` to find a specific sprite before editing it.
 
 export type SpriteSource = 'sprite-bake' | 'runtime-draw' | 'item-icon' | 'tool-icon' | 'ui-icon'
@@ -25,7 +26,7 @@ export interface SpriteCatalogEntry {
   label: string
   category: SpriteCategory
   source: SpriteSource
-  file: 'engine/sprites.ts' | 'engine/game.ts'
+  file: 'engine/sprites.ts' | 'engine/renderer.ts' | 'engine/game.ts'
   sourceFn: string
   spriteKey?: string
   frames?: string
@@ -66,6 +67,7 @@ export const SPRITE_CATALOG: SpriteCatalogEntry[] = [
 
   // Buildings and large world objects.
   { id: 'building.player_tent', label: '플레이어 텐트', category: 'building', source: 'sprite-bake', file: 'engine/sprites.ts', sourceFn: 'bakeFarmhouse', spriteKey: 'sprites.farmhouse', notes: '이름은 farmhouse지만 현재 텐트 그림' },
+  { id: 'building.tent_side_props', label: '텐트 옆 상자/보따리/빨랫줄', category: 'building', source: 'runtime-draw', file: 'engine/renderer.ts', sourceFn: 'drawTentSideProps', notes: '텐트 옆 생활감 장식' },
   { id: 'building.store', label: '상점', category: 'building', source: 'sprite-bake', file: 'engine/sprites.ts', sourceFn: 'bakeStore', spriteKey: 'sprites.store' },
   { id: 'building.shrine_broken', label: '부서진 비석/신전', category: 'building', source: 'sprite-bake', file: 'engine/sprites.ts', sourceFn: 'bakeShrine(false)', spriteKey: 'sprites.shrineBroken' },
   { id: 'building.shrine_restored', label: '복구된 비석/신전', category: 'building', source: 'sprite-bake', file: 'engine/sprites.ts', sourceFn: 'bakeShrine(true)', spriteKey: 'sprites.shrineRestored' },
