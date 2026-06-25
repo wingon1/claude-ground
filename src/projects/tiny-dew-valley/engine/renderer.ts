@@ -1316,15 +1316,15 @@ export class GameRenderer {
       ctx.fillRect(-9 * S, -14 * S, 2 * S, 3 * S)
       ctx.fillRect(7 * S, -14 * S, 2 * S, 3 * S)
     } else if (tool === 'scythe') {
-      ctx.fillRect(-8 * S, -15 * S, 9 * S, 2 * S)
-      ctx.fillRect(-8 * S, -14 * S, 2 * S, 4 * S)
-      ctx.fillRect(0, -14 * S, 2 * S, 2 * S)
+      ctx.fillRect(0, -15 * S, 9 * S, 2 * S)
+      ctx.fillRect(7 * S, -14 * S, 2 * S, 4 * S)
+      ctx.fillRect(-1 * S, -14 * S, 2 * S, 2 * S)
       ctx.fillStyle = metal.light
-      ctx.fillRect(-7 * S, -16 * S, 8 * S, 1 * S)
-      ctx.fillRect(-8 * S, -15 * S, 2 * S, 1 * S)
+      ctx.fillRect(0, -16 * S, 8 * S, 1 * S)
+      ctx.fillRect(7 * S, -15 * S, 2 * S, 1 * S)
       ctx.fillStyle = metal.dark
-      ctx.fillRect(-7 * S, -10 * S, 3 * S, 1 * S)
-      ctx.fillRect(-9 * S, -13 * S, 1 * S, 3 * S)
+      ctx.fillRect(5 * S, -10 * S, 3 * S, 1 * S)
+      ctx.fillRect(9 * S, -13 * S, 1 * S, 3 * S)
     }
     ctx.restore()
   }
