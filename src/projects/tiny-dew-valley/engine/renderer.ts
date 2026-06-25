@@ -978,12 +978,6 @@ export class GameRenderer {
       const lean = heave * 1.1 // body slops left/right
       const swell = cast > 0 ? 1 + 1.6 * Math.sin((1 - cast / 0.55) * Math.PI) : 0 // puff up mid-cast
       const squash = quiver * 0.6 + swell // base spreads, top flattens
-      // Throbbing aura — gets hot and bright while charging the spit.
-      const aglow = 0.08 + 0.1 * (0.5 + 0.5 * heave) + cast * 0.6
-      ctx.fillStyle = `rgba(120,240,110,${aglow})`
-      ctx.beginPath()
-      ctx.arc(x + 8 * S * monsterScale, y + 10 * S * monsterScale, (13 + swell * 2) * S * monsterScale, 0, Math.PI * 2)
-      ctx.fill()
 
       // Each band: [y, baseX, width, leanFactor] — lean fades toward the sticky base.
       const bands: [number, number, number, number][] = [
