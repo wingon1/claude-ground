@@ -1331,9 +1331,18 @@ export const QUALITY_GLYPH: Record<CropQuality, string> = {
 }
 
 // ---------------- Tool / DOM icons ----------------
-function bakeToolIcon(tool: string): HTMLCanvasElement {
+type ToolIconTone = 'base' | 'copper' | 'silver'
+
+function toolMetalPalette(tone: ToolIconTone) {
+  if (tone === 'silver') return { mid: '#d1d7e0', light: '#f4f6fa', dark: '#929ca9' }
+  if (tone === 'copper') return { mid: '#c8753a', light: '#f0ad68', dark: '#8f4c2e' }
+  return { mid: '#aeb4bf', light: '#d4d9e2', dark: '#737c88' }
+}
+
+function bakeToolIcon(tool: string, tone: ToolIconTone = 'base'): HTMLCanvasElement {
   const c = cv(T, T)
   const g = ctxOf(c)
+  const metal = toolMetalPalette(tone)
   switch (tool) {
     case 'hoe':
       // diagonal wooden handle (top-right → bottom-left) + flat metal blade
@@ -1359,31 +1368,31 @@ function bakeToolIcon(tool: string): HTMLCanvasElement {
     case 'axe':
       // vertical handle + chunky triangular steel head (top-left)
       px(g, 8, 3, 2, 10, '#9a6a3a')
-      px(g, 3, 3, 6, 3, '#c8ccd6')
-      px(g, 3, 3, 6, 1, '#eef0f6')
-      px(g, 4, 6, 4, 2, '#aeb2bc')
-      px(g, 8, 4, 1, 3, '#c8ccd6')
+      px(g, 3, 3, 6, 3, metal.mid)
+      px(g, 3, 3, 6, 1, metal.light)
+      px(g, 4, 6, 4, 2, metal.dark)
+      px(g, 8, 4, 1, 3, metal.mid)
       break
     case 'pickaxe':
       px(g, 8, 3, 2, 10, '#9a6a3a')
-      px(g, 3, 3, 10, 2, '#c8ccd6')
-      px(g, 3, 2, 10, 1, '#eef0f6')
-      px(g, 3, 5, 2, 2, '#aeb2bc')
-      px(g, 11, 5, 2, 2, '#aeb2bc')
+      px(g, 3, 3, 10, 2, metal.mid)
+      px(g, 3, 2, 10, 1, metal.light)
+      px(g, 3, 5, 2, 2, metal.dark)
+      px(g, 11, 5, 2, 2, metal.dark)
       break
     case 'scythe':
       // long handle + wide sweeping curved blade hooking down at the top
       px(g, 9, 4, 2, 9, '#9a6a3a')
-      px(g, 2, 4, 8, 2, '#cfd3dc')
-      px(g, 2, 4, 2, 4, '#cfd3dc')
-      px(g, 2, 3, 7, 1, '#eef0f6')
-      px(g, 3, 8, 2, 1, '#aeb2bc')
+      px(g, 2, 4, 8, 2, metal.mid)
+      px(g, 2, 4, 2, 4, metal.mid)
+      px(g, 2, 3, 7, 1, metal.light)
+      px(g, 3, 8, 2, 1, metal.dark)
       break
     case 'sword':
-      px(g, 7, 2, 2, 8, '#dfe3ec')
-      px(g, 8, 1, 1, 1, '#eef0f6')
-      px(g, 6, 4, 1, 5, '#aeb2bc')
-      px(g, 9, 4, 1, 5, '#ffffff')
+      px(g, 7, 2, 2, 8, metal.mid)
+      px(g, 8, 1, 1, 1, metal.light)
+      px(g, 6, 4, 1, 5, metal.dark)
+      px(g, 9, 4, 1, 5, metal.light)
       px(g, 4, 10, 8, 1, '#caa066')
       px(g, 7, 11, 2, 3, '#6e4426')
       px(g, 6, 13, 4, 1, '#9a6a3a')
@@ -1534,7 +1543,8 @@ export function iconURL(key: string, color?: string): string {
   if (UI_ICONS.has(key)) {
     canvas = bakeUIIcon(key)
   } else if (['hoe', 'watering_can', 'axe', 'pickaxe', 'scythe', 'sword', 'hand', 'backpack'].includes(key)) {
-    canvas = bakeToolIcon(key)
+    const tone = color === 'copper' || color === 'silver' ? color : 'base'
+    canvas = bakeToolIcon(key, tone)
   } else {
     canvas = bakeItemIcon(key, color)
   }

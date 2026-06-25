@@ -71,6 +71,7 @@ export interface ToolUpgradeView {
   level: number
   tone: ToolTone
   damage: number
+  currentDamage: number
   nextName: string | null
   nextDamage: number | null
   costGold: number

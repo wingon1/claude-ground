@@ -820,13 +820,13 @@ function BlacksmithModal({ game, ui }: { game: Game; ui: UISnapshot }) {
           {ui.toolUpgrades.map((tool) => (
             <div className={`tdv-craft tdv-tool-card tool-${tool.tone}${tool.maxed ? ' locked' : ''}`} key={tool.toolId}>
               <div className={`tdv-toolicon ${tool.tone}`}>
-                <img src={iconURL(tool.sprite)} alt={tool.name} />
+                <img src={iconURL(tool.sprite, tool.tone)} alt={tool.name} />
               </div>
               <div className="info">
                 <div className="nm">{tool.name}</div>
                 <div className="ds">{tool.useText}</div>
                 <div className="ds">
-                  현재 타격력 {tool.damage}{tool.nextName ? ` · ${tool.nextName} 타격력 ${tool.nextDamage}` : ' · 최대 등급'}
+                  현재 타격력 {tool.currentDamage}{tool.nextName ? ` → 강화 후 ${tool.damage}` : ' · 최대 등급'}
                 </div>
                 <div className="mats">
                   {!tool.maxed && <span className={`mat${ui.gold >= tool.costGold ? '' : ' miss'}`}>골드 {ui.gold}/{tool.costGold}</span>}

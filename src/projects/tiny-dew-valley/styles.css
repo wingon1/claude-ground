@@ -1013,16 +1013,14 @@
   place-items: center;
   border: 2px solid #737c88;
   border-radius: 2px;
-  background: #aeb4bf;
+  background: #00000018;
   box-shadow: inset 0 1px 0 #ffffff55, inset 0 -2px 0 #0000001f;
 }
 .tdv-toolicon.copper {
   border-color: #8f4c2e;
-  background: #c8753a;
 }
 .tdv-toolicon.silver {
   border-color: #929ca9;
-  background: #d1d7e0;
 }
 .tdv-toolicon img {
   width: 26px;

@@ -327,13 +327,16 @@ export function buildUISnapshot(host: SnapshotHost): UISnapshot {
     const costItems = costViews(next?.costItems ?? [])
     const owned = toolId !== 'sword' || host.countItem('sword') > 0
     const level = host.toolLevel(toolId)
+    const displayLevel = next?.level ?? level
+    const currentDamage = host.toolDamage(toolId)
     return {
       toolId,
-      name: host.toolName(toolId),
+      name: next?.name ?? host.toolName(toolId),
       useText: TOOL_USE_TEXT[toolId],
-      level,
-      tone: toolTone(level),
-      damage: host.toolDamage(toolId),
+      level: displayLevel,
+      tone: toolTone(displayLevel),
+      damage: next?.damage ?? currentDamage,
+      currentDamage,
       nextName: next?.name ?? null,
       nextDamage: next?.damage ?? null,
       costGold: next?.costGold ?? 0,
