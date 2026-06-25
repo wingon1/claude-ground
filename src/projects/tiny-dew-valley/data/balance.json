@@ -791,7 +791,7 @@
       "mine_guardian": {
         "hp": 32,
         "attack": 6,
-        "speed": 8,
+        "speed": 11,
         "passiveDropBonus": 0.35,
         "passiveWeights": {
           "attack": 1.5,
