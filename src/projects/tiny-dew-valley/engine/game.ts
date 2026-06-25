@@ -1475,7 +1475,21 @@ export class Game {
   }
 
   exitMine() {
-    if (this.phase !== 'playing' || this.area !== 'mine') return
+    if (this.phase !== 'playing' || this.area !== 'mine' || !this.nearMineExit()) return
+    this.phase = 'mineExitConfirm'
+    this.target = null
+    this.emit()
+  }
+
+  cancelExitMine() {
+    if (this.phase === 'mineExitConfirm') {
+      this.phase = 'playing'
+      this.emit()
+    }
+  }
+
+  confirmExitMine() {
+    if (this.phase !== 'mineExitConfirm' || this.area !== 'mine') return
     const p = this.state.player
     const ret = this.farmReturn
     this.area = 'farm'
@@ -1486,6 +1500,10 @@ export class Game {
     p.moving = false
     this.target = null
     this.workTile = null
+    this.mineFloor = 1
+    this.mineMonsters = []
+    this.farmReturn = null
+    this.phase = 'playing'
     this.fade = 1
     this.fadeDir = -1
     this.audio.sfx('select')

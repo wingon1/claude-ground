@@ -34,6 +34,7 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
     ui.phase === 'seed' ||
     ui.phase === 'order' ||
     ui.phase === 'sleepConfirm' ||
+    ui.phase === 'mineExitConfirm' ||
     menuOpen ||
     invOpen ||
     objectiveOpen
@@ -198,6 +199,7 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
       {ui.phase === 'seed' && <SeedModal game={game} ui={ui} />}
       {ui.phase === 'order' && <OrderModal game={game} ui={ui} />}
       {ui.phase === 'sleepConfirm' && <SleepConfirm game={game} ui={ui} />}
+      {ui.phase === 'mineExitConfirm' && <MineExitConfirm game={game} />}
       {menuOpen && ui.phase === 'playing' && (
         <SettingsModal
           game={game}
@@ -968,6 +970,21 @@ function SleepConfirm({ game, ui }: { game: Game; ui: UISnapshot }) {
         <div className="tdv-row">
           <button className="tdv-btn gold" onClick={() => game.confirmSleep()}>잘래요</button>
           <button className="tdv-btn ghost" onClick={() => game.cancelSleep()}>아직</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function MineExitConfirm({ game }: { game: Game }) {
+  return (
+    <div className="tdv-modal-bg" onClick={() => game.cancelExitMine()}>
+      <div className="tdv-modal" style={{ width: 'min(380px, 92vw)' }} onClick={(e) => e.stopPropagation()}>
+        <h2><Ic k="pickaxe" /> 광산 나가기</h2>
+        <div className="sub">밖으로 나가면 이번 탐험의 진행 층이 초기화되어, 다음 입장 시 1층부터 다시 시작합니다. 광산을 나갈까요?</div>
+        <div className="tdv-row">
+          <button className="tdv-btn gold" onClick={() => game.confirmExitMine()}>확인</button>
+          <button className="tdv-btn ghost" onClick={() => game.cancelExitMine()}>취소</button>
         </div>
       </div>
     </div>

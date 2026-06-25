@@ -377,7 +377,7 @@
       "sword": [
         {
           "level": 1,
-          "damage": 2,
+          "damage": 3,
           "costGold": 850,
           "costItems": [
             {
@@ -392,7 +392,7 @@
         },
         {
           "level": 2,
-          "damage": 3,
+          "damage": 5,
           "costGold": 2200,
           "costItems": [
             {
