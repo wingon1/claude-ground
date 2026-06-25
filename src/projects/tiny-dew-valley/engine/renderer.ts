@@ -414,14 +414,34 @@ export class GameRenderer {
     const ctx = this.ctx
     const x = this.wx(tx * T)
     const y = this.wy(ty * T)
-    ctx.fillStyle = '#7a4c2a'
-    ctx.fillRect(x + 5 * S, y + 4 * S, 2 * S, 11 * S)
-    ctx.fillRect(x + 10 * S, y + 4 * S, 2 * S, 11 * S)
-    ctx.fillStyle = '#d6aa63'
-    ctx.fillRect(x + 3 * S, y + 2 * S, 11 * S, 7 * S)
-    ctx.fillStyle = '#8f6230'
-    ctx.fillRect(x + 4 * S, y + 4 * S, 9 * S, 1 * S)
-    ctx.fillRect(x + 4 * S, y + 7 * S, 6 * S, 1 * S)
+    const R = (px: number, py: number, w: number, h: number, c: string) => {
+      ctx.fillStyle = c
+      ctx.fillRect(x + px * S, y + py * S, w * S, h * S)
+    }
+    // ground contact shadow + little dirt mound
+    ctx.fillStyle = 'rgba(0,0,0,0.16)'
+    ctx.fillRect(x + 5 * S, y + 14 * S, 8 * S, 2 * S)
+    R(6, 13, 6, 2, '#6e4626')
+    // post
+    R(8, 6, 2, 8, '#7a4c2a')
+    R(8, 6, 1, 8, '#90643a') // lit edge
+    R(8, 10, 2, 1, '#5e3a1e') // band
+    // board with grain + nails
+    R(3, 2, 12, 7, '#c89c5e')
+    R(3, 2, 12, 1, '#ddb878') // top light
+    R(3, 8, 12, 1, '#9a6e38') // bottom shade
+    R(3, 2, 1, 7, '#b88c50')
+    R(14, 2, 1, 7, '#a87c44')
+    R(4, 4, 10, 1, 'rgba(110,70,34,0.22)')
+    R(4, 6, 7, 1, 'rgba(110,70,34,0.18)')
+    R(4, 3, 1, 1, '#5e4a30')
+    R(13, 3, 1, 1, '#5e4a30')
+    // painted crop sprout emblem
+    R(8, 4, 1, 4, '#4f9a3a') // stem
+    R(6, 5, 2, 1, '#6fbf4a') // left leaf
+    R(6, 4, 1, 1, '#6fbf4a')
+    R(9, 5, 2, 1, '#6fbf4a') // right leaf
+    R(10, 4, 1, 1, '#6fbf4a')
   }
 
   private orderNpcPosition(): { x: number; y: number; dir: Direction } {

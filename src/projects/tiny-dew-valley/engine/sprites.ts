@@ -329,12 +329,29 @@ function bakeGrass(variant: number): HTMLCanvasElement {
 function bakeSoil(wet: boolean): HTMLCanvasElement {
   const c = cv(T, T)
   const g = ctxOf(c)
-  const baseC = wet ? '#5a3a22' : '#8a5a34'
-  const furrow = wet ? '#3f2817' : '#6e4626'
-  px(g, 0, 0, T, T, baseC)
-  for (let y = 2; y < T; y += 4) px(g, 1, y, T - 2, 2, furrow)
-  px(g, 0, 0, T, 1, 'rgba(0,0,0,0.15)')
-  px(g, 0, 0, 1, T, 'rgba(0,0,0,0.12)')
+  const base = wet ? '#553620' : '#7e5230'
+  const ridge = wet ? '#6a472a' : '#956339' // sun-lit ridge crown
+  const groove = wet ? '#34200f' : '#5c3b20' // shadowed furrow
+  const speck = wet ? '#46301e' : '#6d472a'
+  px(g, 0, 0, T, T, base)
+  // Plowed rows: lit crown + shadow groove, full width so tiles blend seamlessly.
+  for (let y = 0; y < T; y += 4) {
+    px(g, 0, y, T, 1, ridge)
+    px(g, 0, y + 3, T, 1, groove)
+  }
+  // Crumbly soil texture.
+  const specks: [number, number][] = [
+    [2, 1], [7, 2], [12, 1], [4, 5], [10, 6], [6, 9], [13, 10], [3, 13], [9, 13], [11, 14],
+  ]
+  for (const [sx, sy] of specks) px(g, sx, sy, 1, 1, speck)
+  px(g, 5, 6, 1, 1, wet ? '#5f5040' : '#9a8a68') // small pebbles
+  px(g, 11, 2, 1, 1, wet ? '#5f5040' : '#9a8a68')
+  if (wet) {
+    // Damp sheen catching light in the furrows.
+    px(g, 3, 7, 2, 1, 'rgba(126,156,186,0.16)')
+    px(g, 9, 15, 2, 1, 'rgba(126,156,186,0.16)')
+    px(g, 7, 11, 1, 1, 'rgba(126,156,186,0.16)')
+  }
   return c
 }
 
