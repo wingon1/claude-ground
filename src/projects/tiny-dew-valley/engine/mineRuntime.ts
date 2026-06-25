@@ -43,7 +43,9 @@ export function buildMineTiles(floor: number): Tile[] {
   }
   spots.forEach(([x, y], i) => {
     const t = tiles[idx(x, y)]
-    setObstacle(t, orePlan[i] ?? 'rock')
+    const ore = orePlan[i] ?? (floor === 10 ? null : 'rock')
+    if (!ore) return
+    setObstacle(t, ore)
     t.metadata.mineNode = true
   })
   return tiles

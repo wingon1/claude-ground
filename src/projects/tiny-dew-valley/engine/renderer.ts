@@ -831,17 +831,30 @@ export class GameRenderer {
     const def = MONSTERS[monster.id]
     const ctx = this.ctx
     const hit = monster.hitT > 0
-    const x = this.wx(monster.x - 8)
-    const y = this.wy(monster.y - 17 + (hit ? -2 : 0))
+    const monsterScale = monster.id === 'mine_guardian' ? 2.4 : 1
+    const spriteW = 16 * monsterScale
+    const spriteH = monster.id === 'mine_guardian' ? 18 * monsterScale : 17
+    const x = this.wx(monster.x - spriteW / 2)
+    const y = this.wy(monster.y - spriteH + (hit ? -2 : 0))
     const tt = performance.now() / 1000
     const ph = monster.x * 0.7 + monster.y * 0.3 // de-sync animation per monster
     const r = (px: number, py: number, w: number, h: number, c: string) => {
       ctx.fillStyle = c
-      ctx.fillRect(x + px * S, y + py * S, w * S, h * S)
+      ctx.fillRect(
+        x + px * S * monsterScale,
+        y + py * S * monsterScale,
+        w * S * monsterScale,
+        h * S * monsterScale,
+      )
     }
     // contact shadow
     ctx.fillStyle = 'rgba(0,0,0,0.22)'
-    ctx.fillRect(this.wx(monster.x - 6), this.wy(monster.y - 3), 12 * S, 3 * S)
+    ctx.fillRect(
+      this.wx(monster.x - (6 * monsterScale)),
+      this.wy(monster.y - 3),
+      12 * S * monsterScale,
+      3 * S,
+    )
 
     if (monster.id === 'slime') {
       // Gooey blob: rounded dome, glossy highlight, jiggling base, drip.
@@ -945,7 +958,7 @@ export class GameRenderer {
       const pulse = 0.5 + 0.5 * Math.sin(tt * 2.5 + ph)
       ctx.fillStyle = `rgba(240,208,106,${0.1 + 0.12 * pulse})` // pulsing aura
       ctx.beginPath()
-      ctx.arc(x + 8 * S, y + 8 * S, 14 * S, 0, Math.PI * 2)
+      ctx.arc(x + 8 * S * monsterScale, y + 8 * S * monsterScale, 14 * S * monsterScale, 0, Math.PI * 2)
       ctx.fill()
       r(2, 2, 12, 15, def.color) // body
       r(0, 5, 3, 9, def.color) // shoulders/arms
@@ -963,24 +976,26 @@ export class GameRenderer {
       r(4, 13, 1, 2, gem) // crystal accents
       r(11, 13, 1, 2, gem)
       ctx.fillStyle = `rgba(255,225,120,${0.6 + 0.4 * pulse})`
-      ctx.fillRect(x + 5 * S, y + 1 * S, 2 * S, 1 * S) // glowing visor eyes
-      ctx.fillRect(x + 9 * S, y + 1 * S, 2 * S, 1 * S)
+      ctx.fillRect(x + 5 * S * monsterScale, y + 1 * S * monsterScale, 2 * S * monsterScale, 1 * S * monsterScale) // glowing visor eyes
+      ctx.fillRect(x + 9 * S * monsterScale, y + 1 * S * monsterScale, 2 * S * monsterScale, 1 * S * monsterScale)
       ctx.fillStyle = `rgba(255,232,150,${0.55 + 0.45 * pulse})`
-      ctx.fillRect(x + 6 * S, y + 7 * S, 4 * S, 4 * S) // gem core
+      ctx.fillRect(x + 6 * S * monsterScale, y + 7 * S * monsterScale, 4 * S * monsterScale, 4 * S * monsterScale) // gem core
       r(7, 8, 2, 2, '#fff7d0')
     }
 
     if (monster.hp < monster.maxHp) {
-      const barY = monster.id === 'mine_guardian' ? monster.y - 28 : monster.y - 24
-      this.drawWorldHpBar(monster.x - 8, barY, monster.hp, monster.maxHp, S)
+      const barY = monster.id === 'mine_guardian' ? monster.y - 48 : monster.y - 24
+      const barX = monster.id === 'mine_guardian' ? monster.x - 18 : monster.x - 5
+      const barW = monster.id === 'mine_guardian' ? 36 : 10
+      this.drawWorldHpBar(barX, barY, monster.hp, monster.maxHp, S, barW)
     }
   }
 
-  private drawWorldHpBar(x: number, y: number, hp: number, maxHp: number, S: number) {
+  private drawWorldHpBar(x: number, y: number, hp: number, maxHp: number, S: number, width = 10) {
     const ctx = this.ctx
-    const sx = this.wx(x + 3)
+    const sx = this.wx(x)
     const sy = this.wy(y)
-    const w = 10 * S
+    const w = width * S
     const h = Math.max(2, 2 * S)
     ctx.fillStyle = 'rgba(30,24,20,0.55)'
     ctx.fillRect(sx, sy, w, h)

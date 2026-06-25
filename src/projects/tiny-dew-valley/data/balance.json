@@ -1025,15 +1025,8 @@
       },
       {
         "floor": 10,
-        "ores": {
-          "rock": 2,
-          "iron_ore": 8
-        },
+        "ores": {},
         "monsters": [
-          {
-            "id": "stone_golem",
-            "count": 4
-          },
           {
             "id": "mine_guardian",
             "count": 1
