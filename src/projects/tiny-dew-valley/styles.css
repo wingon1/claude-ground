@@ -161,6 +161,8 @@
   box-shadow: none;
   backdrop-filter: blur(2px);
   padding: 5px 7px;
+  cursor: pointer;
+  text-align: left;
 }
 .tdv-objective.inline {
   position: static;
@@ -210,6 +212,10 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.tdv-objective.pinned .title {
+  font-size: 10px;
+  line-height: 1.15;
+}
 .tdv-objective .progress {
   font-size: 10px;
   font-weight: 900;
@@ -220,6 +226,15 @@
   font-size: 10px;
   line-height: 1.25;
   color: #5a4632;
+}
+.tdv-objective.pinned .detail {
+  margin-top: 2px;
+  font-size: 8px;
+  line-height: 1.2;
+  color: rgba(74, 52, 34, 0.78);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .tdv-objective .bar {
   height: 3px;

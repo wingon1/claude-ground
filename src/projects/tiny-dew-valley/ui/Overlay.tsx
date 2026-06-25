@@ -107,6 +107,7 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
         <ObjectiveCard
           objective={ui.objective}
           pinned
+          onOpen={() => setObjectiveOpen(true)}
           onClose={() => setHiddenObjectiveKey(objectiveKey)}
         />
       )}
@@ -269,20 +270,43 @@ function ObjectiveProgressBar({ objective }: { objective: UISnapshot['objective'
 function ObjectiveCard({
   objective,
   pinned,
+  onOpen,
   onClose,
 }: {
   objective: NonNullable<UISnapshot['objective']>
   pinned?: boolean
+  onOpen?: () => void
   onClose?: () => void
 }) {
   if (pinned) {
     return (
-      <div className="tdv-objective pinned">
+      <div
+        className="tdv-objective pinned"
+        role="button"
+        tabIndex={0}
+        onClick={onOpen}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onOpen?.()
+          }
+        }}
+      >
         <div className="compact">
           <div className="title">{objective.title}</div>
           <div className="progress">{objective.progress}/{objective.max}</div>
-          <button className="close" onClick={onClose} aria-label="목표 숨기기">×</button>
+          <button
+            className="close"
+            onClick={(e) => {
+              e.stopPropagation()
+              onClose?.()
+            }}
+            aria-label="목표 숨기기"
+          >
+            ×
+          </button>
         </div>
+        <div className="detail">{objective.detail}</div>
         <ObjectiveProgressBar objective={objective} />
       </div>
     )
