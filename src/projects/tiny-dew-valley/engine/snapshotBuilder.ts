@@ -36,6 +36,7 @@ import type {
   CookingFireView,
   CostItemView,
   CropChoiceView,
+  EquippedToolView,
   FieldPlotView,
   InvSlotView,
   ObjectiveTaskView,
@@ -65,6 +66,17 @@ const TOOL_USE_TEXT: Record<UpgradeableToolId, string> = {
   pickaxe: '광산의 돌과 광석을 캘 때 사용합니다.',
   scythe: '다 자란 작물을 수확할 때 사용합니다.',
   sword: '광산 몬스터와 싸울 때 사용합니다.',
+}
+
+const TOOL_LABELS: Record<UpgradeableToolId, [string, string, string]> = {
+  axe: ['낡은 도끼', '구리 도끼', '철 도끼'],
+  pickaxe: ['낡은 곡괭이', '구리 곡괭이', '철 곡괭이'],
+  scythe: ['낡은 낫', '구리 낫', '철 낫'],
+  sword: ['낡은 검', '구리 검', '철 검'],
+}
+
+function equippedToolName(toolId: UpgradeableToolId, level: number): string {
+  return TOOL_LABELS[toolId][Math.max(0, Math.min(2, level))] ?? `${TOOL_LABELS[toolId][0]} Lv.${level}`
 }
 
 export interface SnapshotHost {
@@ -148,6 +160,7 @@ function emptySnapshot(host: SnapshotHost): UISnapshot {
     blacksmithBuy: [],
     buildOptions: [],
     buildPermits: [],
+    equippedTools: [],
     toolUpgrades: [],
     passives: [],
     passiveSlots: [],
@@ -352,6 +365,21 @@ export function buildUISnapshot(host: SnapshotHost): UISnapshot {
       sprite: toolId,
     }
   })
+
+  const equippedTools: EquippedToolView[] = UPGRADEABLE_TOOLS
+    .filter((toolId) => toolId !== 'sword' || host.countItem('sword') > 0)
+    .map((toolId) => {
+      const level = host.toolLevel(toolId)
+      return {
+        toolId,
+        name: equippedToolName(toolId, level),
+        useText: TOOL_USE_TEXT[toolId],
+        level,
+        tone: toolTone(level),
+        damage: host.toolDamage(toolId),
+        sprite: toolId,
+      }
+    })
 
   const fieldLevel = host.fieldExpansionLevel()
   const buildOptions: BuildOptionView[] = BUILD_OPTIONS.map((option) => {
@@ -558,6 +586,7 @@ export function buildUISnapshot(host: SnapshotHost): UISnapshot {
     blacksmithBuy,
     buildOptions,
     buildPermits,
+    equippedTools,
     toolUpgrades,
     passives,
     passiveSlots,

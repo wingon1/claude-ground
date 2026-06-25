@@ -494,7 +494,7 @@ function InventoryModal({
   setSel: (i: number | null) => void
   onClose: () => void
 }) {
-  const [tab, setTab] = useState<'items' | 'passives'>('items')
+  const [tab, setTab] = useState<'items' | 'equipment' | 'passives'>('items')
   const slot = sel != null ? ui.inventory[sel] : null
   return (
     <div className="tdv-modal-bg" onClick={onClose}>
@@ -503,6 +503,7 @@ function InventoryModal({
         <div className="sub">수확물·자원을 모아 잡화점에서 팔아요.</div>
         <div className="tdv-tabs">
           <button className={`tdv-tab ${tab === 'items' ? 'on' : ''}`} onClick={() => setTab('items')}>{'\uC544\uC774\uD15C'}</button>
+          <button className={`tdv-tab ${tab === 'equipment' ? 'on' : ''}`} onClick={() => setTab('equipment')}>장비</button>
           <button className={`tdv-tab ${tab === 'passives' ? 'on' : ''}`} onClick={() => setTab('passives')}>{'\uD328\uC2DC\uBE0C'}</button>
         </div>
         {tab === 'items' && (
@@ -527,6 +528,28 @@ function InventoryModal({
           </div>
         )}
           </>
+        )}
+        {tab === 'equipment' && (
+          <div className="tdv-craftlist">
+            {ui.equippedTools.map((tool) => (
+              <div className="tdv-craft" key={tool.toolId}>
+                <div className="tdv-crafticon">
+                  <img src={iconURL(tool.sprite, tool.tone)} alt={tool.name} />
+                </div>
+                <div className="info">
+                  <div className="nm">{tool.name}</div>
+                  <div className="ds">{tool.useText}</div>
+                  <div className="mats">
+                    <span className="mat">Lv.{tool.level}</span>
+                    <span className="mat">타격력 {tool.damage}</span>
+                  </div>
+                </div>
+                <div className="act">
+                  <span className="owned">장착중</span>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
         {tab === 'passives' && (
           <div className="tdv-passive-panel">

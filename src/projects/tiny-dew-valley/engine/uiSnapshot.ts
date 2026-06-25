@@ -81,6 +81,16 @@ export interface ToolUpgradeView {
   sprite: string
 }
 
+export interface EquippedToolView {
+  toolId: UpgradeableToolId
+  name: string
+  useText: string
+  level: number
+  tone: ToolTone
+  damage: number
+  sprite: string
+}
+
 export type ToolTone = 'base' | 'copper' | 'silver'
 
 export interface PassiveView {
@@ -228,6 +238,7 @@ export interface UISnapshot {
   blacksmithBuy: ShopBuyView[]
   buildOptions: BuildOptionView[]
   buildPermits: BuildPermitView[]
+  equippedTools: EquippedToolView[]
   toolUpgrades: ToolUpgradeView[]
   passives: PassiveView[]
   passiveSlots: PassiveSlotView[]
