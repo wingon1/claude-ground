@@ -1409,18 +1409,11 @@
 }
 .tdv-intro-newspaper-img {
   width: 100%;
-  max-height: calc(94vh - 108px);
+  max-height: 94vh;
   object-fit: contain;
   image-rendering: pixelated;
   user-select: none;
   -webkit-user-drag: none;
-}
-.tdv-intro-skip-inline {
-  width: 100%;
-}
-.tdv-intro-next {
-  width: 100%;
-  margin-top: 0;
 }
 .tdv-intro-arrival {
   background:
@@ -1508,13 +1501,6 @@
   font-size: 13px;
   font-weight: 800;
   line-height: 1.35;
-}
-.tdv-forest-scene .tdv-intro-next {
-  position: absolute;
-  left: 14px;
-  right: 14px;
-  bottom: 14px;
-  width: auto;
 }
 @media (max-width: 360px) {
   .tdv-intro-newspaper-stage {

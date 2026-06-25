@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Game } from '../engine/game'
 import type { UISnapshot } from '../engine/uiSnapshot'
 import { iconURL } from '../engine/sprites'
@@ -228,16 +228,21 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
 function IntroScreen({ game, ui }: { game: Game; ui: UISnapshot }) {
   const step = INTRO_STEPS[0]
   const finish = () => game.finishIntro()
+  useEffect(() => {
+    if (ui.introScene !== 'newspaper') return
+    const timer = window.setTimeout(() => game.startIntroArrival(), 3000)
+    return () => window.clearTimeout(timer)
+  }, [game, ui.introScene])
+
   if (ui.introScene === 'arrival') {
     return <button className="tdv-intro-skip tdv-intro-skip-world" onClick={finish}>Skip</button>
   }
 
   return (
     <div className={`tdv-intro tdv-intro-${step.kind}`}>
+      <button className="tdv-intro-skip" onClick={finish}>Skip</button>
       <div className="tdv-intro-newspaper-stage">
         <img className="tdv-intro-newspaper-img" src={introNewspaper} alt={step.headline} draggable={false} />
-        <button className="tdv-bigbtn ghost tdv-intro-skip-inline" onClick={finish}>Skip</button>
-        <button className="tdv-bigbtn tdv-intro-next" onClick={() => game.startIntroArrival()}>Next</button>
       </div>
     </div>
   )
