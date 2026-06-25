@@ -78,6 +78,68 @@ export const LOCATIONS: WorldLocations = {
 // Pre-tilled farm field. Crops are auto-planted here when the player idles on
 // an empty plot and auto-harvested when ripe — no hoe/watering required.
 export const FARM = { x: 31, y: 16, w: FIELD_SIZE, h: FIELD_SIZE }
+const TENT_SIDE_PROPS_AREA = { x: 26, y: 7, w: 5, h: 5 }
+
+const NO_WILD_RESPAWN_META = [
+  'animalFarm',
+  'bed',
+  'blacksmith',
+  'blacksmithBlock',
+  'blacksmithFloor',
+  'buildBoard',
+  'cookingFire',
+  'cookingFireBlock',
+  'fieldId',
+  'fieldSign',
+  'invisibleBlock',
+  'mineBoard',
+  'mineEntrance',
+  'mineWall',
+  'storeCounter',
+  'storeInterior',
+  'tentSideProps',
+]
+
+function hasProtectedObject(t: Tile): boolean {
+  if (t.terrain === 'blocked') return true
+  return NO_WILD_RESPAWN_META.some((key) => t.metadata[key] != null)
+}
+
+function clearRespawnMarker(t: Tile) {
+  delete t.metadata.respawnAt
+  delete t.metadata.respawnKind
+}
+
+export function canWildObstacleSpawn(tiles: Tile[], x: number, y: number, padding = 1): boolean {
+  if (!inBounds(x, y)) return false
+  const center = tiles[idx(x, y)]
+  if (center.terrain !== 'grass' || center.cropId || center.obstacle || hasProtectedObject(center)) return false
+  for (let ty = y - padding; ty <= y + padding; ty++) {
+    for (let tx = x - padding; tx <= x + padding; tx++) {
+      if (!inBounds(tx, ty)) return false
+      if (hasProtectedObject(tiles[idx(tx, ty)])) return false
+    }
+  }
+  return true
+}
+
+export function stampTentSideProps(tiles: Tile[]) {
+  rect(
+    tiles,
+    TENT_SIDE_PROPS_AREA.x,
+    TENT_SIDE_PROPS_AREA.y,
+    TENT_SIDE_PROPS_AREA.x + TENT_SIDE_PROPS_AREA.w - 1,
+    TENT_SIDE_PROPS_AREA.y + TENT_SIDE_PROPS_AREA.h - 1,
+    (t) => {
+      t.terrain = 'grass'
+      clearObstacle(t)
+      clearRespawnMarker(t)
+      t.cropId = null
+      t.growthStage = 0
+      t.metadata.tentSideProps = true
+    },
+  )
+}
 
 // Stamps the general store's static structure onto a tiles array.
 // The store is an open-front stall: solid back walls, with a walk-in
@@ -286,6 +348,7 @@ export function generateWorld(): Tile[] {
 
   // ---- Player tent (north-east) ----
   stampFarmhouse(tiles)
+  stampTentSideProps(tiles)
 
   // ---- General Store (beside the farmhouse) ----
   stampStore(tiles)
@@ -300,7 +363,7 @@ export function generateWorld(): Tile[] {
     for (let x = w.x; x < w.x + w.w; x++) {
       if (!inBounds(x, y)) continue
       const t = tiles[idx(x, y)]
-      if (t.terrain !== 'grass') continue
+      if (!canWildObstacleSpawn(tiles, x, y)) continue
       const r = Math.random()
       if (r < 0.28) setObstacle(t, 'tree')
       else if (r < 0.33) setObstacle(t, 'weed')
@@ -326,7 +389,7 @@ export function generateWorld(): Tile[] {
   for (let y = 4; y < 26; y++) {
     for (let x = 18; x < 38; x++) {
       const t = tiles[idx(x, y)]
-      if (t.terrain !== 'grass' || t.obstacle) continue
+      if (!canWildObstacleSpawn(tiles, x, y)) continue
       const r = Math.random()
       if (r < 0.05) setObstacle(t, 'weed')
       else if (r < 0.065) setObstacle(t, 'stump')

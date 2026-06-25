@@ -63,6 +63,7 @@ import { RECIPES } from '../data/recipes'
 import { INTRO_ARRIVAL_LINES } from '../data/intro'
 import { OBSTACLE_DROP, OBSTACLE_HP, OBSTACLE_SOLID, TERRAIN_SOLID } from '../data/tiles'
 import {
+  canWildObstacleSpawn,
   generateWorld,
   idx,
   inBounds,
@@ -72,6 +73,7 @@ import {
   stampCookingFire,
   stampFarmhouse,
   stampMine,
+  stampTentSideProps,
   WORLD_H,
   WORLD_W,
 } from './world'
@@ -299,6 +301,7 @@ export class Game {
     this.applyMineState()
     this.applyAnimalFarms()
     stampFarmhouse(this.state.tiles)
+    stampTentSideProps(this.state.tiles)
     stampCookingFire(this.state.tiles, this.cookingFireBuilt())
     this.initRuntime()
     this.introScene = null
@@ -1162,6 +1165,11 @@ export class Game {
       if (now >= at) {
         const kind = (t.metadata.respawnKind as string) || 'tree'
         if (this.isMineResource(kind) && t.metadata.mineNode !== true) {
+          delete t.metadata.respawnAt
+          delete t.metadata.respawnKind
+          continue
+        }
+        if (!canWildObstacleSpawn(this.state.tiles, t.x, t.y)) {
           delete t.metadata.respawnAt
           delete t.metadata.respawnKind
           continue
