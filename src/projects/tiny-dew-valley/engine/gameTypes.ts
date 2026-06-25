@@ -41,4 +41,31 @@ export interface MineMonster {
   maxHp: number
   hitT: number
   attackT: number
+  // Boss (mine_guardian) only — gooey ooze behaviour.
+  castT?: number // attack telegraph timer (mouth swells, body puffs)
+  fireT?: number // countdown until the queued spray launches
+  trailT?: number // cadence accumulator for dropping slime trails
+}
+
+/** Fading liquid smear the ooze boss leaves behind / splatter decals. */
+export interface SlimeTrail {
+  x: number
+  y: number
+  life: number
+  max: number
+  r: number
+  seed: number
+}
+
+/** A glob of dirty liquid hurled by the ooze boss. */
+export interface SlimeBlob {
+  x: number
+  y: number
+  vx: number
+  vy: number
+  life: number
+  max: number
+  r: number
+  spin: number
+  hit: boolean
 }

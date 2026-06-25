@@ -7,7 +7,7 @@ import { DEFAULT_FIELD_CROP, FIELD_PLOTS, FIELD_SIZE } from '../data/fields'
 import { OBSTACLE_HP } from '../data/tiles'
 import { idx, inBounds, LOCATIONS, WORLD_H, WORLD_W } from './world'
 import { bakeItemIcon, T, type Sprites } from './sprites'
-import type { Firefly, MineMonster, Particle, Period, SpeechBubble, SpeechSpeaker } from './gameTypes'
+import type { Firefly, MineMonster, Particle, Period, SlimeBlob, SlimeTrail, SpeechBubble, SpeechSpeaker } from './gameTypes'
 import type { UpgradeableToolId } from '../data/toolUpgrades'
 import type { OrderView, UIPhase, WeatherView } from './uiSnapshot'
 
@@ -39,6 +39,8 @@ export interface RenderHost {
   area: 'farm' | 'mine'
   tiles: Tile[]
   mineMonsters: MineMonster[]
+  slimeTrails: SlimeTrail[]
+  slimeBlobs: SlimeBlob[]
   fade: number
   particles: Particle[]
   fireflies: Firefly[]
@@ -79,6 +81,8 @@ export class GameRenderer {
   private get cam() { return this.host.cam }
   private get area() { return this.host.area }
   private get mineMonsters() { return this.host.mineMonsters }
+  private get slimeTrails() { return this.host.slimeTrails }
+  private get slimeBlobs() { return this.host.slimeBlobs }
   private get fade() { return this.host.fade }
   private get particles() { return this.host.particles }
   private get fireflies() { return this.host.fireflies }
@@ -150,6 +154,8 @@ export class GameRenderer {
         else this.drawGround(t, wf, S)
       }
     }
+    // Fading slime smears sit on the floor, beneath every entity.
+    if (this.area === 'mine') this.drawSlimeTrails(S)
     // buildings
     // Tent (player home): 48×48 canvas over the 30–32 × 7–8 footprint,
     // base resting on the front (row 9) where the bed/spawn sits.
@@ -187,6 +193,9 @@ export class GameRenderer {
     if (this.area === 'mine') {
       for (const monster of this.mineMonsters) {
         draws.push({ y: monster.y, fn: () => this.drawMonster(monster, S) })
+      }
+      for (const blob of this.slimeBlobs) {
+        draws.push({ y: blob.y, fn: () => this.drawSlimeBlob(blob, S) })
       }
     }
     draws.push({
@@ -952,35 +961,100 @@ export class GameRenderer {
       ctx.fillStyle = `rgba(140,215,255,${0.5 + 0.5 * pulse})`
       ctx.fillRect(x + 7 * S, y + 8 * S, 2 * S, 2 * S) // glowing chest core
     } else {
-      // mine_guardian — boss: armored crystalline sentinel with crown spikes, gem core, aura.
-      const gDark = '#4a3266'
-      const gem = def.accent
-      const pulse = 0.5 + 0.5 * Math.sin(tt * 2.5 + ph)
-      ctx.fillStyle = `rgba(240,208,106,${0.1 + 0.12 * pulse})` // pulsing aura
+      // mine_guardian — boss: a heaving mound of dirty ooze with a gaping maw.
+      // Body is built from horizontal bands so it can squash/stretch and slop side
+      // to side. A telegraph (castT) swells the whole blob just before it spits.
+      const body = def.color // vivid slime green
+      const lite = '#8ef06a' // wet highlight
+      const lite2 = '#caff9c' // glossy crest
+      const shade = '#2f9a3a' // surface shadow band
+      const shade2 = '#1d6e2c' // deepest crease
+      const mawDeep = '#241433' // gaping mouth (purple-black like the reference)
+      const mawMid = '#3d2a55'
+      const cast = monster.castT ?? 0 // >0 while winding up a spit attack
+      // Two out-of-phase wobbles: a slow heave + a faster jelly quiver = 꿀렁꿀렁.
+      const heave = Math.sin(tt * 2.4 + ph)
+      const quiver = Math.sin(tt * 5.1 + ph * 1.7)
+      const lean = heave * 1.1 // body slops left/right
+      const swell = cast > 0 ? 1 + 1.6 * Math.sin((1 - cast / 0.55) * Math.PI) : 0 // puff up mid-cast
+      const squash = quiver * 0.6 + swell // base spreads, top flattens
+      // Throbbing aura — gets hot and bright while charging the spit.
+      const aglow = 0.08 + 0.1 * (0.5 + 0.5 * heave) + cast * 0.6
+      ctx.fillStyle = `rgba(120,240,110,${aglow})`
       ctx.beginPath()
-      ctx.arc(x + 8 * S * monsterScale, y + 8 * S * monsterScale, 14 * S * monsterScale, 0, Math.PI * 2)
+      ctx.arc(x + 8 * S * monsterScale, y + 10 * S * monsterScale, (13 + swell * 2) * S * monsterScale, 0, Math.PI * 2)
       ctx.fill()
-      r(2, 2, 12, 15, def.color) // body
-      r(0, 5, 3, 9, def.color) // shoulders/arms
-      r(13, 5, 3, 9, def.color)
-      r(2, 12, 12, 5, gDark) // lower armor shade
-      r(4, 6, 8, 6, gDark) // chest plate
-      r(4, -1, 8, 4, def.color) // helmet
-      r(3, -3, 2, 3, gem) // crown spikes
-      r(11, -3, 2, 3, gem)
-      r(7, -4, 2, 3, gem)
-      r(0, 4, 2, 2, gem) // shoulder spikes
-      r(14, 4, 2, 2, gem)
-      r(0, 12, 3, 3, gDark) // fists
-      r(13, 12, 3, 3, gDark)
-      r(4, 13, 1, 2, gem) // crystal accents
-      r(11, 13, 1, 2, gem)
-      ctx.fillStyle = `rgba(255,225,120,${0.6 + 0.4 * pulse})`
-      ctx.fillRect(x + 5 * S * monsterScale, y + 1 * S * monsterScale, 2 * S * monsterScale, 1 * S * monsterScale) // glowing visor eyes
-      ctx.fillRect(x + 9 * S * monsterScale, y + 1 * S * monsterScale, 2 * S * monsterScale, 1 * S * monsterScale)
-      ctx.fillStyle = `rgba(255,232,150,${0.55 + 0.45 * pulse})`
-      ctx.fillRect(x + 6 * S * monsterScale, y + 7 * S * monsterScale, 4 * S * monsterScale, 4 * S * monsterScale) // gem core
-      r(7, 8, 2, 2, '#fff7d0')
+
+      // Each band: [y, baseX, width, leanFactor] — lean fades toward the sticky base.
+      const bands: [number, number, number, number][] = [
+        [1, 6, 4, 1.0],
+        [2, 5, 6, 0.95],
+        [3, 4, 8, 0.85],
+        [4, 3, 10, 0.7],
+        [5, 2, 12, 0.55],
+        [6, 2, 13, 0.42],
+        [7, 1, 14, 0.3],
+        [8, 1, 14, 0.2],
+        [9, 1, 15, 0.12],
+        [10, 0, 16, 0.06],
+        [11, 0, 16, 0.0],
+        [12, 0, 16, 0.0],
+      ]
+      for (const [by, bx, bw, lf] of bands) {
+        const off = Math.round(lean * lf)
+        const wExtra = Math.round(squash * (1 - lf) * 1.4)
+        r(bx + off - wExtra / 2, by, bw + wExtra, 1, body)
+      }
+      // Melting base — wide slumped puddle that jiggles independently.
+      const spread = Math.round(squash * 1.6)
+      r(-1 - spread, 13, 18 + spread * 2, 1, body)
+      r(-2 - spread, 14, 20 + spread * 2, 1, body)
+      r(0 - spread, 15, 16 + spread * 2, 1, shade)
+      // Drips oozing off the rim (offset by quiver so they sway).
+      const dq = Math.round(quiver)
+      r(1 + dq, 13, 2, 3, body)
+      r(13 - dq, 12, 2, 4, body)
+      r(7, 14, 2, 2, body)
+
+      // Surface shading creases — lower-right is in shadow.
+      r(9, 9, 6, 1, shade)
+      r(10, 10, 6, 2, shade)
+      r(3, 11, 12, 1, shade2)
+      r(8, 12, 7, 1, shade2)
+      // Glossy highlights catching the light on the upper-left dome (matches ref).
+      r(3 + Math.round(lean), 3, 3, 1, lite2)
+      r(2 + Math.round(lean), 4, 2, 1, lite2)
+      r(4 + Math.round(lean), 4, 4, 1, lite)
+      r(2 + Math.round(lean), 6, 2, 3, lite)
+      r(5, 8, 2, 1, lite)
+      // Travelling sheen blob that slides across the body.
+      const sheen = 2 + Math.floor((tt * 3 + ph) % 8)
+      r(sheen, 7, 1, 2, lite2)
+
+      // The gaping maw — big dark cavity on the right, yawns wider while casting.
+      const mawW = 5 + Math.round(swell)
+      const mawY = 6
+      r(9, mawY, mawW, 6 + Math.round(swell), mawDeep)
+      r(8, mawY + 1, 1, 5, mawDeep)
+      r(9, mawY, mawW, 1, mawMid) // upper lip rim
+      r(9, mawY + 5 + Math.round(swell), mawW, 1, mawMid) // lower lip rim
+      r(10, mawY + 2, 2, 2, mawMid) // murky throat
+      // Dripping spittle hanging from the upper lip while charging.
+      if (cast > 0) {
+        r(11, mawY + 1, 1, 2 + Math.round(swell * 1.5), lite)
+        r(13, mawY + 1, 1, 1 + Math.round(swell), lite)
+      }
+      // Two beady glowing eyes peering above the maw.
+      const eyeGlow = 0.7 + 0.3 * Math.sin(tt * 4 + ph) + cast * 0.5
+      ctx.fillStyle = `rgba(220,255,140,${Math.min(1, eyeGlow)})`
+      ctx.fillRect(x + 9 * S * monsterScale, y + 3 * S * monsterScale, 2 * S * monsterScale, 2 * S * monsterScale)
+      ctx.fillRect(x + 13 * S * monsterScale, y + 3 * S * monsterScale, 1 * S * monsterScale, 2 * S * monsterScale)
+      r(9, 3, 1, 1, '#1c2a10') // pupils
+      r(13, 3, 1, 1, '#1c2a10')
+      // Dark outline freckles / grime so it reads as filthy ooze.
+      r(2, 9, 1, 1, shade2)
+      r(14, 7, 1, 1, shade2)
+      r(5, 12, 1, 1, shade2)
     }
 
     if (monster.hp < monster.maxHp) {
@@ -1486,6 +1560,77 @@ export class GameRenderer {
     ctx.strokeStyle = 'rgba(255,255,255,0.6)'
     ctx.lineWidth = Math.max(1, S / 2)
     ctx.strokeRect(this.wx(w.x * T) + 1, this.wy(w.y * T) + 1, T * S - 2, T * S - 2)
+  }
+
+  private drawSlimeTrails(S: number) {
+    const ctx = this.ctx
+    const tt = performance.now() / 1000
+    for (const tr of this.slimeTrails) {
+      const a = Math.max(0, tr.life / tr.max)
+      const sx = this.wx(tr.x)
+      const sy = this.wy(tr.y)
+      const wob = 1 + 0.08 * Math.sin(tt * 3 + tr.seed)
+      const rad = tr.r * S * wob
+      ctx.globalAlpha = a * 0.42
+      ctx.fillStyle = '#327d33'
+      ctx.beginPath()
+      ctx.ellipse(sx, sy, rad, rad * 0.5, 0, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.globalAlpha = a * 0.4
+      ctx.fillStyle = '#5fbf52'
+      ctx.beginPath()
+      ctx.ellipse(sx - rad * 0.15, sy - rad * 0.06, rad * 0.62, rad * 0.3, 0, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.globalAlpha = a * 0.3
+      ctx.fillStyle = '#9bf07a'
+      ctx.beginPath()
+      ctx.ellipse(sx - rad * 0.22, sy - rad * 0.1, rad * 0.24, rad * 0.12, 0, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    ctx.globalAlpha = 1
+  }
+
+  private drawSlimeBlob(b: SlimeBlob, S: number) {
+    const ctx = this.ctx
+    const sx = this.wx(b.x)
+    const sy = this.wy(b.y)
+    const wob = 1 + 0.18 * Math.sin(b.spin)
+    const r = b.r * S * wob
+    const a = Math.max(0, Math.min(1, b.life / b.max))
+    // Ground shadow under the airborne glob.
+    ctx.globalAlpha = a * 0.25
+    ctx.fillStyle = '#000000'
+    ctx.beginPath()
+    ctx.ellipse(sx, this.wy(b.y + b.r * 1.2), r * 0.9, r * 0.4, 0, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.globalAlpha = a
+    // Filthy outer goo.
+    ctx.fillStyle = '#1f6e2c'
+    ctx.beginPath()
+    ctx.arc(sx, sy, r, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = '#46a83f'
+    ctx.beginPath()
+    ctx.arc(sx + r * 0.12, sy + r * 0.12, r * 0.72, 0, Math.PI * 2)
+    ctx.fill()
+    // Muddy fleck so the liquid reads as "dirty".
+    ctx.fillStyle = '#6a5a2c'
+    ctx.beginPath()
+    ctx.arc(sx + r * 0.28, sy + r * 0.22, r * 0.28, 0, Math.PI * 2)
+    ctx.fill()
+    // Wet highlight.
+    ctx.fillStyle = '#9bf07a'
+    ctx.beginPath()
+    ctx.arc(sx - r * 0.34, sy - r * 0.34, r * 0.3, 0, Math.PI * 2)
+    ctx.fill()
+    // A couple of droplets shed in the wake of travel.
+    ctx.fillStyle = '#3a9a37'
+    const tx = sx - Math.cos(b.spin * 0.3) * r * 1.6
+    const ty = sy - Math.sin(b.spin * 0.3) * r * 1.0
+    ctx.beginPath()
+    ctx.arc(tx, ty, r * 0.3, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.globalAlpha = 1
   }
 
   private drawParticles(S: number) {

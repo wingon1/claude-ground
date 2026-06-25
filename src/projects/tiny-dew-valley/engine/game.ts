@@ -88,7 +88,7 @@ import { buildSprites, T, type Sprites } from './sprites'
 import { AudioEngine } from './audio'
 import { deleteSave, loadGame, saveGame, SAVE_VERSION } from './save'
 import { TOOL_BASE, TOOL_UPGRADES, type UpgradeableToolId } from '../data/toolUpgrades'
-import type { Firefly, MineMonster, Particle, Period, SpeechBubble, SpeechSpeaker, WorkKind } from './gameTypes'
+import type { Firefly, MineMonster, Particle, Period, SlimeBlob, SlimeTrail, SpeechBubble, SpeechSpeaker, WorkKind } from './gameTypes'
 import { buildMineMonsters, buildMineTiles } from './mineRuntime'
 import { buildUISnapshot } from './snapshotBuilder'
 import { GameRenderer } from './renderer'
@@ -201,6 +201,8 @@ export class Game {
   private mineTiles: Tile[] = []
   private mineFloor = 1
   private mineMonsters: MineMonster[] = []
+  private slimeTrails: SlimeTrail[] = []
+  private slimeBlobs: SlimeBlob[] = []
   private farmReturn: { x: number; y: number; dir: Direction } | null = null
 
   private listeners = new Set<() => void>()
@@ -499,6 +501,8 @@ export class Game {
       this.updateFireflies(dt)
     } else {
       this.updateMineMonsters(dt)
+      this.updateSlimeBlobs(dt)
+      this.updateSlimeTrails(dt)
     }
     this.collectMagnetItems()
     if (!s.player.moving) this.tryAutoWork()
@@ -637,6 +641,8 @@ export class Game {
     this.area = 'farm'
     this.mineTiles = []
     this.mineMonsters = []
+    this.slimeTrails = []
+    this.slimeBlobs = []
     this.mineFloor = 1
     this.farmReturn = null
   }
@@ -875,13 +881,22 @@ export class Game {
   private updateMineMonsters(dt: number) {
     if (this.area !== 'mine') return
     const p = this.state.player
+    const now = performance.now() / 1000
     for (const monster of this.mineMonsters) {
       const def = MONSTERS[monster.id]
+      const isBoss = monster.id === 'mine_guardian'
       monster.hitT = Math.max(0, monster.hitT - dt)
       monster.attackT = Math.max(0, monster.attackT - dt)
+      if (isBoss && monster.castT) monster.castT = Math.max(0, monster.castT - dt)
       const dx = p.x - monster.x
       const dy = p.y - monster.y
       const d = Math.max(1, Math.hypot(dx, dy))
+
+      if (isBoss) {
+        this.updateBoss(monster, def, dt, now, dx, dy, d)
+        continue
+      }
+
       if (d < T * 7 && d > T * 1.15) {
         const step = def.speed * dt
         const nx = monster.x + (dx / d) * step
@@ -900,12 +915,192 @@ export class Game {
     }
   }
 
+  // Ooze boss: surge-and-stick crawl (꿀렁꿀렁/질뻑질뻑), leaves fading slime
+  // smears, and periodically spits a fan of dirty liquid globs at the player.
+  private updateBoss(
+    monster: MineMonster,
+    def: MonsterDef,
+    dt: number,
+    now: number,
+    dx: number,
+    dy: number,
+    d: number,
+  ) {
+    const ph = monster.x * 0.7 + monster.y * 0.3
+    // Lurching speed: near-zero between heaves, fast surges as the body slops forward.
+    const surge = Math.pow(Math.max(0, Math.sin(now * 2.2 + ph)), 1.7)
+    if (d < T * 9 && d > T * 1.0 && !monster.castT) {
+      const step = def.speed * (0.18 + 1.5 * surge) * dt
+      // Ooze a little sideways while advancing so the crawl looks slithery.
+      const perp = Math.sin(now * 3.3 + ph) * 0.35
+      const nx = monster.x + (dx / d) * step + (-dy / d) * step * perp
+      const ny = monster.y + (dy / d) * step + (dx / d) * step * perp
+      if (!this.monsterCollides(nx, monster.y)) monster.x = nx
+      if (!this.monsterCollides(monster.x, ny)) monster.y = ny
+    }
+
+    // Drop a slime smear roughly every 0.26s, strongest during a surge.
+    monster.trailT = (monster.trailT ?? 0) - dt
+    if (monster.trailT <= 0) {
+      this.slimeTrails.push({
+        x: monster.x + (Math.random() - 0.5) * 6,
+        y: monster.y - 2,
+        life: 6.5,
+        max: 6.5,
+        r: 8 + Math.random() * 4 + surge * 3,
+        seed: Math.random() * 99,
+      })
+      if (this.slimeTrails.length > 90) this.slimeTrails.shift()
+      monster.trailT = 0.26
+    }
+
+    // Begin a spit when off cooldown and the player is in sight.
+    if (monster.attackT <= 0 && monster.fireT === undefined && d < T * 8.5) {
+      monster.castT = 0.55
+      monster.fireT = 0.55
+      monster.attackT = 2.6 + Math.random() * 0.7
+      this.audio.sfx('reject')
+    }
+    if (monster.fireT !== undefined) {
+      monster.fireT -= dt
+      if (monster.fireT <= 0) {
+        this.spawnSlimeSpray(monster)
+        monster.fireT = undefined
+      }
+    }
+
+    // Close-range slap still hurts.
+    if (d <= T * 1.3 && monster.attackT <= 0 && this.state.hp > 0 && !this.pendingFaint) {
+      this.state.hp = Math.max(0, this.state.hp - def.attack)
+      this.playerHurtT = 0.36
+      monster.attackT = 1.4
+      this.slimeSplat(this.state.player.x, this.state.player.y - 8, true)
+      this.toast(`${def.name}의 점액에 휩쓸렸어요.`, 'bad')
+      this.audio.sfx('reject')
+      if (this.state.hp <= 0) this.faintPlayer()
+    }
+  }
+
+  // Launch an arcing fan of dirty-liquid globs toward the player.
+  private spawnSlimeSpray(monster: MineMonster) {
+    const p = this.state.player
+    const ox = monster.x
+    const oy = monster.y - 16
+    const baseAng = Math.atan2(p.y - 10 - oy, p.x - ox)
+    const n = 5
+    for (let i = 0; i < n; i++) {
+      const spread = (i - (n - 1) / 2) * 0.24 + (Math.random() - 0.5) * 0.08
+      const ang = baseAng + spread
+      const speed = 95 + Math.random() * 55
+      this.slimeBlobs.push({
+        x: ox,
+        y: oy,
+        vx: Math.cos(ang) * speed,
+        vy: Math.sin(ang) * speed - 34,
+        life: 1.5,
+        max: 1.5,
+        r: 2.6 + Math.random() * 1.6,
+        spin: Math.random() * 6,
+        hit: false,
+      })
+    }
+    // Muzzle burst at the mouth — flashy launch.
+    for (let i = 0; i < 12; i++) {
+      const a = baseAng + (Math.random() - 0.5) * 1.0
+      const sp = 30 + Math.random() * 70
+      this.particles.push({
+        x: ox,
+        y: oy,
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp - 20,
+        life: 0.45,
+        max: 0.45,
+        color: Math.random() < 0.3 ? '#6a5a2c' : '#52c94a',
+        size: 1.6,
+        gravity: 120,
+        additive: false,
+      })
+    }
+    this.audio.sfx('crack')
+  }
+
+  private updateSlimeBlobs(dt: number) {
+    const p = this.state.player
+    for (let i = this.slimeBlobs.length - 1; i >= 0; i--) {
+      const b = this.slimeBlobs[i]
+      b.life -= dt
+      b.vy += 150 * dt
+      b.x += b.vx * dt
+      b.y += b.vy * dt
+      b.spin += dt * 12
+      // Splat on the player.
+      if (!b.hit && this.state.hp > 0 && !this.pendingFaint) {
+        const pdx = p.x - b.x
+        const pdy = p.y - 10 - b.y
+        if (Math.hypot(pdx, pdy) < T * 0.8) {
+          b.hit = true
+          const dmg = Math.max(2, Math.ceil(MONSTERS.mine_guardian.attack * 0.5))
+          this.state.hp = Math.max(0, this.state.hp - dmg)
+          this.playerHurtT = 0.32
+          this.slimeSplat(b.x, b.y, true)
+          this.audio.sfx('reject')
+          this.slimeBlobs.splice(i, 1)
+          if (this.state.hp <= 0) this.faintPlayer()
+          continue
+        }
+      }
+      if (b.life <= 0) {
+        this.slimeSplat(b.x, b.y, false)
+        this.slimeBlobs.splice(i, 1)
+      }
+    }
+  }
+
+  private updateSlimeTrails(dt: number) {
+    for (let i = this.slimeTrails.length - 1; i >= 0; i--) {
+      const tr = this.slimeTrails[i]
+      tr.life -= dt
+      if (tr.life <= 0) this.slimeTrails.splice(i, 1)
+    }
+  }
+
+  // Bursting goo: a spray of green/brown particles plus a short-lived smear.
+  private slimeSplat(x: number, y: number, big: boolean) {
+    const count = big ? 10 : 6
+    for (let i = 0; i < count; i++) {
+      const a = Math.random() * Math.PI * 2
+      const sp = 20 + Math.random() * (big ? 70 : 40)
+      this.particles.push({
+        x,
+        y,
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp - 18,
+        life: 0.5,
+        max: 0.5,
+        color: Math.random() < 0.3 ? '#5a4a2a' : Math.random() < 0.5 ? '#2c7a3a' : '#6fce5a',
+        size: 1.5,
+        gravity: 130,
+        additive: false,
+      })
+    }
+    this.slimeTrails.push({
+      x,
+      y,
+      life: big ? 2.8 : 1.6,
+      max: big ? 2.8 : 1.6,
+      r: big ? 6 : 4,
+      seed: Math.random() * 99,
+    })
+    if (this.slimeTrails.length > 90) this.slimeTrails.shift()
+  }
+
   private hitMonster(monster: MineMonster) {
     const damage = this.toolDamage('sword') + Math.floor(this.passiveEffect('attack'))
     monster.hp -= damage
     monster.hitT = 0.2
     this.audio.sfx('crack')
-    this.dirtPuff(monster.x, monster.y - 8, MONSTERS[monster.id].accent)
+    if (monster.id === 'mine_guardian') this.slimeSplat(monster.x, monster.y - 14, true)
+    else this.dirtPuff(monster.x, monster.y - 8, MONSTERS[monster.id].accent)
     if (monster.hp > 0) {
       this.emit()
       return
@@ -982,6 +1177,8 @@ export class Game {
     this.area = 'farm'
     this.mineTiles = []
     this.mineMonsters = []
+    this.slimeTrails = []
+    this.slimeBlobs = []
     this.farmReturn = null
     p.x = LOCATIONS.spawn.x * T + T / 2
     p.y = LOCATIONS.spawn.y * T + T
@@ -1469,6 +1666,8 @@ export class Game {
     this.mineFloor = 1
     this.mineTiles = buildMineTiles(this.mineFloor)
     this.mineMonsters = buildMineMonsters(this.mineFloor)
+    this.slimeTrails = []
+    this.slimeBlobs = []
     this.setDeepestMineFloor(this.mineFloor)
     p.x = 28 * T + T / 2
     p.y = 23 * T
@@ -1511,6 +1710,8 @@ export class Game {
     this.workTile = null
     this.mineFloor = 1
     this.mineMonsters = []
+    this.slimeTrails = []
+    this.slimeBlobs = []
     this.farmReturn = null
     this.phase = 'playing'
     this.fade = 1
@@ -1529,6 +1730,8 @@ export class Game {
     this.mineFloor += 1
     this.mineTiles = buildMineTiles(this.mineFloor)
     this.mineMonsters = buildMineMonsters(this.mineFloor)
+    this.slimeTrails = []
+    this.slimeBlobs = []
     this.setDeepestMineFloor(this.mineFloor)
     const p = this.state.player
     p.x = 28 * T + T / 2
@@ -3534,6 +3737,8 @@ export class Game {
       area: this.area,
       tiles: this.state ? this.activeTiles() : [],
       mineMonsters: this.mineMonsters,
+      slimeTrails: this.slimeTrails,
+      slimeBlobs: this.slimeBlobs,
       fade: this.fade,
       particles: this.particles,
       fireflies: this.fireflies,
