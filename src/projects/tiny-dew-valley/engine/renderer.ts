@@ -3,7 +3,7 @@ import { CROPS } from '../data/crops'
 import { cropItemId, getItem } from '../data/items'
 import { ANIMAL_FARMS, ANIMAL_FARM_MAX_ANIMALS, type AnimalFarmDef } from '../data/animalFarms'
 import { MONSTERS } from '../data/monsters'
-import { DEFAULT_FIELD_CROP, FIELD_PLOTS, FIELD_SIZE } from '../data/fields'
+import { FIELD_PLOTS, FIELD_SIZE } from '../data/fields'
 import { OBSTACLE_HP } from '../data/tiles'
 import { idx, inBounds, LOCATIONS, WORLD_H, WORLD_W } from './world'
 import { bakeItemIcon, T, type Sprites } from './sprites'
@@ -417,7 +417,7 @@ export class GameRenderer {
   private drawFieldSigns(S: number) {
     for (const plot of FIELD_PLOTS) {
       const rows = this.fieldRowsForSign(plot.id)
-      const crop = rows > 0 ? this.fieldCropForSign(plot.id) : null
+      const crop = rows > 0 ? this.plantedCropForSign(plot, rows) : null
       this.drawSign(plot.sign.x, plot.sign.y, S, crop ? cropItemId(crop.id, 'normal') : null)
     }
   }
@@ -427,10 +427,24 @@ export class GameRenderer {
     return typeof raw === 'number' ? Math.max(0, Math.min(FIELD_SIZE, raw)) : 0
   }
 
-  private fieldCropForSign(fieldId: string): CropDef {
-    const raw = this.state?.flags?.[`fieldCrop:${fieldId}`]
-    const cropId = typeof raw === 'string' && CROPS[raw] ? raw : DEFAULT_FIELD_CROP
-    return (CROPS[cropId] ?? CROPS[DEFAULT_FIELD_CROP] ?? CROPS.wheat)!
+  private plantedCropForSign(plot: (typeof FIELD_PLOTS)[number], rows: number): CropDef | null {
+    const counts = new Map<string, number>()
+    const tiles = this.activeTiles()
+    for (let row = 0; row < Math.min(rows, FIELD_SIZE); row++) {
+      for (let col = 0; col < FIELD_SIZE; col++) {
+        const cropId = tiles[idx(plot.x + col, plot.y + row)]?.cropId
+        if (!cropId || !CROPS[cropId]) continue
+        counts.set(cropId, (counts.get(cropId) ?? 0) + 1)
+      }
+    }
+    let bestId: string | null = null
+    let bestCount = 0
+    for (const [cropId, count] of counts) {
+      if (count <= bestCount) continue
+      bestId = cropId
+      bestCount = count
+    }
+    return bestId ? CROPS[bestId] ?? null : null
   }
 
   // Bevel every soil cell into its own pixel-rounded square so each grid tile of
