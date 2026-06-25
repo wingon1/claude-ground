@@ -1003,18 +1003,24 @@ export class GameRenderer {
       const spread = Math.round(squash * 1.6)
       r(-1 - spread, 13, 18 + spread * 2, 1, body)
       r(-2 - spread, 14, 20 + spread * 2, 1, body)
-      r(0 - spread, 15, 16 + spread * 2, 1, shade)
+      // Ground-contact shade broken into segments so it never reads as one line.
+      r(-2 - spread, 15, 6, 1, shade)
+      r(6, 15, 4, 1, shade)
+      r(12, 15, 4 + spread, 1, shade)
       // Drips oozing off the rim (offset by quiver so they sway).
       const dq = Math.round(quiver)
       r(1 + dq, 13, 2, 3, body)
       r(13 - dq, 12, 2, 4, body)
       r(7, 14, 2, 2, body)
 
-      // Surface shading creases — lower-right is in shadow.
-      r(9, 9, 6, 1, shade)
-      r(10, 10, 6, 2, shade)
-      r(3, 11, 12, 1, shade2)
-      r(8, 12, 7, 1, shade2)
+      // Shading as filled patches + vertical folds (no full-width horizontal
+      // bars, so the stacked rows don't show as seams across the belly).
+      r(11, 8, 4, 4, shade) // shadow to the left of the maw
+      r(2, 10, 4, 3, shade) // lower-left flank shadow
+      r(7, 11, 4, 2, shade2) // belly underside, offset from the edges
+      r(3, 12, 2, 1, shade2)
+      r(6, 7, 1, 4, shade) // vertical body fold
+      r(4, 9, 1, 3, shade2) // vertical body fold
       // Glossy highlights catching the light on the upper-left dome (matches ref).
       r(3 + Math.round(lean), 3, 3, 1, lite2)
       r(2 + Math.round(lean), 4, 2, 1, lite2)
