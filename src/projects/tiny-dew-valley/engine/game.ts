@@ -2091,7 +2091,7 @@ export class Game {
     if (this.area !== 'farm') return false
     const p = this.playerTile()
     const front = LOCATIONS.storeFront
-    return Math.abs(p.x - front.x) <= 3 && p.y >= front.y && p.y <= front.y + 2
+    return Math.abs(p.x - front.x) <= 3 && p.y >= front.y - 1 && p.y <= front.y + 1
   }
 
   private nearOrderNpc(): boolean {
