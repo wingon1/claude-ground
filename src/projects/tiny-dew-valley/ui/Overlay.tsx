@@ -4,6 +4,7 @@ import type { UISnapshot } from '../engine/uiSnapshot'
 import { iconURL } from '../engine/sprites'
 import { ITEMS } from '../data/items'
 import { INTRO_STEPS } from '../data/intro'
+import introNewspaper from '../assets/intro-newspaper.jpg'
 
 // Pixel-art icon, used everywhere emoji used to be.
 function Ic({ k, cls }: { k: string; cls?: string }) {
@@ -228,42 +229,15 @@ function IntroScreen({ game, ui }: { game: Game; ui: UISnapshot }) {
   const step = INTRO_STEPS[0]
   const finish = () => game.finishIntro()
   if (ui.introScene === 'arrival') {
-    return <button className="tdv-intro-skip tdv-intro-skip-world" onClick={finish}>스킵</button>
+    return <button className="tdv-intro-skip tdv-intro-skip-world" onClick={finish}>Skip</button>
   }
 
   return (
     <div className={`tdv-intro tdv-intro-${step.kind}`}>
-      <button className="tdv-intro-skip" onClick={finish}>스킵</button>
-      <div className="tdv-newspaper">
-        <h1>{step.headline}</h1>
-        <div className="tdv-paper-grid">
-          <div className="tdv-suspect-frame" aria-label={step.suspectLabel}>
-            <div className="tdv-pixel-suspect">
-              <span className="hair" />
-              <span className="face">
-                {Array.from({ length: 16 }).map((_, i) => <i key={i} />)}
-              </span>
-              <span className="shirt" />
-              <span className="arm left" />
-              <span className="arm right" />
-            </div>
-          </div>
-          <div className="tdv-paper-copy">
-            <div className="tdv-redacted-lines" aria-hidden="true">
-              <span />
-              <span />
-              <span className="short" />
-            </div>
-            <p className="tdv-readable-crime">{step.readableCrime}</p>
-            <div className="tdv-redacted-lines bottom" aria-hidden="true">
-              <span />
-              <span className="mid" />
-              <span />
-              <span className="short" />
-            </div>
-          </div>
-        </div>
-        <button className="tdv-bigbtn tdv-intro-next" onClick={() => game.startIntroArrival()}>다음</button>
+      <div className="tdv-intro-newspaper-stage">
+        <img className="tdv-intro-newspaper-img" src={introNewspaper} alt={step.headline} draggable={false} />
+        <button className="tdv-bigbtn ghost tdv-intro-skip-inline" onClick={finish}>Skip</button>
+        <button className="tdv-bigbtn tdv-intro-next" onClick={() => game.startIntroArrival()}>Next</button>
       </div>
     </div>
   )
