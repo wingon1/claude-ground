@@ -138,7 +138,7 @@ export class GameRenderer {
     // base resting on the front (row 9) where the bed/spawn sits.
     if (this.area === 'farm') {
       this.drawBuilding(this.sprites.farmhouse, 30, 7, S, -16)
-      this.drawBuilding(this.sprites.store, 22, 6, S, -14)
+      this.drawBuilding(this.sprites.store, LOCATIONS.storeStand.x - 2, LOCATIONS.storeStand.y - 2, S, -14)
       this.drawAnimalFarms(S)
       this.drawFieldSigns(S)
       this.drawCookingFire(S)
