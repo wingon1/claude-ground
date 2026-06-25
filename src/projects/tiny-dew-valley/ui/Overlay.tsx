@@ -410,6 +410,9 @@ function SettingsModal({
         </div>
         {testMode && (
           <div className="tdv-test-panel">
+            <button className="tdv-test-btn" onClick={() => { game.teleportToMineFloorForTest(10); onClose() }}>
+              광산 10층 이동
+            </button>
             {testItems.map((item) => (
               <button className="tdv-test-btn" key={item.id} onClick={() => game.grantTestItem(item.id, 10)}>
                 +10 {item.name}

@@ -1799,6 +1799,34 @@ export class Game {
     this.emit()
   }
 
+  teleportToMineFloorForTest(floor = 10) {
+    if (this.phase !== 'playing') return
+    const p = this.state.player
+    if (this.area !== 'mine') {
+      this.farmReturn = { x: p.x, y: p.y, dir: p.dir }
+    }
+    const nextFloor = Math.max(1, Math.min(MINE_MAX_FLOOR, Math.floor(floor)))
+    this.area = 'mine'
+    this.mineFloor = nextFloor
+    this.mineTiles = buildMineTiles(this.mineFloor)
+    this.mineMonsters = buildMineMonsters(this.mineFloor)
+    this.slimeTrails = []
+    this.slimeBlobs = []
+    this.setDeepestMineFloor(this.mineFloor)
+    p.x = 28 * T + T / 2
+    p.y = 23 * T
+    p.dir = 'up'
+    p.moving = false
+    this.target = null
+    this.workTile = null
+    this.workTool = null
+    this.fade = 1
+    this.fadeDir = -1
+    this.toast(`테스트: 광산 ${this.mineFloor}층으로 이동`, 'info')
+    this.audio.sfx('select')
+    this.emit()
+  }
+
   closeOrder() {
     if (this.phase === 'order') {
       this.phase = 'playing'
