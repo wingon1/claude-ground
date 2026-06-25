@@ -1002,27 +1002,7 @@
   background: #00000018;
   border-radius: 2px;
 }
-.tdv-tool-card.tool-base { border-color: #737c88; }
-.tdv-tool-card.tool-copper { border-color: #9c552f; }
-.tdv-tool-card.tool-silver { border-color: #929ca9; }
-.tdv-toolicon {
-  width: 34px;
-  height: 34px;
-  flex: 0 0 auto;
-  display: grid;
-  place-items: center;
-  border: 2px solid #737c88;
-  border-radius: 2px;
-  background: #00000018;
-  box-shadow: inset 0 1px 0 #ffffff55, inset 0 -2px 0 #0000001f;
-}
-.tdv-toolicon.copper {
-  border-color: #8f4c2e;
-}
-.tdv-toolicon.silver {
-  border-color: #929ca9;
-}
-.tdv-toolicon img {
+.tdv-crafticon img {
   width: 26px;
   height: 26px;
 }
