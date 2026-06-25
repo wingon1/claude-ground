@@ -203,6 +203,7 @@ export class Game {
   private mineMonsters: MineMonster[] = []
   private slimeTrails: SlimeTrail[] = []
   private slimeBlobs: SlimeBlob[] = []
+  private inBossFight = false
   private farmReturn: { x: number; y: number; dir: Direction } | null = null
 
   private listeners = new Set<() => void>()
@@ -503,6 +504,7 @@ export class Game {
       this.updateMineMonsters(dt)
       this.updateSlimeBlobs(dt)
       this.updateSlimeTrails(dt)
+      this.syncBattleMusic()
     }
     this.collectMagnetItems()
     if (!s.player.moving) this.tryAutoWork()
@@ -645,6 +647,7 @@ export class Game {
     this.slimeBlobs = []
     this.mineFloor = 1
     this.farmReturn = null
+    this.syncBattleMusic()
   }
 
   private deepestMineFloor(): number {
@@ -876,6 +879,17 @@ export class Game {
       }
     }
     return false
+  }
+
+  // Switch BGM/SFX into battle mode while the ooze boss is alive, and fire a
+  // one-shot combat sting the moment the fight begins (e.g. entering floor 10).
+  private syncBattleMusic() {
+    const fighting = this.area === 'mine' && this.mineMonsters.some((m) => m.id === 'mine_guardian')
+    if (fighting && !this.inBossFight) this.audio.sfx('battle')
+    if (fighting !== this.inBossFight) {
+      this.inBossFight = fighting
+      this.audio.setBattle(fighting)
+    }
   }
 
   private updateMineMonsters(dt: number) {
@@ -1180,6 +1194,7 @@ export class Game {
     this.slimeTrails = []
     this.slimeBlobs = []
     this.farmReturn = null
+    this.syncBattleMusic()
     p.x = LOCATIONS.spawn.x * T + T / 2
     p.y = LOCATIONS.spawn.y * T + T
     p.dir = 'down'
@@ -1765,6 +1780,7 @@ export class Game {
     this.slimeTrails = []
     this.slimeBlobs = []
     this.farmReturn = null
+    this.syncBattleMusic()
     this.phase = 'playing'
     this.fade = 1
     this.fadeDir = -1

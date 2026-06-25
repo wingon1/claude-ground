@@ -13,6 +13,7 @@ export type SfxName =
   | 'reject'
   | 'plant'
   | 'sparkle'
+  | 'battle'
 
 export class AudioEngine {
   private ctx: AudioContext | null = null
@@ -21,6 +22,7 @@ export class AudioEngine {
   private bgmTimer: number | null = null
   muted = false
   musicOn = true
+  private battleMode = false
 
   private ensure() {
     if (this.ctx) return
@@ -81,10 +83,11 @@ export class AudioEngine {
     src.stop(when + dur)
   }
 
-  // A breezy 4-bar major loop in C, fingerpicked.
   private scheduleBgm() {
     if (!this.ctx || !this.musicGain) return
     if (!this.musicOn) return
+    if (this.battleMode) { this.scheduleBattleBgm(); return }
+    // A breezy 4-bar major loop in C, fingerpicked.
     const ctx = this.ctx
     const bpm = 92
     const beat = 60 / bpm
@@ -110,6 +113,74 @@ export class AudioEngine {
     }
     const loopLen = beat * 4 * 4 * 1000
     this.bgmTimer = window.setTimeout(() => this.scheduleBgm(), loopLen - 60)
+  }
+
+  // A driving, tense battle loop in A minor — pulsing bass + urgent arpeggios.
+  private scheduleBattleBgm() {
+    if (!this.ctx || !this.musicGain || !this.master) return
+    const ctx = this.ctx
+    const bpm = 138
+    const beat = 60 / bpm
+    const t0 = ctx.currentTime + 0.05
+    // i - VI - VII - i  (Am - F - G - Am), dark and propulsive.
+    const chords = [
+      [220.0, 261.63, 329.63, 440.0], // Am
+      [174.61, 220.0, 349.23, 440.0], // F
+      [196.0, 246.94, 392.0, 493.88], // G
+      [220.0, 261.63, 329.63, 440.0], // Am
+    ]
+    const arp = [0, 2, 3, 2, 1, 2, 3, 1] // restless 8th-note arpeggio
+    let t = t0
+    for (let bar = 0; bar < 4; bar++) {
+      const ch = chords[bar]
+      const root = ch[0] / 2
+      for (let i = 0; i < 8; i++) {
+        // Throbbing eighth-note bass pulse drives the tension.
+        this.pulseBass(t, root, beat * 0.5)
+        const note = ch[arp[i] % ch.length]
+        this.pluck(note, t, 0.42, i % 2 === 0 ? 0.34 : 0.24)
+        // Backbeat percussion hit.
+        if (i === 2 || i === 6) this.noiseBurst(t, 0.1, 2600, 0.7, 0.18, 'highpass')
+        if (i % 2 === 0) this.noiseBurst(t, 0.06, 140, 1.0, 0.32, 'lowpass') // kick
+        t += beat / 2
+      }
+    }
+    const loopLen = beat * 4 * 4 * 1000
+    this.bgmTimer = window.setTimeout(() => this.scheduleBgm(), loopLen - 60)
+  }
+
+  // Short sawtooth bass blip routed through the music bus for the battle pulse.
+  private pulseBass(when: number, freq: number, dur: number) {
+    if (!this.ctx || !this.musicGain) return
+    const ctx = this.ctx
+    const osc = ctx.createOscillator()
+    osc.type = 'sawtooth'
+    osc.frequency.value = freq
+    const filt = ctx.createBiquadFilter()
+    filt.type = 'lowpass'
+    filt.frequency.value = 600
+    const g = ctx.createGain()
+    g.gain.setValueAtTime(0.0001, when)
+    g.gain.exponentialRampToValueAtTime(0.5, when + 0.01)
+    g.gain.exponentialRampToValueAtTime(0.0001, when + dur)
+    osc.connect(filt)
+    filt.connect(g)
+    g.connect(this.musicGain)
+    osc.start(when)
+    osc.stop(when + dur + 0.02)
+  }
+
+  // Switch between the peaceful and battle loops, restarting instantly.
+  setBattle(on: boolean) {
+    if (on === this.battleMode) return
+    this.battleMode = on
+    if (!this.musicOn) return
+    this.ensure()
+    if (this.bgmTimer != null) {
+      clearTimeout(this.bgmTimer)
+      this.bgmTimer = null
+    }
+    this.scheduleBgm()
   }
 
   startMusic() {
@@ -221,6 +292,16 @@ export class AudioEngine {
         this.blip(t + 0.2, 760, 600, 0.22, 0.3, 'sawtooth')
         this.blip(t + 0.45, 600, 900, 0.3, 0.28, 'sawtooth')
         break
+      case 'battle': {
+        // Boss-entrance sting: a low brass swell, a rising alarm, and a drum slam.
+        this.noiseBurst(t, 0.22, 120, 0.9, 0.5, 'lowpass') // impact / drum
+        this.blip(t, 110, 110, 0.5, 0.4, 'sawtooth') // ominous low drone
+        this.blip(t, 165, 165, 0.5, 0.3, 'sawtooth')
+        this.blip(t + 0.16, 330, 660, 0.28, 0.32, 'square') // rising alarm
+        this.blip(t + 0.34, 440, 880, 0.3, 0.3, 'square')
+        this.noiseBurst(t + 0.34, 0.16, 2400, 0.7, 0.22, 'highpass') // cymbal
+        break
+      }
     }
   }
 }
