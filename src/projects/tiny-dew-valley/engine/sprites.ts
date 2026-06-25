@@ -1173,6 +1173,13 @@ export function bakeItemIcon(sprite: string, color?: string): HTMLCanvasElement 
       px(g, 4, 5, 8, 2, '#e8cda0')
       px(g, 6, 8, 4, 3, color ?? '#7a5a3a')
       break
+    case 'seed_suspicious':
+      px(g, 4, 5, 8, 7, '#d8b888')
+      px(g, 4, 5, 8, 2, '#e8cda0')
+      px(g, 6, 8, 4, 3, '#5fbf9a')
+      dot(g, 8, 7, '#b8ffe2')
+      dot(g, 7, 10, '#2e6f5a')
+      break
     default:
       if (sprite.startsWith('seed_')) {
         px(g, 4, 5, 8, 7, '#d8b888')

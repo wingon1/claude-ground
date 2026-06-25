@@ -95,6 +95,7 @@ export const SPRITE_CATALOG: SpriteCatalogEntry[] = [
   { id: 'monster.mine_guardian', label: '광산 수호자', category: 'monster', source: 'runtime-draw', file: 'engine/game.ts', sourceFn: 'drawMonster mine_guardian branch', notes: '색상/스탯은 data/monsters.ts의 mine_guardian' },
 
   // Item icons: seeds, permits, animals, upgrades.
+  { id: 'item.seed_suspicious', label: '수상한 씨앗 아이콘', category: 'item', source: 'item-icon', file: 'engine/sprites.ts', sourceFn: 'bakeItemIcon default seed_ branch', spriteKey: 'seed_suspicious' },
   { id: 'item.seed_wheat', label: '밀 씨앗 아이콘', category: 'item', source: 'item-icon', file: 'engine/sprites.ts', sourceFn: 'bakeItemIcon default seed_ branch', spriteKey: 'seed_wheat' },
   { id: 'item.seed_tomato', label: '토마토 재배권 아이콘', category: 'item', source: 'item-icon', file: 'engine/sprites.ts', sourceFn: 'bakeItemIcon seed_tomato branch', spriteKey: 'seed_tomato' },
   { id: 'item.seed_strawberry', label: '딸기 재배권 아이콘', category: 'item', source: 'item-icon', file: 'engine/sprites.ts', sourceFn: 'bakeItemIcon seed_strawberry branch', spriteKey: 'seed_strawberry' },

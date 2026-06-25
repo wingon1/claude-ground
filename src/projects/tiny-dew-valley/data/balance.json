@@ -817,6 +817,12 @@
             "minQty": 2,
             "maxQty": 4,
             "chance": 0.75
+          },
+          {
+            "itemId": "seed_suspicious",
+            "minQty": 1,
+            "maxQty": 1,
+            "chance": 1
           }
         ]
       }

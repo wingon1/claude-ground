@@ -81,6 +81,18 @@ const base: ItemDef[] = [
     sprite: 'seed_corn',
   },
   {
+    id: 'seed_suspicious',
+    name: '수상한 씨앗',
+    type: 'seed',
+    stackable: true,
+    maxStack: 99,
+    sellPrice: 0,
+    description: '광산 깊은 곳의 수호자가 떨어뜨린 정체불명의 씨앗입니다. 언젠가 특별한 작물로 이어질지도 모릅니다.',
+    usable: false,
+    giftValue: 0,
+    sprite: 'seed_suspicious',
+  },
+  {
     id: 'permit_chicken',
     name: '닭농장',
     type: 'misc',
