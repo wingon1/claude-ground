@@ -412,7 +412,13 @@ export class Game {
     }
     if (this.workCooldown > 0) this.workCooldown -= dt
     if (this.jumpT > 0) this.jumpT = Math.max(0, this.jumpT - dt)
-    if (this.workAnimT > 0) this.workAnimT = Math.max(0, this.workAnimT - dt)
+    if (this.workAnimT > 0) {
+      this.workAnimT = Math.max(0, this.workAnimT - dt)
+      if (this.workAnimT <= 0 && this.workCooldown <= 0) {
+        this.workTile = null
+        this.workTool = null
+      }
+    }
     if (this.playerHurtT > 0) this.playerHurtT = Math.max(0, this.playerHurtT - dt)
     if (this.playerFaintT > 0) {
       this.playerFaintT = Math.max(0, this.playerFaintT - dt)
@@ -762,8 +768,10 @@ export class Game {
   }
 
   private tryAutoWork() {
-    this.workTile = null
-    this.workTool = null
+    if (this.workAnimT <= 0) {
+      this.workTile = null
+      this.workTool = null
+    }
     if (this.fadeDir !== 0) return
     const monster = this.nearestAttackableMonster()
     if (monster) {
