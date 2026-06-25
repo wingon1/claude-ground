@@ -64,7 +64,7 @@ export const LOCATIONS: WorldLocations = {
   bed: { x: 31, y: 9 },
   storeCounter: { x: 18, y: 8 },
   storeStand: { x: 18, y: 7 },
-  storeFront: { x: 18, y: 9 },
+  storeFront: { x: 18, y: 8 },
   buildBoard: { x: 32, y: 12 },
   cookingFire: { x: 33, y: 11 },
   mine: { x: 47, y: 8 },
@@ -142,10 +142,8 @@ export function stampTentSideProps(tiles: Tile[]) {
 }
 
 // Stamps the general store's static structure onto a tiles array.
-// The store is an open-front stall: solid back walls, with a walk-in
-// interior the player steps into to trade. Safe to re-apply on load
-// (the player never tills/plants/builds on these tiles), which lets old
-// saves pick up the new layout via migration.
+// Safe to re-apply on load so old saves shed stale hidden collision and
+// interaction tiles from previous store positions.
 export function stampStore(tiles: Tile[]) {
   const clearStoreTile = (t: Tile) => {
     t.terrain = 'grass'
@@ -155,31 +153,23 @@ export function stampStore(tiles: Tile[]) {
     delete t.metadata.storeInterior
     delete t.metadata.storeCounter
   }
-  // Clear the previous store footprint so existing saves pick up the moved
-  // store without leaving hidden collision or interaction tiles behind.
-  rect(tiles, 22, 6, 27, 9, clearStoreTile)
+  rect(tiles, 16, 5, 27, 10, clearStoreTile)
 
   const left = LOCATIONS.storeStand.x - 2
   const top = LOCATIONS.storeStand.y - 2
-  // Back walls (the building body, hidden behind the store sprite).
-  rect(tiles, left, top, left + 5, top + 1, (t) => {
+  rect(tiles, left, top, left + 5, top + 2, (t) => {
     t.terrain = 'blocked'
     t.obstacle = null
     t.cropId = null
     t.metadata.invisibleBlock = true
   })
-  // Open interior + front. No fence here so the player can walk straight in
-  // from the village square and up to the counter where Barnaby stands.
-  rect(tiles, left, top + 2, left + 5, top + 3, (t) => {
+  rect(tiles, left, top + 3, left + 5, top + 3, (t) => {
     t.terrain = 'grass'
     t.obstacle = null
     t.cropId = null
     delete t.metadata.invisibleBlock
   })
-  // Mark every interior/front tile so the shop opens however the player
-  // approaches: standing inside, or facing the counter from the square.
   for (let x = left; x <= left + 5; x++) {
-    tiles[idx(x, top + 2)].metadata.storeInterior = true
     tiles[idx(x, top + 3)].metadata.storeCounter = true
   }
 }

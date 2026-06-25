@@ -78,6 +78,7 @@ import {
   stampCookingFire,
   stampFarmhouse,
   stampMine,
+  stampStore,
   stampTentSideProps,
   WORLD_H,
   WORLD_W,
@@ -306,6 +307,7 @@ export class Game {
     this.applyFieldExpansions(true)
     this.applyMineState()
     this.applyAnimalFarms()
+    stampStore(this.state.tiles)
     stampFarmhouse(this.state.tiles)
     stampTentSideProps(this.state.tiles)
     stampCookingFire(this.state.tiles, this.cookingFireBuilt())
@@ -2101,7 +2103,7 @@ export class Game {
     if (this.area !== 'farm') return false
     const p = this.playerTile()
     const front = LOCATIONS.storeFront
-    return Math.abs(p.x - front.x) <= 3 && p.y >= front.y - 1 && p.y <= front.y + 1
+    return Math.abs(p.x - front.x) <= 3 && p.y >= front.y - 1 && p.y <= front.y
   }
 
   private nearOrderNpc(): boolean {
