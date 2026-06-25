@@ -2084,8 +2084,7 @@ export class Game {
   }
 
   private nearStore(): boolean {
-    if (this.area !== 'farm') return false
-    return this.nearTileMetadata('storeCounter') || this.nearTileMetadata('storeInterior')
+    return this.nearStoreFront()
   }
 
   private nearStoreFront(): boolean {
