@@ -25,6 +25,7 @@ interface AnimalMotionState {
   nextDecisionAt: number
   moving: boolean
   stepPhase: number
+  facing: -1 | 1
 }
 
 export interface RenderHost {
@@ -605,7 +606,7 @@ export class GameRenderer {
       for (let i = 0; i < count; i++) {
         const animal = this.updateAnimalMotion(farm, i, bounds, now)
         const bob = Math.sin(animal.stepPhase) * (animal.moving ? 0.7 : 0.2)
-        this.drawAnimal(farm, animal.x, animal.y + bob, S)
+        this.drawAnimal(farm, animal.x, animal.y + bob, S, animal.facing)
       }
     }
   }
@@ -642,6 +643,7 @@ export class GameRenderer {
         nextDecisionAt: now + this.seededRange(seed, 3, 0.2, 1.8),
         moving: false,
         stepPhase: this.seededRange(seed, 4, 0, Math.PI * 2),
+        facing: this.seededUnit(seed, 7) < 0.5 ? -1 : 1,
       }
       this.animalMotion.set(key, state)
       return state
@@ -659,6 +661,7 @@ export class GameRenderer {
         state.tx = bounds.x + Math.random() * bounds.w
         state.ty = bounds.y + Math.random() * bounds.h
         state.speed = this.animalBaseSpeed(farm, state.seed) * this.randomRange(0.75, 1.25)
+        if (Math.abs(state.tx - state.x) > 1) state.facing = state.tx >= state.x ? 1 : -1
         state.moving = true
       }
     }
@@ -716,46 +719,53 @@ export class GameRenderer {
     return min + Math.random() * (max - min)
   }
 
-  private drawAnimal(farm: AnimalFarmDef, x: number, y: number, S: number) {
+  private drawAnimal(farm: AnimalFarmDef, x: number, y: number, S: number, facing: -1 | 1) {
     const ctx = this.ctx
     const bob = Math.round(Math.sin(performance.now() / 360 + x) * 0.5) * S
     const sx = this.wx(x)
     const sy = this.wy(y) + bob
+    const rect = (x: number, y: number, w: number, h: number) => {
+      ctx.fillRect(x * S, y * S, w * S, h * S)
+    }
+    ctx.save()
+    ctx.translate(sx, sy)
+    ctx.scale(facing, 1)
     // Soft contact shadow.
     ctx.fillStyle = 'rgba(0,0,0,0.16)'
-    ctx.fillRect(sx - 5 * S, sy + 6 * S, 11 * S, 2 * S)
+    rect(-5, 6, 11, 2)
     if (farm.id === 'chicken') {
       ctx.fillStyle = '#3a2a24'
-      ctx.fillRect(sx - 3 * S, sy + 4 * S, 1 * S, 2 * S); ctx.fillRect(sx + 1 * S, sy + 4 * S, 1 * S, 2 * S)
-      ctx.fillStyle = farm.color; ctx.fillRect(sx - 4 * S, sy - 1 * S, 7 * S, 5 * S)
-      ctx.fillStyle = '#fff4cf'; ctx.fillRect(sx - 4 * S, sy - 1 * S, 7 * S, 2 * S)
-      ctx.fillStyle = farm.color; ctx.fillRect(sx - 1 * S, sy - 5 * S, 4 * S, 4 * S)
-      ctx.fillStyle = '#e05a36'; ctx.fillRect(sx, sy - 7 * S, 2 * S, 2 * S)
-      ctx.fillStyle = '#e7a32f'; ctx.fillRect(sx + 3 * S, sy - 3 * S, 2 * S, 1 * S)
-      ctx.fillStyle = '#2a2230'; ctx.fillRect(sx + 1 * S, sy - 4 * S, 1 * S, 1 * S)
+      rect(-3, 4, 1, 2); rect(1, 4, 1, 2)
+      ctx.fillStyle = farm.color; rect(-4, -1, 7, 5)
+      ctx.fillStyle = '#fff4cf'; rect(-4, -1, 7, 2)
+      ctx.fillStyle = farm.color; rect(-1, -5, 4, 4)
+      ctx.fillStyle = '#e05a36'; rect(0, -7, 2, 2)
+      ctx.fillStyle = '#e7a32f'; rect(3, -3, 2, 1)
+      ctx.fillStyle = '#2a2230'; rect(1, -4, 1, 1)
     } else if (farm.id === 'cow') {
       ctx.fillStyle = '#3a2a24'
-      ctx.fillRect(sx - 5 * S, sy + 5 * S, 1 * S, 3 * S); ctx.fillRect(sx + 2 * S, sy + 5 * S, 1 * S, 3 * S)
-      ctx.fillStyle = farm.color; ctx.fillRect(sx - 6 * S, sy - 1 * S, 11 * S, 6 * S)
-      ctx.fillStyle = '#fffaf0'; ctx.fillRect(sx - 6 * S, sy - 1 * S, 11 * S, 2 * S)
-      ctx.fillStyle = '#cfc6b6'; ctx.fillRect(sx - 6 * S, sy + 4 * S, 11 * S, 1 * S)
-      ctx.fillStyle = '#3a2a24'; ctx.fillRect(sx - 4 * S, sy, 3 * S, 3 * S)
-      ctx.fillStyle = farm.color; ctx.fillRect(sx + 2 * S, sy - 4 * S, 5 * S, 5 * S)
-      ctx.fillStyle = '#e8a0a8'; ctx.fillRect(sx + 6 * S, sy - 1 * S, 2 * S, 2 * S)
-      ctx.fillStyle = '#fffaf0'; ctx.fillRect(sx + 1 * S, sy - 5 * S, 1 * S, 2 * S)
-      ctx.fillStyle = '#2a2230'; ctx.fillRect(sx + 4 * S, sy - 3 * S, 1 * S, 1 * S)
+      rect(-5, 5, 1, 3); rect(2, 5, 1, 3)
+      ctx.fillStyle = farm.color; rect(-6, -1, 11, 6)
+      ctx.fillStyle = '#fffaf0'; rect(-6, -1, 11, 2)
+      ctx.fillStyle = '#cfc6b6'; rect(-6, 4, 11, 1)
+      ctx.fillStyle = '#3a2a24'; rect(-4, 0, 3, 3)
+      ctx.fillStyle = farm.color; rect(2, -4, 5, 5)
+      ctx.fillStyle = '#e8a0a8'; rect(6, -1, 2, 2)
+      ctx.fillStyle = '#fffaf0'; rect(1, -5, 1, 2)
+      ctx.fillStyle = '#2a2230'; rect(4, -3, 1, 1)
     } else {
       ctx.fillStyle = '#3a2a24'
-      ctx.fillRect(sx - 5 * S, sy + 5 * S, 1 * S, 3 * S); ctx.fillRect(sx + 2 * S, sy + 5 * S, 1 * S, 3 * S)
-      ctx.fillStyle = farm.color; ctx.fillRect(sx - 6 * S, sy - 1 * S, 11 * S, 6 * S)
-      ctx.fillStyle = '#f6c0cb'; ctx.fillRect(sx - 6 * S, sy - 1 * S, 11 * S, 2 * S)
-      ctx.fillStyle = '#c96d82'; ctx.fillRect(sx - 6 * S, sy + 4 * S, 11 * S, 1 * S)
-      ctx.fillStyle = farm.color; ctx.fillRect(sx + 2 * S, sy - 3 * S, 5 * S, 5 * S)
-      ctx.fillStyle = '#d98699'; ctx.fillRect(sx + 2 * S, sy - 4 * S, 2 * S, 2 * S)
-      ctx.fillStyle = '#c96d82'; ctx.fillRect(sx + 6 * S, sy - 1 * S, 2 * S, 3 * S)
-      ctx.fillStyle = '#8f3f52'; ctx.fillRect(sx + 6 * S, sy, 1 * S, 1 * S); ctx.fillRect(sx + 7 * S, sy, 1 * S, 1 * S)
-      ctx.fillStyle = '#2a2230'; ctx.fillRect(sx + 4 * S, sy - 2 * S, 1 * S, 1 * S)
+      rect(-5, 5, 1, 3); rect(2, 5, 1, 3)
+      ctx.fillStyle = farm.color; rect(-6, -1, 11, 6)
+      ctx.fillStyle = '#f6c0cb'; rect(-6, -1, 11, 2)
+      ctx.fillStyle = '#c96d82'; rect(-6, 4, 11, 1)
+      ctx.fillStyle = farm.color; rect(2, -3, 5, 5)
+      ctx.fillStyle = '#d98699'; rect(2, -4, 2, 2)
+      ctx.fillStyle = '#c96d82'; rect(6, -1, 2, 3)
+      ctx.fillStyle = '#8f3f52'; rect(6, 0, 1, 1); rect(7, 0, 1, 1)
+      ctx.fillStyle = '#2a2230'; rect(4, -2, 1, 1)
     }
+    ctx.restore()
   }
 
   private drawCookingFire(S: number) {
