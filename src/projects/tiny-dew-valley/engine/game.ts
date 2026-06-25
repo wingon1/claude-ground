@@ -2051,6 +2051,13 @@ export class Game {
     return this.nearTileMetadata('storeCounter') || this.nearTileMetadata('storeInterior')
   }
 
+  private nearStoreFront(): boolean {
+    if (this.area !== 'farm') return false
+    const p = this.playerTile()
+    const front = LOCATIONS.storeFront
+    return Math.abs(p.x - front.x) <= 3 && p.y >= front.y && p.y <= front.y + 2
+  }
+
   private nearOrderNpc(): boolean {
     if (this.area !== 'farm') return false
     const p = this.playerTile()
@@ -2148,7 +2155,7 @@ export class Game {
   }
 
   private updateNpcSpeech(now: number) {
-    if (this.nearStore() || this.nearOrderNpc()) {
+    if (this.nearStore() || this.nearStoreFront() || this.nearOrderNpc()) {
       if (this.trySayNewShopStock()) {
         this.nextSpeechAt.shop = now + 7
       } else if (now >= this.nextSpeechAt.shop && !this.hasSpeech('shop')) {
