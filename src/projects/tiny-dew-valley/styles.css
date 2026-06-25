@@ -1051,6 +1051,31 @@
   font-size: 13px;
   margin-bottom: 8px;
 }
+.tdv-fieldcrop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.tdv-fieldcrop img {
+  width: 28px;
+  height: 28px;
+  image-rendering: pixelated;
+  background: #00000018;
+  border-radius: 2px;
+  flex: 0 0 auto;
+}
+.tdv-fieldcrop div {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.tdv-fieldcrop span {
+  font-size: 10px;
+  font-weight: 800;
+  opacity: 0.75;
+}
 .tdv-cropchoices {
   display: flex;
   flex-wrap: wrap;
@@ -1080,11 +1105,11 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
-.tdv-cropbtn span {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  border: 1px solid #0004;
+.tdv-cropbtn img {
+  width: 18px;
+  height: 18px;
+  image-rendering: pixelated;
+  flex: 0 0 auto;
 }
 .tdv-cropbtn small {
   font-size: 9px;

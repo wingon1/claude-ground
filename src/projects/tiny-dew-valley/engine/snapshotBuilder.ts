@@ -417,6 +417,8 @@ export function buildUISnapshot(host: SnapshotHost): UISnapshot {
       rows,
       selectedCropId: crop.id,
       selectedCropName: crop.name,
+      selectedCropColor: crop.color,
+      selectedCropSprite: crop.seedItemId,
       selected: selectedFieldId === plot.id,
       nextToUnlock,
       canBuyRow:
@@ -433,6 +435,7 @@ export function buildUISnapshot(host: SnapshotHost): UISnapshot {
     id: crop.id,
     name: crop.name,
     color: crop.color,
+    sprite: crop.seedItemId,
     selected: crop.id === selectedCropId,
     unlocked: host.cropUnlocked(crop.id),
     lockText: host.cropUnlocked(crop.id) ? null : '상점에서 해금',

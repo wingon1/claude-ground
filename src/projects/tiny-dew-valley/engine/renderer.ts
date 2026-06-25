@@ -1,9 +1,9 @@
-import type { Direction, GameState, Tile } from '../types'
+import type { CropDef, Direction, GameState, Tile } from '../types'
 import { CROPS } from '../data/crops'
 import { getItem } from '../data/items'
 import { ANIMAL_FARMS, ANIMAL_FARM_MAX_ANIMALS, type AnimalFarmDef } from '../data/animalFarms'
 import { MONSTERS } from '../data/monsters'
-import { FIELD_PLOTS, FIELD_SIZE } from '../data/fields'
+import { DEFAULT_FIELD_CROP, FIELD_PLOTS, FIELD_SIZE } from '../data/fields'
 import { OBSTACLE_HP } from '../data/tiles'
 import { idx, inBounds, LOCATIONS, WORLD_H, WORLD_W } from './world'
 import { bakeItemIcon, T, type Sprites } from './sprites'
@@ -413,7 +413,16 @@ export class GameRenderer {
   }
 
   private drawFieldSigns(S: number) {
-    for (const plot of FIELD_PLOTS) this.drawSign(plot.sign.x, plot.sign.y, S)
+    for (const plot of FIELD_PLOTS) {
+      const crop = this.fieldCropForSign(plot.id)
+      this.drawSign(plot.sign.x, plot.sign.y, S, crop.seedItemId)
+    }
+  }
+
+  private fieldCropForSign(fieldId: string): CropDef {
+    const raw = this.state?.flags?.[`fieldCrop:${fieldId}`]
+    const cropId = typeof raw === 'string' && CROPS[raw] ? raw : DEFAULT_FIELD_CROP
+    return (CROPS[cropId] ?? CROPS[DEFAULT_FIELD_CROP] ?? CROPS.wheat)!
   }
 
   // Bevel every soil cell into its own pixel-rounded square so each grid tile of
@@ -447,38 +456,40 @@ export class GameRenderer {
     }
   }
 
-  private drawSign(tx: number, ty: number, S: number) {
+  private drawSign(tx: number, ty: number, S: number, seedItemId: string) {
     const ctx = this.ctx
-    const x = this.wx(tx * T)
-    const y = this.wy(ty * T)
+    const x = this.wx(tx * T - 3)
+    const y = this.wy(ty * T - 5)
     const R = (px: number, py: number, w: number, h: number, c: string) => {
       ctx.fillStyle = c
       ctx.fillRect(x + px * S, y + py * S, w * S, h * S)
     }
-    // ground contact shadow + little dirt mound
+
     ctx.fillStyle = 'rgba(0,0,0,0.16)'
-    ctx.fillRect(x + 5 * S, y + 14 * S, 8 * S, 2 * S)
-    R(6, 13, 6, 2, '#6e4626')
+    ctx.fillRect(x + 5 * S, y + 20 * S, 15 * S, 3 * S)
+    R(7, 18, 10, 3, '#6e4626')
+
     // post
-    R(8, 6, 2, 8, '#7a4c2a')
-    R(8, 6, 1, 8, '#90643a') // lit edge
-    R(8, 10, 2, 1, '#5e3a1e') // band
+    R(10, 10, 3, 10, '#7a4c2a')
+    R(10, 10, 1, 10, '#90643a')
+    R(10, 16, 3, 1, '#5e3a1e')
+
     // board with grain + nails
-    R(3, 2, 12, 7, '#c89c5e')
-    R(3, 2, 12, 1, '#ddb878') // top light
-    R(3, 8, 12, 1, '#9a6e38') // bottom shade
-    R(3, 2, 1, 7, '#b88c50')
-    R(14, 2, 1, 7, '#a87c44')
-    R(4, 4, 10, 1, 'rgba(110,70,34,0.22)')
-    R(4, 6, 7, 1, 'rgba(110,70,34,0.18)')
-    R(4, 3, 1, 1, '#5e4a30')
-    R(13, 3, 1, 1, '#5e4a30')
-    // painted crop sprout emblem
-    R(8, 4, 1, 4, '#4f9a3a') // stem
-    R(6, 5, 2, 1, '#6fbf4a') // left leaf
-    R(6, 4, 1, 1, '#6fbf4a')
-    R(9, 5, 2, 1, '#6fbf4a') // right leaf
-    R(10, 4, 1, 1, '#6fbf4a')
+    R(1, 1, 22, 13, '#c89c5e')
+    R(1, 1, 22, 1, '#ddb878')
+    R(1, 13, 22, 1, '#9a6e38')
+    R(1, 1, 1, 13, '#b88c50')
+    R(22, 1, 1, 13, '#a87c44')
+    R(4, 3, 16, 9, '#f1dfb5')
+    R(4, 3, 16, 1, '#fff0c7')
+    R(4, 11, 16, 1, '#d1b17a')
+    R(3, 3, 1, 1, '#5e4a30')
+    R(20, 3, 1, 1, '#5e4a30')
+    R(3, 11, 1, 1, '#5e4a30')
+    R(20, 11, 1, 1, '#5e4a30')
+
+    ctx.imageSmoothingEnabled = false
+    ctx.drawImage(this.itemIcon(seedItemId), x + 6 * S, y + 3 * S, 11 * S, 11 * S)
   }
 
   private orderNpcPosition(): { x: number; y: number; dir: Direction } {

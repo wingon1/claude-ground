@@ -115,6 +115,7 @@ export interface CropChoiceView {
   id: string
   name: string
   color: string
+  sprite: string
   selected: boolean
   unlocked: boolean
   lockText: string | null
@@ -126,6 +127,8 @@ export interface FieldPlotView {
   rows: number
   selectedCropId: string
   selectedCropName: string
+  selectedCropColor: string
+  selectedCropSprite: string
   selected: boolean
   nextToUnlock: boolean
   canBuyRow: boolean
