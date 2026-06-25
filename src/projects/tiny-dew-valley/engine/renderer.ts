@@ -516,11 +516,11 @@ export class GameRenderer {
       return
     }
 
-    R(9, 4, 1, 4, '#4f9a3a')
-    R(7, 5, 2, 1, '#6fbf4a')
-    R(7, 4, 1, 1, '#6fbf4a')
-    R(10, 5, 2, 1, '#6fbf4a')
-    R(11, 4, 1, 1, '#6fbf4a')
+    R(8, 4, 1, 4, '#4f9a3a')
+    R(6, 5, 2, 1, '#6fbf4a')
+    R(6, 4, 1, 1, '#6fbf4a')
+    R(9, 5, 2, 1, '#6fbf4a')
+    R(10, 4, 1, 1, '#6fbf4a')
   }
 
   private orderNpcPosition(): { x: number; y: number; dir: Direction } {
