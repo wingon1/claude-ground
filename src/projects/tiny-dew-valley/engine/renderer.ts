@@ -502,23 +502,25 @@ export class GameRenderer {
     R(2, 9, 14, 1, '#9a6e38')
     R(2, 1, 1, 9, '#b88c50')
     R(15, 1, 1, 9, '#a87c44')
-    R(4, 2, 10, 7, '#f1dfb5')
-    R(4, 2, 10, 1, '#fff0c7')
-    R(4, 8, 10, 1, '#d1b17a')
+    R(4, 4, 10, 1, 'rgba(110,70,34,0.22)')
+    R(4, 6, 7, 1, 'rgba(110,70,34,0.18)')
     R(3, 2, 1, 1, '#5e4a30')
     R(14, 2, 1, 1, '#5e4a30')
 
     if (cropIconItemId) {
+      R(4, 2, 10, 7, '#f1dfb5')
+      R(4, 2, 10, 1, '#fff0c7')
+      R(4, 8, 10, 1, '#d1b17a')
       ctx.imageSmoothingEnabled = false
       ctx.drawImage(this.itemIcon(cropIconItemId), x + 5 * S, y + 2 * S, 8 * S, 8 * S)
       return
     }
 
-    R(8, 4, 1, 4, '#4f9a3a')
-    R(6, 5, 2, 1, '#6fbf4a')
-    R(6, 4, 1, 1, '#6fbf4a')
-    R(9, 5, 2, 1, '#6fbf4a')
-    R(10, 4, 1, 1, '#6fbf4a')
+    R(9, 4, 1, 4, '#4f9a3a')
+    R(7, 5, 2, 1, '#6fbf4a')
+    R(7, 4, 1, 1, '#6fbf4a')
+    R(10, 5, 2, 1, '#6fbf4a')
+    R(11, 4, 1, 1, '#6fbf4a')
   }
 
   private orderNpcPosition(): { x: number; y: number; dir: Direction } {
