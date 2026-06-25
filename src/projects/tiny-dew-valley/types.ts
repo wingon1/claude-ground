@@ -34,6 +34,9 @@ export interface ItemDef {
   quality?: CropQuality
   /** Emoji-ish glyph fallback / sprite key. */
   sprite: string
+  /** Story/key items should not be treated as ordinary economy items. */
+  important?: boolean
+  storyKey?: string
 }
 
 export interface InventorySlot {

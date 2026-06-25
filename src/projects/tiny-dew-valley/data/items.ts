@@ -108,6 +108,8 @@ const base: ItemDef[] = [
     usable: false,
     giftValue: 0,
     sprite: 'seed_suspicious',
+    important: true,
+    storyKey: 'act2:suspicious_seed',
   },
   {
     id: 'permit_chicken',

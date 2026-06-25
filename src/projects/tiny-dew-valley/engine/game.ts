@@ -6,6 +6,7 @@ import { SHOP_CATALOG } from '../data/shopCatalog'
 import { BUILD_OPTIONS } from '../data/buildOptions'
 import { ANIMAL_FARMS, ANIMAL_FARM_MAX_ANIMALS, type AnimalFarmDef } from '../data/animalFarms'
 import { ANIMAL_UPGRADES, type AnimalUpgradeDef } from '../data/animalUpgrades'
+import { ACT2_FLAGS, ACT2_ITEMS, firstAvailableAct2Stage, type Act2StageDef } from '../data/act2Progression'
 import { MINE_MAX_FLOOR, mineFloorDef } from '../data/mineFloors'
 import { MONSTERS, type MonsterDef } from '../data/monsters'
 import {
@@ -1006,6 +1007,7 @@ export class Game {
         entry.slot.itemId &&
         entry.slot.qty > 0 &&
         entry.item &&
+        entry.item.important !== true &&
         entry.item.id !== 'sword' &&
         entry.item.type !== 'seed' &&
         entry.item.type !== 'placeable' &&
@@ -1024,7 +1026,7 @@ export class Game {
   }
 
   private completeMineGuardianClear(monster: MonsterDef) {
-    const key = 'mine:boss:10:cleared'
+    const key = ACT2_FLAGS.mineGuardianCleared
     const firstClear = this.state.flags[key] !== true
     this.grantPassive(this.pickWeightedPassive(monster).id, firstClear ? 'epic' : 'rare')
     if (firstClear) {
@@ -2685,6 +2687,8 @@ export class Game {
   }
 
   private currentObjective(): ObjectiveView | null {
+    const act2Objective = this.currentAct2Objective()
+    if (act2Objective) return act2Objective
     if (!this.cookingFireBuilt()) {
       const wood = this.countItem('wood')
       if (wood < 5) {
@@ -2921,6 +2925,39 @@ export class Game {
     }
   }
 
+  private currentAct2Objective(): ObjectiveView | null {
+    if (!this.hasSuspiciousSeed()) return null
+    const flags = this.state.flags[ACT2_FLAGS.suspiciousSeedFound] === true
+      ? this.state.flags
+      : { ...this.state.flags, [ACT2_FLAGS.suspiciousSeedFound]: true }
+    const stage = firstAvailableAct2Stage(flags)
+    return stage ? this.act2StageObjective(stage) : null
+  }
+
+  private act2StageObjective(stage: Act2StageDef): ObjectiveView {
+    const detail = `${stage.detail} 다음 해금: ${stage.unlocksHint}`
+    if (!stage.requiredItems?.length) {
+      return {
+        title: stage.title,
+        detail,
+        progress: 0,
+        max: 1,
+      }
+    }
+    const progress = stage.requiredItems.reduce((sum, item) => sum + Math.min(item.qty, this.countItem(item.itemId)), 0)
+    const max = stage.requiredItems.reduce((sum, item) => sum + item.qty, 0)
+    return {
+      title: stage.title,
+      detail,
+      progress,
+      max,
+    }
+  }
+
+  private hasSuspiciousSeed(): boolean {
+    return this.countItem(ACT2_ITEMS.suspiciousSeed) > 0 || this.state.flags[ACT2_FLAGS.suspiciousSeedFound] === true
+  }
+
   private animalFarmOwned(farm: AnimalFarmDef): boolean {
     return this.flagEnabled(farm.unlockFlag)
   }
@@ -3048,7 +3085,8 @@ export class Game {
     delete t.metadata.animalDropFarm
     const item = getItem(itemId)
     this.toast(`${item?.name ?? itemId} +${qty}`, 'good')
-    if (itemId === 'seed_suspicious') {
+    if (itemId === ACT2_ITEMS.suspiciousSeed) {
+      this.state.flags[ACT2_FLAGS.suspiciousSeedFound] = true
       this.say('player', '수상한 씨앗을 얻었다! 이게 뭐지..?', 4.2)
       this.jumpT = Math.max(this.jumpT, 0.22)
       this.playerAlertT = 1.15
