@@ -228,6 +228,8 @@ export function buildUISnapshot(host: SnapshotHost): UISnapshot {
       sellPrice: def?.sellPrice ?? 0,
       type: def?.type ?? '',
       desc: def?.description ?? '',
+      usable: def?.id === 'herbal_tea',
+      useText: def?.hpRestore ? `HP +${def.hpRestore}` : '',
     }
   })
 

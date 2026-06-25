@@ -551,6 +551,11 @@ function InventoryModal({
             <div className="nm">{slot.name}</div>
             <div className="ds">{slot.desc}</div>
             <div className="price">{'\uAC1C\uB2F9'} {slot.sellPrice}G</div>
+            {slot.usable && (
+              <button className="tdv-btn gold sm" onClick={() => game.useInventoryItem(slot.index)}>
+                마시기 {slot.useText}
+              </button>
+            )}
           </div>
         )}
           </>

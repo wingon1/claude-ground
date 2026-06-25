@@ -27,6 +27,8 @@ export interface ItemDef {
   usable: boolean
   /** Stamina restored when eaten (food/crop). */
   staminaRestore?: number
+  /** HP restored when consumed. */
+  hpRestore?: number
   /** Gift affinity bucket lookups are per-NPC; this is a default. */
   giftValue: number
   /** For crop items, which crop + quality they came from. */

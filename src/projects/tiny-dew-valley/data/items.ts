@@ -671,7 +671,7 @@ const base: ItemDef[] = [
     sellPrice: 50,
     description: '수선화와 섬유를 우려 만든 따뜻한 차입니다.',
     usable: true,
-    staminaRestore: 40,
+    hpRestore: 10,
     giftValue: 20,
     sprite: 'herbal_tea',
   },

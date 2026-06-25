@@ -20,6 +20,8 @@ export interface InvSlotView {
   sellPrice: number
   type: string
   desc: string
+  usable: boolean
+  useText: string
 }
 
 export interface ShopBuyView {

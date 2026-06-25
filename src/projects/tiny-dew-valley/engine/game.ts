@@ -1326,6 +1326,8 @@ export class Game {
     if (ob === 'flower') {
       if (!this.spendStamina(WORK_COST.harvest)) return
       this.clearObs(t)
+      t.metadata.respawnAt = this.nowSecs() + RESPAWN_SECS
+      t.metadata.respawnKind = ob
       this.giveItem('daffodil', 1)
       this.audio.sfx('harvest')
       this.leafBurst(px, py, '#ffe14d')
@@ -1381,6 +1383,17 @@ export class Game {
       if (!at || t.obstacle) continue
       if (now >= at) {
         const kind = (t.metadata.respawnKind as string) || 'tree'
+        if (kind === 'flower') {
+          if (!this.canRespawnForestFlower(t)) {
+            delete t.metadata.respawnAt
+            delete t.metadata.respawnKind
+            continue
+          }
+          setObstacle(t, 'flower')
+          delete t.metadata.respawnAt
+          delete t.metadata.respawnKind
+          continue
+        }
         if (this.isMineResource(kind) && t.metadata.mineNode !== true) {
           delete t.metadata.respawnAt
           delete t.metadata.respawnKind
@@ -1442,6 +1455,19 @@ export class Game {
         delete t.metadata.harvestHp
       }
     }
+  }
+
+  private canRespawnForestFlower(t: Tile): boolean {
+    const woods = LOCATIONS.woods
+    return (
+      t.x >= woods.x &&
+      t.x < woods.x + woods.w &&
+      t.y >= woods.y &&
+      t.y < woods.y + woods.h &&
+      t.terrain === 'grass' &&
+      !t.obstacle &&
+      !t.cropId
+    )
   }
 
   private cropHarvestHp(cropId: string): number {
@@ -1554,6 +1580,32 @@ export class Game {
       }
     }
     return true
+  }
+
+  useInventoryItem(index: number) {
+    const slot = this.state.inventory[index]
+    if (!slot?.itemId || slot.qty <= 0) return
+    const item = getItem(slot.itemId)
+    if (!item || item.id !== 'herbal_tea') {
+      this.toast('아직 먹을 수 없는 아이템이에요.', 'bad')
+      this.audio.sfx('reject')
+      this.emit()
+      return
+    }
+    if (this.state.hp >= this.state.maxHp) {
+      this.toast('HP가 이미 가득 차 있어요.', 'bad')
+      this.audio.sfx('reject')
+      this.emit()
+      return
+    }
+    const heal = item.hpRestore ?? 10
+    const before = this.state.hp
+    this.state.hp = Math.min(this.state.maxHp, this.state.hp + heal)
+    this.removeItem(item.id, 1)
+    this.toast(`HP +${this.state.hp - before}`, 'good')
+    this.audio.sfx('eat')
+    this.autosave()
+    this.emit()
   }
 
   private canPayCost(gold: number, items: { itemId: string; qty: number }[]): boolean {
