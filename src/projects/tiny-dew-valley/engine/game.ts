@@ -970,9 +970,9 @@ export class Game {
 
     // Begin a spit when off cooldown and the player is in sight.
     if (monster.attackT <= 0 && monster.fireT === undefined && d < T * 8.5) {
-      monster.castT = 0.55
-      monster.fireT = 0.55
-      monster.attackT = 2.6 + Math.random() * 0.7
+      monster.castT = 0.65
+      monster.fireT = 0.65
+      monster.attackT = 3.2 + Math.random() * 0.8
       this.audio.sfx('reject')
     }
     if (monster.fireT !== undefined) {
