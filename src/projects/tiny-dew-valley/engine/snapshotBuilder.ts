@@ -411,13 +411,13 @@ export function buildUISnapshot(host: SnapshotHost): UISnapshot {
     const cropId = host.fieldCrop(plot.id) ?? DEFAULT_FIELD_CROP
     const crop = CROPS[cropId] ?? CROPS[DEFAULT_FIELD_CROP]
     const nextToUnlock = nextFieldId === plot.id
-    const cropSprite = getItem(cropItemId(crop.id, 'normal'))?.sprite ?? `crop_${crop.id}`
+    const cropSprite = rows > 0 ? (getItem(cropItemId(crop.id, 'normal'))?.sprite ?? `crop_${crop.id}`) : 'ui_sprout'
     return {
       id: plot.id,
       name: plot.name,
       rows,
       selectedCropId: crop.id,
-      selectedCropName: crop.name,
+      selectedCropName: rows > 0 ? crop.name : '비어 있음',
       selectedCropColor: crop.color,
       selectedCropSprite: cropSprite,
       selected: selectedFieldId === plot.id,

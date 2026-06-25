@@ -302,11 +302,13 @@ export class GameRenderer {
   }
 
   private itemIcon(itemId: string): HTMLCanvasElement {
-    const hit = this.itemIconCache.get(itemId)
-    if (hit) return hit
     const item = getItem(itemId)
-    const icon = bakeItemIcon(item?.sprite ?? itemId)
-    this.itemIconCache.set(itemId, icon)
+    const color = item?.cropId ? CROPS[item.cropId]?.color : undefined
+    const cacheKey = `${itemId}|${color ?? ''}`
+    const hit = this.itemIconCache.get(cacheKey)
+    if (hit) return hit
+    const icon = bakeItemIcon(item?.sprite ?? itemId, color)
+    this.itemIconCache.set(cacheKey, icon)
     return icon
   }
 
@@ -414,9 +416,15 @@ export class GameRenderer {
 
   private drawFieldSigns(S: number) {
     for (const plot of FIELD_PLOTS) {
-      const crop = this.fieldCropForSign(plot.id)
-      this.drawSign(plot.sign.x, plot.sign.y, S, cropItemId(crop.id, 'normal'))
+      const rows = this.fieldRowsForSign(plot.id)
+      const crop = rows > 0 ? this.fieldCropForSign(plot.id) : null
+      this.drawSign(plot.sign.x, plot.sign.y, S, crop ? cropItemId(crop.id, 'normal') : null)
     }
+  }
+
+  private fieldRowsForSign(fieldId: string): number {
+    const raw = this.state?.flags?.[`fieldRows:${fieldId}`]
+    return typeof raw === 'number' ? Math.max(0, Math.min(FIELD_SIZE, raw)) : 0
   }
 
   private fieldCropForSign(fieldId: string): CropDef {
@@ -456,7 +464,7 @@ export class GameRenderer {
     }
   }
 
-  private drawSign(tx: number, ty: number, S: number, cropIconItemId: string) {
+  private drawSign(tx: number, ty: number, S: number, cropIconItemId: string | null) {
     const ctx = this.ctx
     const x = this.wx(tx * T)
     const y = this.wy(ty * T - 1)
@@ -486,8 +494,17 @@ export class GameRenderer {
     R(3, 2, 1, 1, '#5e4a30')
     R(14, 2, 1, 1, '#5e4a30')
 
-    ctx.imageSmoothingEnabled = false
-    ctx.drawImage(this.itemIcon(cropIconItemId), x + 5 * S, y + 2 * S, 8 * S, 8 * S)
+    if (cropIconItemId) {
+      ctx.imageSmoothingEnabled = false
+      ctx.drawImage(this.itemIcon(cropIconItemId), x + 5 * S, y + 2 * S, 8 * S, 8 * S)
+      return
+    }
+
+    R(8, 4, 1, 4, '#4f9a3a')
+    R(6, 5, 2, 1, '#6fbf4a')
+    R(6, 4, 1, 1, '#6fbf4a')
+    R(9, 5, 2, 1, '#6fbf4a')
+    R(10, 4, 1, 1, '#6fbf4a')
   }
 
   private orderNpcPosition(): { x: number; y: number; dir: Direction } {

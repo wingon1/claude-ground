@@ -735,7 +735,7 @@ function SeedModal({ game, ui }: { game: Game; ui: UISnapshot }) {
           <div className="tdv-fieldpanel">
             <div className="tdv-fieldhead">
               <div className="tdv-fieldcrop">
-                <img src={iconURL(selected.selectedCropSprite)} alt={selected.selectedCropName} />
+                <img src={iconURL(selected.selectedCropSprite, selected.selectedCropColor)} alt={selected.selectedCropName} />
                 <div>
                   <strong>{selected.name}</strong>
                   <span>{selected.selectedCropName}</span>
@@ -752,7 +752,7 @@ function SeedModal({ game, ui }: { game: Game; ui: UISnapshot }) {
                   onClick={() => game.setFieldCrop(selected.id, crop.id)}
                   title={crop.lockText ?? crop.name}
                 >
-                  <img src={iconURL(crop.sprite)} alt="" aria-hidden="true" />
+                  <img src={iconURL(crop.sprite, crop.color)} alt="" aria-hidden="true" />
                   {crop.name}
                   {!crop.unlocked && <small>잠김</small>}
                 </button>

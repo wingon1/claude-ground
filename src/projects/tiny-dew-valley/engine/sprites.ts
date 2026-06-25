@@ -1186,10 +1186,40 @@ export function bakeItemIcon(sprite: string, color?: string): HTMLCanvasElement 
         px(g, 4, 5, 8, 2, '#e8cda0')
         px(g, 6, 8, 4, 3, color ?? '#7a5a3a')
       } else if (sprite.startsWith('crop_')) {
-        px(g, 5, 6, 6, 7, color ?? '#e8506e')
-        px(g, 5, 6, 6, 2, lighten(color ?? '#e8506e'))
-        px(g, 6, 4, 2, 3, '#2f7d3a')
-        dot(g, 7, 8, '#ffffff')
+        if (sprite === 'crop_wheat') {
+          px(g, 7, 4, 2, 8, '#9f742d')
+          px(g, 5, 5, 2, 2, '#d9b34c')
+          px(g, 9, 5, 2, 2, '#f0cf63')
+          px(g, 5, 8, 2, 2, '#c89735')
+          px(g, 9, 8, 2, 2, '#d9b34c')
+          px(g, 6, 11, 4, 1, '#6f8f3b')
+        } else if (sprite === 'crop_tomato') {
+          px(g, 5, 6, 6, 6, '#c9322f')
+          px(g, 6, 5, 4, 1, '#e64b42')
+          px(g, 6, 7, 1, 1, '#ff8a72')
+          px(g, 7, 4, 3, 2, '#2f7d3a')
+          dot(g, 10, 9, '#9d2426')
+        } else if (sprite === 'crop_strawberry') {
+          px(g, 5, 5, 6, 7, '#d93a57')
+          px(g, 6, 4, 4, 2, '#e8506e')
+          px(g, 7, 12, 2, 1, '#b82f48')
+          px(g, 6, 3, 4, 2, '#3f9138')
+          dot(g, 6, 7, '#ffd9a8')
+          dot(g, 9, 8, '#ffd9a8')
+          dot(g, 7, 10, '#ffd9a8')
+        } else if (sprite === 'crop_corn') {
+          px(g, 6, 4, 4, 8, '#f0c84b')
+          px(g, 7, 4, 2, 8, '#ffd95c')
+          px(g, 5, 7, 1, 5, '#5b9a40')
+          px(g, 10, 6, 1, 6, '#477f34')
+          dot(g, 6, 6, '#b9822b')
+          dot(g, 9, 8, '#b9822b')
+        } else {
+          px(g, 5, 6, 6, 7, color ?? '#e8506e')
+          px(g, 5, 6, 6, 2, lighten(color ?? '#e8506e'))
+          px(g, 6, 4, 2, 3, '#2f7d3a')
+          dot(g, 7, 8, '#ffffff')
+        }
       } else {
         px(g, 4, 4, 8, 8, color ?? '#cccccc')
       }
