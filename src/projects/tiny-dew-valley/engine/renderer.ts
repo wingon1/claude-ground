@@ -329,40 +329,84 @@ export class GameRenderer {
       ctx.fillRect(x + px * S, y + py * S, w * S, h * S)
     }
 
-    // Soft ground contact shadow for the small campsite clutter.
-    ctx.fillStyle = 'rgba(0,0,0,0.14)'
-    ctx.fillRect(x + 1 * S, y + 38 * S, 40 * S, 4 * S)
+    // Soft ground contact shadow under the whole campsite cluster.
+    ctx.fillStyle = 'rgba(0,0,0,0.13)'
+    ctx.fillRect(x + 2 * S, y + 39 * S, 38 * S, 4 * S)
 
-    // Small clothesline: two stakes, rope, and patched fabric.
-    R(2, 4, 3, 33, '#7a5230')
-    R(35, 2, 3, 35, '#7a5230')
-    R(2, 4, 3, 2, '#a8743f')
-    R(35, 2, 3, 2, '#a8743f')
-    R(4, 8, 33, 2, '#d8cda0')
-    R(8, 10, 9, 13, '#d8c8a4')
-    R(8, 10, 9, 2, '#f0e4be')
-    R(20, 10, 8, 12, '#7fbf9f')
-    R(20, 10, 8, 2, '#a7d9bf')
-    R(30, 10, 5, 8, '#b78a52')
+    // ---- Clothesline: forked posts, a sagging rope, and hung laundry ----
+    for (const postX of [4, 35]) {
+      R(postX, 5, 2, 33, '#7a5230')
+      R(postX, 5, 1, 33, '#90643a') // lit edge
+      R(postX - 1, 4, 1, 2, '#7a5230') // fork arms
+      R(postX + 2, 4, 1, 2, '#7a5230')
+    }
+    // gently sagging rope
+    for (let cx = 5; cx <= 36; cx++) {
+      const t = (cx - 20.5) / 15.5
+      R(cx, 6 + Math.round(3 * (1 - t * t)), 1, 1, '#ccbd97')
+    }
+    // hung shirt (sleeves + collar)
+    R(7, 9, 3, 4, '#a9cfe6')
+    R(15, 9, 3, 4, '#a9cfe6')
+    R(8, 9, 9, 12, '#bcd9ec')
+    R(8, 9, 9, 1, '#8fb8d4')
+    R(11, 9, 3, 2, '#9ec6df') // collar
+    R(10, 14, 1, 6, '#9ec6df') // folds
+    R(14, 14, 1, 6, '#9ec6df')
+    R(9, 9, 1, 1, '#d8a24a') // clothespins
+    R(15, 9, 1, 1, '#d8a24a')
+    // striped towel
+    R(20, 9, 8, 13, '#efe3c6')
+    R(20, 9, 8, 1, '#fff5dd')
+    R(20, 16, 8, 2, '#d2647a')
+    R(20, 19, 8, 1, '#7fb0c9')
+    R(21, 9, 1, 1, '#d8a24a')
+    R(26, 9, 1, 1, '#d8a24a')
+    // a pair of striped socks
+    R(29, 8, 2, 6, '#e8dcc0')
+    R(29, 13, 3, 2, '#e8dcc0')
+    R(29, 11, 2, 1, '#d2647a')
+    R(32, 8, 2, 6, '#e8dcc0')
+    R(32, 13, 3, 2, '#e8dcc0')
+    R(32, 11, 2, 1, '#d2647a')
+    R(29, 8, 1, 1, '#d8a24a')
+    R(32, 8, 1, 1, '#d8a24a')
 
-    // Wooden crate, useful later if this becomes storage or mail.
-    R(8, 27, 15, 12, '#9a6a3a')
-    R(8, 27, 15, 2, '#c08a4b')
-    R(8, 37, 15, 2, '#6e4426')
-    R(8, 27, 2, 12, '#6e4426')
+    // ---- Wooden crate with apples on top ----
+    R(7, 27, 16, 12, '#9a6a3a') // body
+    R(7, 27, 16, 2, '#b88a52') // lit top rail
+    R(7, 27, 2, 12, '#6e4426') // corner posts
     R(21, 27, 2, 12, '#6e4426')
-    R(10, 32, 11, 1, '#6e4426')
-    R(13, 29, 2, 8, '#7a5230')
-    R(16, 29, 2, 8, '#7a5230')
-    R(10, 29, 1, 1, '#4a3420')
-    R(20, 29, 1, 1, '#4a3420')
+    R(7, 32, 16, 1, '#7a5230') // mid rail
+    R(7, 37, 16, 2, '#6e4426') // bottom rail
+    R(12, 29, 1, 10, '#7a5230') // plank seams
+    R(17, 29, 1, 10, '#7a5230')
+    R(8, 28, 1, 1, '#4a3420') // nails
+    R(21, 28, 1, 1, '#4a3420')
+    R(8, 37, 1, 1, '#4a3420')
+    R(21, 37, 1, 1, '#4a3420')
+    R(11, 24, 3, 3, '#cf3a3a') // apple
+    R(11, 24, 1, 1, '#e87a6a')
+    R(12, 23, 1, 1, '#5a8a3a') // leaf
+    R(15, 25, 3, 2, '#cf3a3a') // apple
+    R(15, 25, 1, 1, '#e87a6a')
 
-    // Cloth bundle from the escape, tied and tucked beside the tent.
-    R(25, 31, 12, 7, '#d8c8a4')
-    R(24, 34, 15, 5, '#bda879')
-    R(27, 29, 7, 3, '#efe0bd')
-    R(30, 30, 2, 9, '#7a5a32')
-    R(25, 36, 13, 2, '#8f7a55')
+    // ---- Tied cloth bundle (보따리) beside the tent ----
+    R(24, 31, 11, 8, '#e6d6ac') // sack body
+    R(24, 38, 11, 1, '#c8b687') // bottom shade
+    R(25, 31, 3, 1, '#f4ecd6') // sheen
+    R(34, 32, 1, 6, '#d4c294') // right shade
+    R(26, 30, 7, 1, '#b8a062') // tie band
+    R(27, 29, 5, 2, '#cdbb92') // cinched neck
+    R(28, 28, 3, 2, '#d8c79c') // knot
+    R(26, 27, 2, 2, '#e6d6ac') // tied ears
+    R(25, 26, 1, 1, '#e6d6ac')
+    R(31, 27, 2, 2, '#e6d6ac')
+    R(33, 26, 1, 1, '#e6d6ac')
+    R(27, 33, 1, 1, '#c87a6a') // polka dots
+    R(31, 32, 1, 1, '#c87a6a')
+    R(29, 35, 1, 1, '#c87a6a')
+    R(32, 36, 1, 1, '#c87a6a')
   }
 
   private drawFieldSigns(S: number) {
