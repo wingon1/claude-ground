@@ -179,6 +179,7 @@ export class Game {
   private workAnimT = 0
   private playerHurtT = 0
   private playerFaintT = 0
+  private playerAlertT = 0
   private nextNoSwordToastAt = 0
   private awardingTutorialReward = false
   private nextSpeechAt: Record<SpeechSpeaker | 'weakTool' | 'lockedMine' | 'blacksmithSite', number> = {
@@ -412,6 +413,7 @@ export class Game {
     }
     if (this.workCooldown > 0) this.workCooldown -= dt
     if (this.jumpT > 0) this.jumpT = Math.max(0, this.jumpT - dt)
+    if (this.playerAlertT > 0) this.playerAlertT = Math.max(0, this.playerAlertT - dt)
     if (this.workAnimT > 0) {
       this.workAnimT = Math.max(0, this.workAnimT - dt)
       if (this.workAnimT <= 0 && this.workCooldown <= 0) {
@@ -3016,6 +3018,12 @@ export class Game {
     delete t.metadata.animalDropFarm
     const item = getItem(itemId)
     this.toast(`${item?.name ?? itemId} +${qty}`, 'good')
+    if (itemId === 'seed_suspicious') {
+      this.say('player', '수상한 씨앗을 얻었다! 이게 뭐지..?', 4.2)
+      this.jumpT = Math.max(this.jumpT, 0.22)
+      this.playerAlertT = 1.15
+      this.audio.sfx('sparkle')
+    }
     this.audio.sfx('harvest')
     this.autosave()
     this.emit()
@@ -3433,6 +3441,7 @@ export class Game {
       workAnimT: this.workAnimT,
       playerHurtT: this.playerHurtT,
       playerFainting: this.pendingFaint,
+      playerAlertT: this.playerAlertT,
       workTile: this.workTile,
       workTool: this.workTool,
       nowSecs: () => this.nowSecs(),

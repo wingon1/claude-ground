@@ -33,6 +33,7 @@ export interface RenderHost {
   workAnimT: number
   playerHurtT: number
   playerFainting: boolean
+  playerAlertT: number
   workTile: { x: number; y: number } | null
   workTool: UpgradeableToolId | 'hand' | null
   nowSecs: () => number
@@ -71,6 +72,7 @@ export class GameRenderer {
   private get workAnimT() { return this.host.workAnimT }
   private get playerHurtT() { return this.host.playerHurtT }
   private get playerFainting() { return this.host.playerFainting }
+  private get playerAlertT() { return this.host.playerAlertT }
   private get workTile() { return this.host.workTile }
   private get workTool() { return this.host.workTool }
 
@@ -174,19 +176,22 @@ export class GameRenderer {
     }
     draws.push({
       y: p.y,
-      fn: () => this.drawHuman(
-        this.sprites.farmer,
-        p.x,
-        p.y,
-        p.dir,
-        p.moving,
-        p.exhausted,
-        p.animTime,
-        true,
-        1,
-        this.playerHurtT,
-        this.playerFainting,
-      ),
+      fn: () => {
+        this.drawHuman(
+          this.sprites.farmer,
+          p.x,
+          p.y,
+          p.dir,
+          p.moving,
+          p.exhausted,
+          p.animTime,
+          true,
+          1,
+          this.playerHurtT,
+          this.playerFainting,
+        )
+        if (this.playerAlertT > 0) this.drawQuestMarker(p.x + 11, p.y - 36, S)
+      },
     })
     draws.sort((a, b) => a.y - b.y)
     for (const d of draws) d.fn()
