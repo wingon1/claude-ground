@@ -391,22 +391,19 @@ export class GameRenderer {
     R(15, 25, 3, 2, '#cf3a3a') // apple
     R(15, 25, 1, 1, '#e87a6a')
 
-    // ---- Tied cloth bundle (보따리) beside the tent ----
-    R(24, 31, 11, 8, '#e6d6ac') // sack body
-    R(24, 38, 11, 1, '#c8b687') // bottom shade
-    R(25, 31, 3, 1, '#f4ecd6') // sheen
-    R(34, 32, 1, 6, '#d4c294') // right shade
-    R(26, 30, 7, 1, '#b8a062') // tie band
-    R(27, 29, 5, 2, '#cdbb92') // cinched neck
-    R(28, 28, 3, 2, '#d8c79c') // knot
-    R(26, 27, 2, 2, '#e6d6ac') // tied ears
-    R(25, 26, 1, 1, '#e6d6ac')
-    R(31, 27, 2, 2, '#e6d6ac')
-    R(33, 26, 1, 1, '#e6d6ac')
-    R(27, 33, 1, 1, '#c87a6a') // polka dots
-    R(31, 32, 1, 1, '#c87a6a')
-    R(29, 35, 1, 1, '#c87a6a')
-    R(32, 36, 1, 1, '#c87a6a')
+    // ---- Cardboard box (taped, with a shipping label) beside the tent ----
+    R(25, 29, 10, 10, '#cda876') // body
+    R(25, 29, 1, 10, '#dcbb8c') // left light edge
+    R(33, 29, 2, 10, '#b8945f') // right shade
+    R(25, 38, 10, 1, '#a8855a') // bottom shade
+    R(25, 27, 10, 2, '#d4b482') // closed top flaps
+    R(25, 29, 10, 1, '#b8945f') // flap fold line
+    R(28, 27, 3, 12, '#ece2c8') // packing tape
+    R(28, 27, 1, 12, '#d4c8a8')
+    R(30, 27, 1, 12, '#d4c8a8')
+    R(25, 32, 3, 3, '#f4f0e6') // shipping label
+    R(25, 32, 3, 1, '#ffffff')
+    R(26, 33, 1, 1, '#9a9a9a')
   }
 
   private drawFieldSigns(S: number) {
