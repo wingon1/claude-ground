@@ -30,7 +30,24 @@ export function cropItemId(cropId: string, quality: CropQuality): string {
   return `crop_${cropId}_${quality}`
 }
 
+const backpackUpgradeItems: ItemDef[] = balance.gameplay.backpackUpgradePrices.map((_, index) => {
+  const row = balance.gameplay.inventoryBaseRows + index + 1
+  return {
+    id: `upgrade_backpack_row_${row}`,
+    name: `가방 ${row}줄 확장`,
+    type: 'misc',
+    stackable: true,
+    maxStack: 1,
+    sellPrice: 0,
+    description: `가방 공간을 ${row}줄까지 늘립니다.`,
+    usable: false,
+    giftValue: 0,
+    sprite: 'backpack',
+  }
+})
+
 const base: ItemDef[] = [
+  ...backpackUpgradeItems,
   // ---- Seeds / unlock cards ----
   {
     id: 'seed_wheat',

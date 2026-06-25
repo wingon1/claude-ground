@@ -1,6 +1,9 @@
 {
   "gameplay": {
     "inventorySize": 24,
+    "inventoryColumns": 6,
+    "inventoryBaseRows": 3,
+    "backpackUpgradePrices": [500, 1000, 1500, 3000, 5000],
     "walkSpeed": 74,
     "gameMinutesPerSecond": 5,
     "workInterval": 0.42,

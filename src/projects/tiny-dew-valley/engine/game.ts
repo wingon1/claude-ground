@@ -17,7 +17,11 @@ import {
   FIELD_ROW_GOLD_STEP,
   FIELD_ROW_WOOD_STEP,
   GAME_MIN_PER_SEC,
-  INV_SIZE,
+  BACKPACK_UPGRADE_PRICES,
+  INV_BASE_ROWS,
+  INV_BASE_SIZE,
+  INV_COLUMNS,
+  INV_MAX_SIZE,
   LEGACY_ID_MAP,
   ORDER_ITEM_POOL,
   RARE_ANIMAL_PRODUCTS,
@@ -30,6 +34,7 @@ import {
   WEATHER_TYPES,
   WORK_COST,
   WORK_INTERVAL,
+  backpackUpgradeFlag,
 } from '../data/gameBalance'
 import {
   PASSIVES,
@@ -323,7 +328,7 @@ export class Game {
   private freshState(): GameState {
     const tiles = generateWorld()
     const inv: InventorySlot[] = []
-    for (let i = 0; i < INV_SIZE; i++) inv.push({ itemId: '', qty: 0 })
+    for (let i = 0; i < INV_BASE_SIZE; i++) inv.push({ itemId: '', qty: 0 })
     return {
       saveVersion: SAVE_VERSION,
       day: 1,
@@ -1920,9 +1925,14 @@ export class Game {
     s.gold -= entry.buyPrice
     if (entry.grantsFlag) {
       s.flags[entry.grantsFlag] = true
-      this.applyAnimalFarms()
       const def = getItem(itemId)
-      this.toast(`${def?.name ?? '콘텐츠'} 해금!`, 'good')
+      if (entry.grantsFlag.startsWith('upgrade:backpack:')) {
+        this.ensureInventoryCapacity()
+        this.toast(`가방이 ${this.inventoryRows()}줄로 확장됐어요!`, 'good')
+      } else {
+        this.applyAnimalFarms()
+        this.toast(`${def?.name ?? '콘텐츠'} 해금!`, 'good')
+      }
     } else {
       this.giveItem(itemId, 1)
     }
@@ -2340,6 +2350,7 @@ export class Game {
 
   private applyInitialUnlocks() {
     this.migrateCropContentIds()
+    this.migrateInventoryCapacity()
     this.migrateSeenItems()
     this.state.flags[cropUnlockFlag(DEFAULT_FIELD_CROP)] = true
     const migratedKey = 'migration:initialFieldRows:v2'
@@ -3136,6 +3147,39 @@ export class Game {
       if (insideX && insideY) return { plotId: plot.id, row: y - plot.y }
     }
     return null
+  }
+
+  private backpackUpgradeLevel(): number {
+    let level = 0
+    for (let i = 0; i < BACKPACK_UPGRADE_PRICES.length; i++) {
+      if (this.state.flags[backpackUpgradeFlag(i)] === true) level = i + 1
+      else break
+    }
+    return level
+  }
+
+  private inventoryCapacity(): number {
+    return Math.min(INV_MAX_SIZE, INV_BASE_SIZE + this.backpackUpgradeLevel() * INV_COLUMNS)
+  }
+
+  private inventoryRows(): number {
+    return Math.ceil(this.inventoryCapacity() / INV_COLUMNS)
+  }
+
+  private ensureInventoryCapacity() {
+    const target = this.inventoryCapacity()
+    while (this.state.inventory.length < target) this.state.inventory.push({ itemId: '', qty: 0 })
+  }
+
+  private migrateInventoryCapacity() {
+    const occupiedLast = this.state.inventory.reduce((last, slot, index) =>
+      slot.itemId && slot.qty > 0 ? index : last,
+    -1)
+    const slotsToPreserve = Math.min(INV_MAX_SIZE, Math.max(this.state.inventory.length, occupiedLast + 1, INV_BASE_SIZE))
+    const rowsToPreserve = Math.ceil(slotsToPreserve / INV_COLUMNS)
+    const upgradesToGrant = Math.max(0, Math.min(BACKPACK_UPGRADE_PRICES.length, rowsToPreserve - INV_BASE_ROWS))
+    for (let i = 0; i < upgradesToGrant; i++) this.state.flags[backpackUpgradeFlag(i)] = true
+    this.ensureInventoryCapacity()
   }
 
   private fieldSignAt(x: number, y: number): string | null {

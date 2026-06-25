@@ -11,6 +11,11 @@ const fields = balance.fields
 const tutorialReward = Object.fromEntries(balance.tutorialRewards.map((reward) => [reward.id, reward]))
 
 export const INV_SIZE = gameplay.inventorySize
+export const INV_COLUMNS = gameplay.inventoryColumns
+export const INV_BASE_ROWS = gameplay.inventoryBaseRows
+export const INV_BASE_SIZE = INV_COLUMNS * INV_BASE_ROWS
+export const BACKPACK_UPGRADE_PRICES = gameplay.backpackUpgradePrices
+export const INV_MAX_SIZE = INV_BASE_SIZE + INV_COLUMNS * BACKPACK_UPGRADE_PRICES.length
 export const WALK_SPEED = gameplay.walkSpeed // art px / sec
 export const GAME_MIN_PER_SEC = gameplay.gameMinutesPerSecond // cosmetic day/night only
 export const WORK_INTERVAL = gameplay.workInterval // seconds between auto-work hits
@@ -71,3 +76,7 @@ export const WEATHER_TYPES = balance.weather.types
 export const RARE_ANIMAL_PRODUCTS = balance.animals.rareProducts
 
 export const LEGACY_ID_MAP: Record<string, string> = balance.legacyIdMap
+
+export function backpackUpgradeFlag(index: number): string {
+  return `upgrade:backpack:row_${INV_BASE_ROWS + index + 1}`
+}
