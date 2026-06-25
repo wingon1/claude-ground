@@ -3,7 +3,7 @@ import { CROPS } from '../data/crops'
 import { getItem } from '../data/items'
 import { ANIMAL_FARMS, ANIMAL_FARM_MAX_ANIMALS, type AnimalFarmDef } from '../data/animalFarms'
 import { MONSTERS } from '../data/monsters'
-import { FIELD_PLOTS } from '../data/fields'
+import { FIELD_PLOTS, FIELD_SIZE } from '../data/fields'
 import { OBSTACLE_HP } from '../data/tiles'
 import { idx, inBounds, LOCATIONS, WORLD_H, WORLD_W } from './world'
 import { bakeItemIcon, T, type Sprites } from './sprites'
@@ -137,6 +137,7 @@ export class GameRenderer {
     // Tent (player home): 48×48 canvas over the 30–32 × 7–8 footprint,
     // base resting on the front (row 9) where the bed/spawn sits.
     if (this.area === 'farm') {
+      this.drawFieldBorders(S)
       this.drawBuilding(this.sprites.farmhouse, 30, 7, S, -16)
       this.drawBuilding(this.sprites.store, LOCATIONS.storeStand.x - 2, LOCATIONS.storeStand.y - 2, S, -14)
       this.drawTentSideProps(S)
@@ -408,6 +409,85 @@ export class GameRenderer {
 
   private drawFieldSigns(S: number) {
     for (const plot of FIELD_PLOTS) this.drawSign(plot.sign.x, plot.sign.y, S)
+  }
+
+  // Outline each soil plot so three plots in a row read as distinct beds:
+  // crisp pixel side-lines + pixel stair-stepped rounded corners (no smoothing).
+  private drawFieldBorders(S: number) {
+    const ctx = this.ctx
+    const tiles = this.activeTiles()
+    const isSoil = (tx: number, ty: number) =>
+      inBounds(tx, ty) && (tiles[idx(tx, ty)].terrain === 'soil' || tiles[idx(tx, ty)].terrain === 'tilled')
+    const dark = '#553620'
+    const lite = '#9a6e3e'
+    // Pixel quarter-round (art-px from the corner inward): grass to reveal + lip pixels.
+    const reveal: [number, number][] = [[0, 0], [1, 0], [2, 0], [0, 1], [0, 2]]
+    const lipPx: [number, number][] = [[3, 0], [2, 1], [1, 1], [1, 2], [0, 3]]
+
+    // Carve one corner: reveal the real grass pixels, then draw the stepped lip.
+    const corner = (
+      gimg: HTMLCanvasElement, dx: number, dy: number, sz: number,
+      cxw: number, cyw: number, sgx: number, sgy: number,
+    ) => {
+      ctx.save()
+      ctx.beginPath()
+      for (const [ox, oy] of reveal) {
+        const wx = cxw + (sgx > 0 ? ox : -(ox + 1)) * S
+        const wy = cyw + (sgy > 0 ? oy : -(oy + 1)) * S
+        ctx.rect(wx, wy, S, S)
+      }
+      ctx.clip()
+      ctx.drawImage(gimg, dx, dy, sz, sz)
+      ctx.restore()
+      ctx.fillStyle = dark
+      for (const [ox, oy] of lipPx) {
+        const wx = cxw + (sgx > 0 ? ox : -(ox + 1)) * S
+        const wy = cyw + (sgy > 0 ? oy : -(oy + 1)) * S
+        ctx.fillRect(wx, wy, S, S)
+      }
+    }
+
+    for (const plot of FIELD_PLOTS) {
+      for (let ty = plot.y; ty < plot.y + FIELD_SIZE; ty++) {
+        for (let tx = plot.x; tx < plot.x + FIELD_SIZE; tx++) {
+          if (!isSoil(tx, ty)) continue
+          const dx = this.wx(tx * T)
+          const dy = this.wy(ty * T)
+          const sz = T * S
+          const n = isSoil(tx, ty - 1)
+          const s = isSoil(tx, ty + 1)
+          const w = isSoil(tx - 1, ty)
+          const e = isSoil(tx + 1, ty)
+          // Raised-bed lips (top lit, sides/bottom shadowed) — all crisp pixels.
+          if (!n) {
+            ctx.fillStyle = lite
+            ctx.fillRect(dx, dy, sz, 2 * S)
+          }
+          if (!s) {
+            ctx.fillStyle = dark
+            ctx.fillRect(dx, dy + sz - 2 * S, sz, 2 * S)
+          }
+          if (!w) {
+            ctx.fillStyle = dark
+            ctx.fillRect(dx, dy, 2 * S, sz)
+            ctx.fillStyle = 'rgba(154,110,62,0.5)'
+            ctx.fillRect(dx + 2 * S, dy, 1 * S, sz)
+          }
+          if (!e) {
+            ctx.fillStyle = dark
+            ctx.fillRect(dx + sz - 2 * S, dy, 2 * S, sz)
+            ctx.fillStyle = 'rgba(154,110,62,0.5)'
+            ctx.fillRect(dx + sz - 3 * S, dy, 1 * S, sz)
+          }
+          // Stair-rounded corners only where the plot truly ends (grass on both sides).
+          const gimg = this.sprites.grass[((tx * 7 + ty * 13) % 3 + 3) % 3]
+          if (!n && !w) corner(gimg, dx, dy, sz, dx, dy, 1, 1)
+          if (!n && !e) corner(gimg, dx, dy, sz, dx + sz, dy, -1, 1)
+          if (!s && !e) corner(gimg, dx, dy, sz, dx + sz, dy + sz, -1, -1)
+          if (!s && !w) corner(gimg, dx, dy, sz, dx, dy + sz, 1, -1)
+        }
+      }
+    }
   }
 
   private drawSign(tx: number, ty: number, S: number) {
