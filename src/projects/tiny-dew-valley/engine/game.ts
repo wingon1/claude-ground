@@ -768,6 +768,7 @@ export class Game {
   }
 
   private tryAutoWork() {
+    if (this.workAnimT > 0) return
     if (this.workAnimT <= 0) {
       this.workTile = null
       this.workTool = null
