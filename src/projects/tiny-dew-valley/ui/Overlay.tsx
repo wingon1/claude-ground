@@ -41,6 +41,7 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
   const hasContextAction = ui.contextActions.length > 0
   const objectiveKey = ui.objective ? `${ui.objective.title}:${ui.objective.detail}` : null
   const objectivePinned = !!ui.objective && hiddenObjectiveKey !== objectiveKey
+  const tutorialGuide = getTutorialGuide(ui)
   const showWeatherTip = () => {
     if (!ui.weather) return
     if (weatherTipTimer.current != null) window.clearTimeout(weatherTipTimer.current)
@@ -122,6 +123,21 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
       {/* Help hint */}
       {!modalOpen && !hasContextAction && (
         <div className="tdv-deskhint">화면을 탭해 이동 · 시설 근처에서 하단 메뉴가 활성화돼요</div>
+      )}
+
+      {!modalOpen && tutorialGuide && (
+        <button
+          className={`tdv-tutorial-guide ${tutorialGuide.placement}`}
+          type="button"
+          onPointerDown={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            game.followObjectiveGuide()
+          }}
+        >
+          <span className="tdv-guide-arrow" />
+          <span>{tutorialGuide.label}</span>
+        </button>
       )}
 
       {/* Context action buttons */}
@@ -225,6 +241,45 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
       )}
     </>
   )
+}
+
+function getTutorialGuide(ui: UISnapshot): { label: string; placement: 'world' | 'nav' | 'action' } | null {
+  if (ui.phase !== 'playing' || !ui.objective) return null
+  const title = ui.objective.title
+  if (title.includes('화로 제작') || title.includes('닭장') || title.includes('젖소 농장') || title.includes('돼지농장')) {
+    return { label: '건설 열기', placement: 'nav' }
+  }
+  if (title.includes('재배권') || title.includes('닭 구매') || title.includes('소 구매') || title.includes('돼지 구매')) {
+    return ui.nearStore
+      ? { label: '상점 열기', placement: 'action' }
+      : { label: '상점으로 이동', placement: 'world' }
+  }
+  if (
+    title.includes('밀가루') ||
+    title.includes('빵') ||
+    title.includes('토스트') ||
+    title.includes('딸기쨈') ||
+    title.includes('버터')
+  ) {
+    return ui.nearCooking
+      ? { label: '요리 열기', placement: 'action' }
+      : { label: '화로로 이동', placement: 'world' }
+  }
+  if (title.includes('광산') || title.includes('구리광석')) {
+    return ui.contextActionId === 'mineEnter'
+      ? { label: '광산 들어가기', placement: 'action' }
+      : { label: '광산으로 이동', placement: 'world' }
+  }
+  if (title.includes('곡괭이 강화') || title.includes('도구')) {
+    return ui.contextActionId === 'blacksmith' || ui.contextActionId === 'blacksmithBuy'
+      ? { label: '강화 열기', placement: 'action' }
+      : { label: '대장간으로 이동', placement: 'world' }
+  }
+  if (title.includes('달걀')) return { label: '닭장으로 이동', placement: 'world' }
+  if (title.includes('우유')) return { label: '소농장으로 이동', placement: 'world' }
+  if (title.includes('고기') || title.includes('돼지')) return { label: '돼지농장으로 이동', placement: 'world' }
+  if (title.includes('수확') || title.includes('밭')) return { label: '밭으로 이동', placement: 'world' }
+  return { label: '숲으로 이동', placement: 'world' }
 }
 
 // ---------------- Intro ----------------

@@ -533,6 +533,69 @@
   transform: translateY(2px);
   box-shadow: 0 1px 0 #00000044;
 }
+.tdv-tutorial-guide {
+  position: absolute;
+  z-index: 9;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  max-width: min(250px, calc(100% - 28px));
+  border: 2px solid #b07a2c;
+  border-radius: 2px;
+  background: #fff0b8f2;
+  color: #5a3a14;
+  box-shadow: 0 3px 0 #00000044, inset 0 2px 0 #fff8;
+  padding: 7px 10px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.1;
+  cursor: pointer;
+  pointer-events: auto;
+  animation: tdv-guide-bob 0.9s ease-in-out infinite;
+}
+.tdv-tutorial-guide.world {
+  left: 50%;
+  bottom: 140px;
+  transform: translateX(-50%);
+}
+.tdv-tutorial-guide.nav {
+  left: 50%;
+  bottom: 72px;
+  transform: translateX(-50%);
+}
+.tdv-tutorial-guide.action {
+  right: 16px;
+  bottom: 128px;
+}
+.tdv-guide-arrow {
+  width: 0;
+  height: 0;
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+  border-left: 12px solid #d05a36;
+  filter: drop-shadow(0 1px 0 #fff5);
+  flex: 0 0 auto;
+  animation: tdv-guide-arrow 0.65s ease-in-out infinite;
+}
+.tdv-tutorial-guide.nav .tdv-guide-arrow {
+  transform: rotate(90deg);
+}
+.tdv-tutorial-guide.action .tdv-guide-arrow {
+  transform: rotate(35deg);
+}
+.tdv-tutorial-guide:active {
+  box-shadow: 0 1px 0 #00000044;
+}
+@keyframes tdv-guide-bob {
+  0%, 100% { margin-bottom: 0; }
+  50% { margin-bottom: 4px; }
+}
+@keyframes tdv-guide-arrow {
+  0%, 100% { margin-left: 0; }
+  50% { margin-left: 4px; }
+}
 .tdv-minibtns {
   position: absolute;
   right: 22px;

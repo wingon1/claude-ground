@@ -620,6 +620,87 @@ export class Game {
     this.target = null
   }
 
+  followObjectiveGuide() {
+    if (this.phase !== 'playing') return
+    const objective = this.currentObjective()
+    if (!objective) return
+    const title = objective.title
+    this.audio.resume()
+
+    if (title.includes('화로 제작') || title.includes('닭장') || title.includes('젖소 농장') || title.includes('돼지농장')) {
+      this.openBuild()
+      return
+    }
+    if (title.includes('재배권') || title.includes('닭 구매') || title.includes('소 구매') || title.includes('돼지 구매')) {
+      if (this.nearStore()) this.openShop()
+      else this.moveGuideTo(LOCATIONS.storeFront.x, LOCATIONS.storeFront.y)
+      return
+    }
+    if (
+      title.includes('밀가루') ||
+      title.includes('빵') ||
+      title.includes('토스트') ||
+      title.includes('딸기쨈') ||
+      title.includes('버터')
+    ) {
+      if (this.nearCooking()) this.openCooking()
+      else this.moveGuideTo(LOCATIONS.cookingFire.x, LOCATIONS.cookingFire.y + 2)
+      return
+    }
+    if (title.includes('광산') || title.includes('구리광석')) {
+      if (this.area === 'farm') {
+        if (this.nearMineEntrance()) this.enterMine()
+        else this.moveGuideTo(LOCATIONS.mine.x, LOCATIONS.mine.y + 2)
+      } else {
+        this.moveGuideToMineNode()
+      }
+      return
+    }
+    if (title.includes('곡괭이 강화') || title.includes('도구')) {
+      if (this.nearBlacksmith()) this.openBlacksmith()
+      else this.moveGuideTo(LOCATIONS.blacksmithNpc.x, LOCATIONS.blacksmithNpc.y)
+      return
+    }
+    if (title.includes('달걀')) {
+      this.moveGuideToAnimalFarm('chicken')
+      return
+    }
+    if (title.includes('우유')) {
+      this.moveGuideToAnimalFarm('cow')
+      return
+    }
+    if (title.includes('고기') || title.includes('돼지')) {
+      this.moveGuideToAnimalFarm('pig')
+      return
+    }
+    if (title.includes('수확') || title.includes('밭')) {
+      const firstField = FIELD_PLOTS[0]
+      this.moveGuideTo(firstField.sign.x, firstField.sign.y + 1)
+      return
+    }
+    this.moveGuideTo(LOCATIONS.woods.x + Math.floor(LOCATIONS.woods.w / 2), LOCATIONS.woods.y + Math.floor(LOCATIONS.woods.h / 2))
+  }
+
+  private moveGuideTo(tileX: number, tileY: number) {
+    if (this.area !== 'farm') return
+    this.target = { x: tileX * T + T / 2, y: tileY * T + T }
+    this.emit()
+  }
+
+  private moveGuideToAnimalFarm(farmId: string) {
+    const farm = ANIMAL_FARMS.find((candidate) => candidate.id === farmId)
+    if (!farm) return
+    this.moveGuideTo(farm.x + Math.floor(farm.w / 2), farm.y + Math.floor(farm.h / 2))
+  }
+
+  private moveGuideToMineNode() {
+    if (this.area !== 'mine') return
+    const node = this.mineTiles.find((tile) => tile.metadata.mineNode === true && tile.obstacle)
+    if (!node) return
+    this.target = { x: node.x * T + T / 2, y: node.y * T + T }
+    this.emit()
+  }
+
   onKeyDown(e: KeyboardEvent) {
     this.keys.add(e.key.toLowerCase())
   }
