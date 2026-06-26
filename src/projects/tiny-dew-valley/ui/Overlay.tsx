@@ -247,45 +247,27 @@ function getTutorialGuide(ui: UISnapshot): { label: string; placement: 'world' |
   if (ui.phase !== 'playing') return null
   if (ui.needsSleepGuide) {
     return ui.nearBed
-      ? { label: '잠자기', placement: 'action' }
-      : { label: '텐트로 이동', placement: 'world' }
+      ? { label: '잠자기 버튼을 누르세요', placement: 'action' }
+      : { label: '텐트로 이동하여 잠을 자세요', placement: 'world' }
   }
   if (!ui.objective) return null
   const title = ui.objective.title
-  if (title.includes('화로 제작') || title.includes('닭장') || title.includes('젖소 농장') || title.includes('돼지농장')) {
-    return { label: '건설 열기', placement: 'nav' }
+  if (title.includes('화로 제작')) {
+    return { label: '건설을 열고 화로를 제작하세요', placement: 'nav' }
   }
-  if (title.includes('재배권') || title.includes('닭 구매') || title.includes('소 구매') || title.includes('돼지 구매')) {
-    return ui.nearStore
-      ? { label: '상점 열기', placement: 'action' }
-      : { label: '상점으로 이동', placement: 'world' }
-  }
-  if (
-    title.includes('밀가루') ||
-    title.includes('빵') ||
-    title.includes('토스트') ||
-    title.includes('딸기쨈') ||
-    title.includes('버터')
-  ) {
+  if (title.includes('밀가루')) {
     return ui.nearCooking
-      ? { label: '요리 열기', placement: 'action' }
-      : { label: '화로로 이동', placement: 'world' }
+      ? { label: '요리에서 밀가루를 만드세요', placement: 'action' }
+      : { label: '화로로 이동하여 밀가루를 만드세요', placement: 'world' }
   }
-  if (title.includes('광산') || title.includes('구리광석')) {
-    return ui.contextActionId === 'mineEnter'
-      ? { label: '광산 들어가기', placement: 'action' }
-      : { label: '광산으로 이동', placement: 'world' }
+  if (title.includes('빵 굽기')) {
+    return ui.nearCooking
+      ? { label: '요리에서 빵을 구우세요', placement: 'action' }
+      : { label: '화로로 이동하여 빵을 구우세요', placement: 'world' }
   }
-  if (title.includes('곡괭이 강화') || title.includes('도구')) {
-    return ui.contextActionId === 'blacksmith' || ui.contextActionId === 'blacksmithBuy'
-      ? { label: '강화 열기', placement: 'action' }
-      : { label: '대장간으로 이동', placement: 'world' }
-  }
-  if (title.includes('달걀')) return { label: '닭장으로 이동', placement: 'world' }
-  if (title.includes('우유')) return { label: '소농장으로 이동', placement: 'world' }
-  if (title.includes('고기') || title.includes('돼지')) return { label: '돼지농장으로 이동', placement: 'world' }
-  if (title.includes('수확') || title.includes('밭')) return { label: '밭으로 이동', placement: 'world' }
-  return { label: '숲으로 이동', placement: 'world' }
+  if (title.includes('수확') || title.includes('밭')) return { label: '밭으로 이동하여 작물을 수확하세요', placement: 'world' }
+  if (title.includes('나무')) return { label: '숲으로 이동하여 나무를 캐세요', placement: 'world' }
+  return null
 }
 
 // ---------------- Intro ----------------

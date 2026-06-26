@@ -538,21 +538,29 @@
   z-index: 9;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  min-height: 38px;
-  max-width: min(250px, calc(100% - 28px));
-  border: 2px solid #b07a2c;
-  border-radius: 2px;
-  background: #fff0b8f2;
-  color: #5a3a14;
-  box-shadow: 0 3px 0 #00000044, inset 0 2px 0 #fff8;
-  padding: 7px 10px;
+  justify-content: center;
+  gap: 5px;
+  max-width: min(300px, calc(100% - 24px));
+  border: 0;
+  background: transparent;
+  appearance: none;
+  color: #ffe66f;
+  padding: 4px 6px;
   font-family: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 900;
-  line-height: 1.1;
+  line-height: 1.25;
+  letter-spacing: 0;
+  text-align: center;
   cursor: pointer;
   pointer-events: auto;
+  -webkit-text-stroke: 0.45px #4a2415;
+  text-shadow:
+    0 2px 0 #4a2415,
+    2px 0 0 #4a2415,
+    -2px 0 0 #4a2415,
+    0 -1px 0 #4a2415,
+    0 0 7px #0008;
   animation: tdv-guide-bob 0.9s ease-in-out infinite;
 }
 .tdv-tutorial-guide.world {
@@ -570,31 +578,33 @@
   bottom: 128px;
 }
 .tdv-guide-arrow {
-  width: 0;
-  height: 0;
-  border-top: 7px solid transparent;
-  border-bottom: 7px solid transparent;
-  border-left: 12px solid #d05a36;
-  filter: drop-shadow(0 1px 0 #fff5);
+  width: auto;
+  height: auto;
+  color: #ff5a36;
+  font-size: 24px;
+  line-height: 1;
+  -webkit-text-stroke: 0;
+  text-shadow:
+    0 2px 0 #4a2415,
+    1px 0 0 #4a2415,
+    -1px 0 0 #4a2415,
+    0 0 6px #0009;
   flex: 0 0 auto;
-  animation: tdv-guide-arrow 0.65s ease-in-out infinite;
+  animation: tdv-guide-hand 0.65s ease-in-out infinite;
 }
-.tdv-tutorial-guide.nav .tdv-guide-arrow {
-  transform: rotate(90deg);
-}
-.tdv-tutorial-guide.action .tdv-guide-arrow {
-  transform: rotate(35deg);
+.tdv-guide-arrow::before {
+  content: '☝';
 }
 .tdv-tutorial-guide:active {
-  box-shadow: 0 1px 0 #00000044;
+  opacity: 0.82;
 }
 @keyframes tdv-guide-bob {
   0%, 100% { margin-bottom: 0; }
   50% { margin-bottom: 4px; }
 }
-@keyframes tdv-guide-arrow {
-  0%, 100% { margin-left: 0; }
-  50% { margin-left: 4px; }
+@keyframes tdv-guide-hand {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-3px) scale(1.08); }
 }
 .tdv-minibtns {
   position: absolute;
