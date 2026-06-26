@@ -131,7 +131,7 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
 
       {!modalOpen && tutorialGuide && (
         <button
-          className={`tdv-tutorial-guide ${tutorialGuide.placement}`}
+          className={`tdv-tutorial-guide ${tutorialGuide.placement} ${tutorialGuide.direction}`}
           type="button"
           onPointerDown={(e) => {
             e.preventDefault()
@@ -253,30 +253,30 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
   )
 }
 
-function getTutorialGuide(ui: UISnapshot): { label: string; placement: 'world' | 'nav' | 'action' } | null {
+function getTutorialGuide(ui: UISnapshot): { label: string; placement: 'world' | 'nav' | 'action'; direction: 'left' | 'down' | 'up' } | null {
   if (ui.phase !== 'playing') return null
   if (ui.needsSleepGuide) {
     return ui.nearBed
-      ? { label: '잠자기 버튼을 누르세요', placement: 'action' }
-      : { label: '텐트로 이동하여 잠을 자세요', placement: 'world' }
+      ? { label: '잠자기 버튼을 누르세요', placement: 'action', direction: 'down' }
+      : { label: '텐트로 이동하여 잠을 자세요', placement: 'world', direction: 'left' }
   }
   if (!ui.objective) return null
   const title = ui.objective.title
   if (title.includes('화로 제작')) {
-    return { label: '건설을 열고 화로를 제작하세요', placement: 'nav' }
+    return { label: '건설을 열고 화로를 제작하세요', placement: 'nav', direction: 'down' }
   }
   if (title.includes('밀가루')) {
     return ui.nearCooking
-      ? { label: '요리에서 밀가루를 만드세요', placement: 'action' }
-      : { label: '화로로 이동하여 밀가루를 만드세요', placement: 'world' }
+      ? { label: '요리에서 밀가루를 만드세요', placement: 'action', direction: 'down' }
+      : { label: '화로로 이동하여 밀가루를 만드세요', placement: 'world', direction: 'down' }
   }
   if (title.includes('빵 굽기')) {
     return ui.nearCooking
-      ? { label: '요리에서 빵을 구우세요', placement: 'action' }
-      : { label: '화로로 이동하여 빵을 구우세요', placement: 'world' }
+      ? { label: '요리에서 빵을 구우세요', placement: 'action', direction: 'down' }
+      : { label: '화로로 이동하여 빵을 구우세요', placement: 'world', direction: 'down' }
   }
-  if (title.includes('수확') || title.includes('밭')) return { label: '밭으로 이동하여 작물을 수확하세요', placement: 'world' }
-  if (title.includes('나무')) return { label: '숲으로 이동하여 나무를 캐세요', placement: 'world' }
+  if (title.includes('수확') || title.includes('밭')) return { label: '밭으로 이동하여 작물을 수확하세요', placement: 'world', direction: 'left' }
+  if (title.includes('나무')) return { label: '숲으로 이동하여 나무를 캐세요', placement: 'world', direction: 'left' }
   return null
 }
 

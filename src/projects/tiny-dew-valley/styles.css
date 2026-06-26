@@ -578,6 +578,7 @@
   bottom: 128px;
 }
 .tdv-guide-arrow {
+  --guide-rot: 0deg;
   width: auto;
   height: auto;
   color: #ff5a36;
@@ -592,6 +593,15 @@
   flex: 0 0 auto;
   animation: tdv-guide-hand 0.65s ease-in-out infinite;
 }
+.tdv-tutorial-guide.left .tdv-guide-arrow {
+  --guide-rot: -90deg;
+}
+.tdv-tutorial-guide.down .tdv-guide-arrow {
+  --guide-rot: 180deg;
+}
+.tdv-tutorial-guide.up .tdv-guide-arrow {
+  --guide-rot: 0deg;
+}
 .tdv-guide-arrow::before {
   content: '☝';
 }
@@ -603,8 +613,8 @@
   50% { margin-bottom: 4px; }
 }
 @keyframes tdv-guide-hand {
-  0%, 100% { transform: translateY(0) scale(1); }
-  50% { transform: translateY(-3px) scale(1.08); }
+  0%, 100% { transform: rotate(var(--guide-rot)) translateY(0) scale(1); }
+  50% { transform: rotate(var(--guide-rot)) translateY(-3px) scale(1.08); }
 }
 .tdv-minibtns {
   position: absolute;
@@ -1664,7 +1674,7 @@
 .tdv-deskhint {
   position: absolute;
   left: 50%;
-  bottom: 188px;
+  top: 88px;
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;
