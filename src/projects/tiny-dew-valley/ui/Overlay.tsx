@@ -42,6 +42,7 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
   const objectiveKey = ui.objective ? `${ui.objective.title}:${ui.objective.detail}` : null
   const objectivePinned = !!ui.objective && hiddenObjectiveKey !== objectiveKey
   const tutorialGuide = getTutorialGuide(ui)
+  const showStartMoveHint = !modalOpen && ui.phase === 'playing' && ui.objective?.title.includes('나무')
   const showWeatherTip = () => {
     if (!ui.weather) return
     if (weatherTipTimer.current != null) window.clearTimeout(weatherTipTimer.current)
@@ -121,8 +122,11 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
       </div>
 
       {/* Help hint */}
-      {!modalOpen && !hasContextAction && (
-        <div className="tdv-deskhint">화면을 탭해 이동 · 시설 근처에서 하단 메뉴가 활성화돼요</div>
+      {showStartMoveHint && (
+        <div className="tdv-deskhint">
+          <strong>화면을 탭해서 이동하세요</strong>
+          <span>나무 가까이 가면 자동으로 나무를 캡니다</span>
+        </div>
       )}
 
       {!modalOpen && tutorialGuide && (

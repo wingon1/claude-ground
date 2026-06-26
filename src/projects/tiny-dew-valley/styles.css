@@ -1621,20 +1621,35 @@
   pointer-events: auto;
 }
 .tdv-deskhint {
-  display: none;
   position: absolute;
   left: 50%;
-  bottom: 76px;
+  bottom: 188px;
   transform: translateX(-50%);
-  background: var(--panel);
-  border: 2px solid var(--panel-edge);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: min(330px, calc(100% - 28px));
+  background: #fff2bdee;
+  border: 2px solid #b07a2c;
   border-radius: 2px;
-  padding: 5px 12px;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--ink);
-  box-shadow: 0 2px 0 #0003;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.25;
+  text-align: center;
+  color: #4a2415;
+  box-shadow: 0 3px 0 #0004, inset 0 2px 0 #fff8;
   pointer-events: none;
+  z-index: 9;
+}
+.tdv-deskhint strong {
+  font-size: 16px;
+  color: #d64b2a;
+  text-shadow: 0 1px 0 #fff5;
+}
+.tdv-deskhint span {
+  font-size: 12px;
 }
 .tdv-deskhint kbd {
   background: var(--panel-dark);
