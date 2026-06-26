@@ -267,6 +267,7 @@ export interface UISnapshot {
   nearBuild: boolean
   nearCooking: boolean
   exhausted: boolean
+  needsSleepGuide: boolean
   muted: boolean
   musicOn: boolean
   hasSave: boolean

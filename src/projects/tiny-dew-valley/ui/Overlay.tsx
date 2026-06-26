@@ -244,7 +244,13 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
 }
 
 function getTutorialGuide(ui: UISnapshot): { label: string; placement: 'world' | 'nav' | 'action' } | null {
-  if (ui.phase !== 'playing' || !ui.objective) return null
+  if (ui.phase !== 'playing') return null
+  if (ui.needsSleepGuide) {
+    return ui.nearBed
+      ? { label: '잠자기', placement: 'action' }
+      : { label: '텐트로 이동', placement: 'world' }
+  }
+  if (!ui.objective) return null
   const title = ui.objective.title
   if (title.includes('화로 제작') || title.includes('닭장') || title.includes('젖소 농장') || title.includes('돼지농장')) {
     return { label: '건설 열기', placement: 'nav' }

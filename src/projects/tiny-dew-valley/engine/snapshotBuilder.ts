@@ -139,6 +139,7 @@ export interface SnapshotHost {
   nearMineEntrance(): boolean
   nearCooking(): boolean
   nearBuild(): boolean
+  needsSleepGuide(): boolean
 }
 
 function emptySnapshot(host: SnapshotHost): UISnapshot {
@@ -194,6 +195,7 @@ function emptySnapshot(host: SnapshotHost): UISnapshot {
     nearBuild: false,
     nearCooking: false,
     exhausted: false,
+    needsSleepGuide: false,
     muted: host.audioMuted,
     musicOn: host.audioMusicOn,
     hasSave: host.hasSavedGame(),
@@ -616,6 +618,7 @@ export function buildUISnapshot(host: SnapshotHost): UISnapshot {
     nearBuild: host.nearBuild(),
     nearCooking: host.nearCooking(),
     exhausted: s.player.exhausted,
+    needsSleepGuide: host.needsSleepGuide(),
     muted: host.audioMuted,
     musicOn: host.audioMusicOn,
     hasSave: host.hasSavedGame(),

@@ -622,6 +622,13 @@ export class Game {
 
   followObjectiveGuide() {
     if (this.phase !== 'playing') return
+    if (this.needsSleepGuide()) {
+      this.state.flags[this.sleepGuideKey()] = true
+      this.autosave()
+      if (this.nearBed()) this.requestSleep()
+      else this.moveGuideTo(LOCATIONS.bed.x, LOCATIONS.bed.y)
+      return
+    }
     const objective = this.currentObjective()
     if (!objective) return
     const title = objective.title
@@ -699,6 +706,14 @@ export class Game {
     if (!node) return
     this.target = { x: node.x * T + T / 2, y: node.y * T + T }
     this.emit()
+  }
+
+  private sleepGuideKey(): string {
+    return 'tutorial:sleepGuideShown'
+  }
+
+  private needsSleepGuide(): boolean {
+    return this.phase === 'playing' && this.area === 'farm' && this.canSleep() && this.state.flags[this.sleepGuideKey()] !== true
   }
 
   onKeyDown(e: KeyboardEvent) {
@@ -4029,6 +4044,7 @@ export class Game {
       nearMineEntrance: () => this.nearMineEntrance(),
       nearCooking: () => this.nearCooking(),
       nearBuild: () => this.nearBuild(),
+      needsSleepGuide: () => this.needsSleepGuide(),
     })
   }
 }
