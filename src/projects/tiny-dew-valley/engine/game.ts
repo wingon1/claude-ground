@@ -166,6 +166,7 @@ export class Game {
   private fireflies: Firefly[] = []
   private speechBubbles: SpeechBubble[] = []
   private toasts: ToastMsg[] = []
+  private centerNotice: { title: string; detail: string; until: number } | null = null
   private toastId = 1
   private phase: UIPhase = 'title'
   private introScene: IntroScene = null
@@ -2776,7 +2777,19 @@ export class Game {
     if (!getItem(itemId)) return
     const wasSeen = this.itemSeen(itemId)
     this.state.flags[this.seenItemKey(itemId)] = true
+    if (itemId === 'bread' && !wasSeen) this.celebrateFirstBread()
     if (itemId === 'toast' && !wasSeen) this.applyMineState(true)
+  }
+
+  private celebrateFirstBread() {
+    this.centerNotice = {
+      title: '이렇게 하면 돼요!',
+      detail: '첫 빵 완성! 이제 마음껏 농장 생활을 즐겨봐요!',
+      until: performance.now() + 4200,
+    }
+    this.fireworkBurst()
+    this.audio.sfx('sparkle')
+    this.emit()
   }
 
   private mineUnlocked(): boolean {
@@ -3803,6 +3816,18 @@ export class Game {
     }, 2600)
   }
 
+  private currentCenterNotice() {
+    if (!this.centerNotice) return null
+    if (performance.now() >= this.centerNotice.until) {
+      this.centerNotice = null
+      return null
+    }
+    return {
+      title: this.centerNotice.title,
+      detail: this.centerNotice.detail,
+    }
+  }
+
   private clearObs(t: Tile) {
     t.obstacle = null
     t.hp = undefined
@@ -3876,6 +3901,31 @@ export class Game {
   private woodChips(x: number, y: number) {
     for (let i = 0; i < 6; i++)
       this.particles.push({ x, y, vx: (Math.random() - 0.5) * 60, vy: -Math.random() * 50 - 10, life: 0.5, max: 0.5, color: '#a8743f', size: 1.4, gravity: 120, additive: false })
+  }
+  private fireworkBurst() {
+    const cx = this.cam.x + this.canvas.width / (2 * this.scale)
+    const cy = this.cam.y + this.canvas.height / (2 * this.scale)
+    const colors = ['#ff5a5f', '#ffd166', '#7cf07c', '#5ecbff', '#d889ff', '#fff0a8']
+    for (let burst = 0; burst < 4; burst++) {
+      const ox = (Math.random() - 0.5) * 64
+      const oy = (Math.random() - 0.5) * 40 - 12
+      for (let i = 0; i < 18; i++) {
+        const angle = (Math.PI * 2 * i) / 18 + Math.random() * 0.25
+        const speed = 40 + Math.random() * 80
+        this.particles.push({
+          x: cx + ox,
+          y: cy + oy,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed - 35,
+          life: 0.9 + Math.random() * 0.35,
+          max: 1.2,
+          color: colors[(i + burst) % colors.length],
+          size: 1.8 + Math.random() * 1.2,
+          gravity: 95,
+          additive: true,
+        })
+      }
+    }
   }
   private updateParticles(dt: number) {
     for (let i = this.particles.length - 1; i >= 0; i--) {
@@ -4031,6 +4081,7 @@ export class Game {
       passiveEffect: (id) => this.passiveEffect(id),
       currentObjective: () => this.currentObjective(),
       objectiveTasks: (current) => this.objectiveTasks(current),
+      centerNotice: () => this.currentCenterNotice(),
       currentOrder: () => this.currentOrder(),
       currentOrders: () => this.currentOrders(),
       currentWeather: () => this.currentWeather(),

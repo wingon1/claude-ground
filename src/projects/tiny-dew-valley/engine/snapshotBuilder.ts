@@ -35,6 +35,7 @@ import type {
   CookRecipeView,
   CookingFireView,
   CostItemView,
+  CenterNoticeView,
   CropChoiceView,
   EquippedToolView,
   FieldPlotView,
@@ -126,6 +127,7 @@ export interface SnapshotHost {
   passiveEffect(id: PassiveId): number
   currentObjective(): ObjectiveView | null
   objectiveTasks(current: ObjectiveView | null): ObjectiveTaskView[]
+  centerNotice(): CenterNoticeView | null
   currentOrder(): OrderView | null
   currentOrders(): OrderView[]
   currentWeather(): WeatherView | null
@@ -184,6 +186,7 @@ function emptySnapshot(host: SnapshotHost): UISnapshot {
     },
     objective: null,
     objectives: [],
+    centerNotice: null,
     order: null,
     orders: [],
     weather: null,
@@ -607,6 +610,7 @@ export function buildUISnapshot(host: SnapshotHost): UISnapshot {
     cookingFire,
     objective,
     objectives: host.objectiveTasks(objective),
+    centerNotice: host.centerNotice(),
     order: host.currentOrder(),
     orders: host.currentOrders(),
     weather: host.currentWeather(),

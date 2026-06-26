@@ -198,6 +198,11 @@ export interface ObjectiveTaskView extends ObjectiveView {
   current: boolean
 }
 
+export interface CenterNoticeView {
+  title: string
+  detail: string
+}
+
 export interface OrderView {
   slot: number
   day: number
@@ -256,6 +261,7 @@ export interface UISnapshot {
   cookingFire: CookingFireView
   objective: ObjectiveView | null
   objectives: ObjectiveTaskView[]
+  centerNotice: CenterNoticeView | null
   order: OrderView | null
   orders: OrderView[]
   weather: WeatherView | null

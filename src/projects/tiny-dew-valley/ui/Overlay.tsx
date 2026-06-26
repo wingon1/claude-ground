@@ -243,6 +243,12 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
           onClose={() => setObjectiveOpen(false)}
         />
       )}
+      {ui.centerNotice && (
+        <div className="tdv-center-notice" aria-live="polite">
+          <div className="tdv-center-title">{ui.centerNotice.title}</div>
+          <div className="tdv-center-detail">{ui.centerNotice.detail}</div>
+        </div>
+      )}
     </>
   )
 }
