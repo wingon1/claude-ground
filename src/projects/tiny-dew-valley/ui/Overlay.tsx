@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import type { Game } from '../engine/game'
 import type { UISnapshot } from '../engine/uiSnapshot'
 import { iconURL } from '../engine/sprites'
+import { LOCATIONS } from '../engine/world'
 import { ITEMS } from '../data/items'
 import { INTRO_STEPS } from '../data/intro'
+import { FIELD_PLOTS } from '../data/fields'
 import introNewspaper from '../assets/intro-newspaper.jpg'
 
 // Pixel-art icon, used everywhere emoji used to be.
@@ -253,12 +255,23 @@ export function Overlay({ game, ui }: { game: Game; ui: UISnapshot }) {
   )
 }
 
-function getTutorialGuide(ui: UISnapshot): { label: string; placement: 'world' | 'nav' | 'action'; direction: 'left' | 'down' | 'up' } | null {
+type GuideDirection = 'left' | 'right' | 'down' | 'up'
+
+function directionTo(ui: UISnapshot, target: { x: number; y: number }): GuideDirection {
+  if (!ui.playerTile) return 'left'
+  const dx = target.x - ui.playerTile.x
+  const dy = target.y - ui.playerTile.y
+  if (Math.abs(dx) >= Math.abs(dy)) return dx < 0 ? 'left' : 'right'
+  return dy < 0 ? 'up' : 'down'
+}
+
+function getTutorialGuide(ui: UISnapshot): { label: string; placement: 'world' | 'nav' | 'action'; direction: GuideDirection } | null {
   if (ui.phase !== 'playing') return null
   if (ui.needsSleepGuide) {
+    const tentTarget = LOCATIONS.bed
     return ui.nearBed
       ? { label: '잠자기 버튼을 누르세요', placement: 'action', direction: 'down' }
-      : { label: '텐트로 이동하여 잠을 자세요', placement: 'world', direction: 'left' }
+      : { label: '텐트로 이동하여 잠을 자세요', placement: 'world', direction: directionTo(ui, tentTarget) }
   }
   if (!ui.objective) return null
   const title = ui.objective.title
@@ -275,8 +288,17 @@ function getTutorialGuide(ui: UISnapshot): { label: string; placement: 'world' |
       ? { label: '요리에서 빵을 구우세요', placement: 'action', direction: 'down' }
       : { label: '화로로 이동하여 빵을 구우세요', placement: 'world', direction: 'down' }
   }
-  if (title.includes('수확') || title.includes('밭')) return { label: '밭으로 이동하여 작물을 수확하세요', placement: 'world', direction: 'left' }
-  if (title.includes('나무')) return { label: '숲으로 이동하여 나무를 캐세요', placement: 'world', direction: 'left' }
+  if (title.includes('수확') || title.includes('밭')) {
+    const fieldTarget = { x: FIELD_PLOTS[0].sign.x, y: FIELD_PLOTS[0].sign.y + 1 }
+    return { label: '밭으로 이동하여 작물을 수확하세요', placement: 'world', direction: directionTo(ui, fieldTarget) }
+  }
+  if (title.includes('나무')) {
+    const woodsTarget = {
+      x: LOCATIONS.woods.x + Math.floor(LOCATIONS.woods.w / 2),
+      y: LOCATIONS.woods.y + Math.floor(LOCATIONS.woods.h / 2),
+    }
+    return { label: '숲으로 이동하여 나무를 캐세요', placement: 'world', direction: directionTo(ui, woodsTarget) }
+  }
   return null
 }
 

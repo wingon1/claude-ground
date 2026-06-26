@@ -4096,6 +4096,7 @@ export class Game {
       nearCooking: () => this.nearCooking(),
       nearBuild: () => this.nearBuild(),
       needsSleepGuide: () => this.needsSleepGuide(),
+      playerTile: () => this.playerTile(),
     })
   }
 }

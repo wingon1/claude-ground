@@ -596,6 +596,9 @@
 .tdv-tutorial-guide.left .tdv-guide-arrow {
   --guide-rot: -90deg;
 }
+.tdv-tutorial-guide.right .tdv-guide-arrow {
+  --guide-rot: 90deg;
+}
 .tdv-tutorial-guide.down .tdv-guide-arrow {
   --guide-rot: 180deg;
 }

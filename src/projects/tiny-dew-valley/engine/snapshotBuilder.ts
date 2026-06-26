@@ -142,6 +142,7 @@ export interface SnapshotHost {
   nearCooking(): boolean
   nearBuild(): boolean
   needsSleepGuide(): boolean
+  playerTile(): { x: number; y: number }
 }
 
 function emptySnapshot(host: SnapshotHost): UISnapshot {
@@ -193,6 +194,7 @@ function emptySnapshot(host: SnapshotHost): UISnapshot {
     contextAction: null,
     contextActionId: null,
     contextActions: [],
+    playerTile: null,
     nearBed: false,
     nearStore: false,
     nearBuild: false,
@@ -617,6 +619,7 @@ export function buildUISnapshot(host: SnapshotHost): UISnapshot {
     contextAction,
     contextActionId,
     contextActions,
+    playerTile: host.playerTile(),
     nearBed: host.nearBed(),
     nearStore: host.nearStore(),
     nearBuild: host.nearBuild(),

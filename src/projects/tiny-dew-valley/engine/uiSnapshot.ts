@@ -268,6 +268,7 @@ export interface UISnapshot {
   contextAction: string | null
   contextActionId: ContextActionView['id'] | null
   contextActions: ContextActionView[]
+  playerTile: { x: number; y: number } | null
   nearBed: boolean
   nearStore: boolean
   nearBuild: boolean
