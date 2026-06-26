@@ -705,8 +705,9 @@
   pointer-events: auto;
 }
 .tdv-modal {
-  width: min(520px, 100%);
-  max-width: 100%;
+  width: min(520px, calc(100% - 28px));
+  min-width: 0;
+  max-width: calc(100% - 28px);
   max-height: calc(100% - 28px);
   overflow: auto;
   touch-action: pan-y;
