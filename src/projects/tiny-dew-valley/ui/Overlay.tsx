@@ -279,14 +279,16 @@ function getTutorialGuide(ui: UISnapshot): { label: string; placement: 'world' |
     return { label: '건설을 열고 화로를 제작하세요', placement: 'nav', direction: 'down' }
   }
   if (title.includes('밀가루')) {
+    const cookingFireTarget = { x: LOCATIONS.cookingFire.x, y: LOCATIONS.cookingFire.y + 2 }
     return ui.nearCooking
       ? { label: '요리에서 밀가루를 만드세요', placement: 'action', direction: 'down' }
-      : { label: '화로로 이동하여 밀가루를 만드세요', placement: 'world', direction: 'down' }
+      : { label: '화로로 이동하여 밀가루를 만드세요', placement: 'world', direction: directionTo(ui, cookingFireTarget) }
   }
   if (title.includes('빵 굽기')) {
+    const cookingFireTarget = { x: LOCATIONS.cookingFire.x, y: LOCATIONS.cookingFire.y + 2 }
     return ui.nearCooking
       ? { label: '요리에서 빵을 구우세요', placement: 'action', direction: 'down' }
-      : { label: '화로로 이동하여 빵을 구우세요', placement: 'world', direction: 'down' }
+      : { label: '화로로 이동하여 빵을 구우세요', placement: 'world', direction: directionTo(ui, cookingFireTarget) }
   }
   if (title.includes('수확') || title.includes('밭')) {
     const fieldTarget = { x: FIELD_PLOTS[0].sign.x, y: FIELD_PLOTS[0].sign.y + 1 }
