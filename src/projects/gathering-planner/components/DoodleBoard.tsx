@@ -57,8 +57,8 @@ function useIsMobile() {
 
 /**
  * The doodle surface is a fixed 16:9 board so shapes & thickness stay identical
- * for everyone: on desktop it is a contain-fit board centred in the viewport, on
- * mobile a post-it opens a 16:9 panel. Stroke coordinates and thickness are
+ * for everyone: on desktop it is a contain-fit board anchored top-left (empty
+ * space falls on the right / bottom), on mobile a post-it opens a 16:9 panel. Stroke coordinates and thickness are
  * stored relative to that reference rectangle, broadcast live, and periodically
  * snapshotted so late joiners see the current picture. On resize the drawing is
  * repainted from stored strokes (vectors) rather than stretching the bitmap, so
@@ -368,7 +368,7 @@ export default function DoodleBoard({ store }: { store: RoomStore }) {
   if (!isMobile) {
     return (
       <>
-        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
+        <div className="pointer-events-none absolute inset-0 z-20 flex items-start justify-start">
           <canvas
             ref={canvasRef}
             {...canvasHandlers}
