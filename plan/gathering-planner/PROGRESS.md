@@ -39,6 +39,23 @@
 - Verified: build + eslint clean; Playwright confirms drawing over the calendar
   on desktop & mobile, and the config-error screen when keys are absent.
 
+## Follow-up (rooms revision)
+- **Rooms:** base URL → `RoomSetup` wizard (모임 이름 → 닉네임 → 날짜 설정:
+  하루/기간/리스트 + 투표 방식). Room persisted in new `gathering_rooms` table;
+  shareable link `#/p/gathering-planner/<code>`. Joiners → `JoinRoom` nickname gate.
+- **Scoping:** venues/venue_votes/date_votes now carry `room_id`; all queries +
+  postgres_changes filtered per room. Broadcast channel `gathering_rt:<room>`.
+- **Live cursors:** `Cursors.tsx` broadcasts each user's normalized mouse + nick,
+  renders remote pointers, prunes stale (5s).
+- **Doodle persistence:** normalized (0..1) strokes; periodic PNG snapshot saved to
+  the room row so late joiners load the current picture. Eraser = destination-out
+  (transparent) since the canvas overlays the UI.
+- **Clear All:** commented out (temporarily disabled) per request.
+- **Supabase-only** error screen kept; no local fallback.
+- Verified: build + eslint clean; Playwright (Supabase REST mocked) confirms the
+  setup wizard, join screen, and room view (desktop + mobile) with drawing over
+  the calendar. Cross-client realtime/cursors need a real Supabase instance.
+
 ## Next
 - Optional: wire real Supabase keys via GitHub Actions secrets to enable
   cross-device realtime (app already falls back to local mode without them).

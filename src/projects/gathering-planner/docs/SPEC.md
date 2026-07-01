@@ -1,43 +1,56 @@
 # 기획서 — 🍱 회식 다이어리 (Gathering Planner & Doodle Board)
 
 ## 목적
-팀 회식/모임을 정할 때 "언제/어디서"를 함께 투표하고, 옆에서 낙서로 분위기를
-띄우는 실시간 협업 보드.
+팀 회식/모임을 정할 때 "언제/어디서"를 함께 투표하고, 화면 전체에 낙서로 분위기를
+띄우는 실시간 협업 보드. **방(모임) 단위**로 진행한다.
+
+## 방(Room) 흐름
+- **기본 URL**(방 코드 없음) → 호스트가 방을 만든다:
+  ① 모임 이름 ② 닉네임 ③ 날짜 설정.
+- **날짜 설정(호스트가 후보 날짜 + 투표 방식 둘 다 정함):**
+  - 후보 날짜: **하루**(한 날짜) / **기간**(시작~끝 연속 범위) / **리스트**(개별 날짜 여러 개).
+  - 투표 방식: **한 개만 / 여러 개** (하루 모드는 자동으로 한 개).
+- 방이 만들어지면 `#/p/gathering-planner/<code>` 링크를 공유. 참가자는 링크로 들어와
+  각자 닉네임을 정하고 참여한다. (방 코드는 URL 로 공유)
 
 ## 화면 구성
-- **헤더:** 타이틀, 실시간 배지, 내 닉네임.
+- **헤더:** 모임 이름, 초대링크 복사 버튼, 내 닉네임.
 - **낙서 보드 (화면 전체):** 화면 전체를 덮는 캔버스 레이어 + 플로팅 툴바
-  (손(선택) / Pen / Eraser / Clear All / 5색 팔레트: Red·Blue·Green·Yellow·Black).
+  (손(선택) / 펜 / 지우개 / 5색 팔레트: Red·Blue·Green·Yellow·Black).
   달력·장소 위에도 그릴 수 있음. `손` 툴일 때는 캔버스가 포인터를 통과시켜
   아래 플래너를 조작할 수 있고, `펜/지우개` 툴이면 어디서나 그려짐.
-- **플래너 (우 40%):**
-  - **날짜 투표:** 월간 달력, `하나만/여러개` 토글, 표수만큼 진해지는 파스텔
-    히트맵과 ❤️배지, 내가 고른 날은 핑크 테두리.
+  - 지우개는 투명하게 지움(캔버스가 UI 위에 얹혀 있으므로 destination-out).
+  - **전체지우기(Clear All): 당분간 비활성화(주석 처리).**
+- **라이브 커서:** 각 참가자의 마우스를 닉네임 라벨과 함께 실시간 표시.
+- **플래너 (데스크톱 우측 / 모바일 위):**
+  - **날짜 투표:** 호스트가 정한 후보 날짜만 투표 가능(그 외 날짜는 흐리게).
+    표수만큼 진해지는 파스텔 히트맵과 ❤️배지, 내가 고른 날은 핑크 글로우.
   - **장소 투표:** 입력창+추가 버튼, 둥근 카드 리스트, 하트 업보트/카운트,
     링크는 자동으로 클릭 가능하게 렌더.
-- 모바일에서는 플래너가 위, 낙서 보드가 아래로 세로 스택.
 
 ## 실시간 동기화
-- **투표/장소:** Supabase Postgres Changes 로 모든 클라이언트에 즉시 반영.
-- **낙서:** Supabase Broadcast 채널(`gathering_doodle`)로 스트로크
-  `{x0,y0,x1,y1,color,size}` 를 저지연 전송(디스크에 픽셀을 쓰지 않음).
+- **투표/장소:** Supabase Postgres Changes(방별 필터)로 모든 클라이언트에 즉시 반영.
+- **낙서/커서:** 방별 Broadcast 채널(`gathering_rt:<room>`)로 스트로크(정규화 0..1)와
+  커서를 저지연 전송(디스크에 픽셀을 쓰지 않음).
+- **낙서 지속성:** 캔버스 PNG 스냅샷을 방에 주기적으로 저장 → 늦게 들어온 사람도
+  현재 그림을 봄.
 - **Supabase 전용:** 로컬 폴백은 없다. 키가 없으면 연결 설정 안내 화면을 띄운다.
 
 ## 데이터 모델
-- `gathering_venues(id, name, created_by, created_at)`
-- `gathering_venue_votes(id, venue_id, voter, created_at)` — unique(venue_id, voter)
-- `gathering_date_votes(id, day, voter, created_at)` — unique(day, voter)
+- `gathering_rooms(id text pk, name, date_mode, vote_mode, candidate_dates jsonb, doodle_snapshot, created_at)`
+- `gathering_venues(id, room_id, name, created_by, created_at)`
+- `gathering_venue_votes(id, room_id, venue_id, voter)` — unique(venue_id, voter)
+- `gathering_date_votes(id, room_id, day, voter)` — unique(room_id, day, voter)
 - `voter` = 기기 id(uuid, localStorage). 표는 토글/중복 제거의 키.
 
 ## 규칙
-- **하나만(single):** 새 날짜를 고르면 내 기존 날짜 표는 제거되고 하나만 유지.
-  여러개→하나만 전환 시 내 표가 여러 개면 마지막 하나만 남김.
-- **여러개(multiple):** 가능한 날을 모두 선택.
+- **한 개만(single):** 새 날짜를 고르면 내 기존 날짜 표는 제거되고 하나만 유지.
+- **여러 개(multiple):** 가능한 날을 모두 선택.
 - 같은 항목을 다시 누르면 표 취소(토글).
 
 ## 아키텍처
-- `index.tsx` (App), `components/{DoodleBoard,CalendarVoting,VenueVoting}.tsx`,
-  `store.ts`(2-백엔드 데이터 레이어), `supabaseClient.ts`, `identity.ts`,
-  `schema.sql`(테이블·RLS·publication).
-- 상태는 React hooks + store 구독. 낙서는 브라우저 pointer + coalesced events 로
-  빠른 스트로크도 매끄럽게.
+- `index.tsx`(라우팅: 셋업/참여/방), `components/{RoomSetup,JoinRoom,Cursors,
+  DoodleBoard,CalendarVoting,VenueVoting}.tsx`, `store.ts`(방 CRUD + 방별 store),
+  `supabaseClient.ts`, `identity.ts`, `schema.sql`(테이블·RLS·publication).
+- 상태는 React hooks + store 구독. 낙서는 pointer + coalesced events 로 빠른
+  스트로크도 매끄럽게.
