@@ -208,9 +208,18 @@ export default function GatheringPlanner() {
           }}
         />
 
-      {/* Planner layer — sits beneath the canvas so you can doodle over it. */}
+      {/* Planner layer — sits beneath the canvas so you can doodle over it.
+          Positioned by isMobile (not a viewport breakpoint) since the desktop
+          stage can be narrower than the viewport: on desktop it stays pinned to
+          the right, on mobile it is centred/full-width. */}
       <div className="absolute inset-0 z-10 overflow-y-auto">
-        <div className="mx-auto flex max-w-[440px] flex-col gap-3 px-3 pb-28 pt-20 lg:ml-auto lg:mr-4 lg:max-w-[400px] lg:pb-6 lg:pt-28">
+        <div
+          className={`flex flex-col gap-3 px-3 ${
+            isMobile
+              ? 'mx-auto max-w-[440px] pb-28 pt-20'
+              : 'ml-auto mr-4 max-w-[400px] pb-6 pt-28'
+          }`}
+        >
           <CalendarVoting
             candidateDates={room.candidateDates}
             dateVotes={state.dateVotes}
