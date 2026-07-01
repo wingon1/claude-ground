@@ -13,14 +13,41 @@ const PEN_SIZE = 4
 const ERASER_SIZE = 26
 const SNAPSHOT_DELAY = 1200 // ms after drawing settles before persisting
 
+// Strokes live in a shared PC-proportioned logical rectangle (0..1 in both
+// axes, aspect = REF_ASPECT). Each device maps that rectangle onto its canvas
+// with a "contain" fit (centred, aspect-preserved), so a drawing keeps the same
+// shape & composition everywhere — on a tall phone it appears as a centred band
+// instead of being stretched. PC is effectively the reference.
+const REF_ASPECT = 16 / 9
+const REF_SNAP_W = 1000
+const REF_SNAP_H = Math.round(REF_SNAP_W / REF_ASPECT)
+
+const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v)
+
+/** The centred, aspect-preserved rectangle (CSS px) the logical square maps to. */
+function fitRect(cw: number, ch: number) {
+  let fw: number, fh: number
+  if (cw / ch > REF_ASPECT) {
+    fh = ch
+    fw = ch * REF_ASPECT
+  } else {
+    fw = cw
+    fh = cw / REF_ASPECT
+  }
+  return { ox: (cw - fw) / 2, oy: (ch - fh) / 2, fw, fh }
+}
+
 type Tool = 'select' | 'pen' | 'eraser'
 
 /**
  * A full-screen doodle layer: the canvas covers the whole app so you can draw
- * anywhere — over the calendar and venues included. Strokes are normalized
- * (0..1) so they line up across screen sizes, broadcast live, and periodically
- * snapshotted so late joiners see the current picture. When the "손"(select)
- * tool is active the canvas ignores pointer events so the planner stays usable.
+ * anywhere — over the calendar and venues included. Strokes live in a shared
+ * PC-proportioned reference rectangle (see REF_ASPECT), mapped onto each device
+ * with a contain fit, so a drawing keeps the same shape everywhere (a phone
+ * shows it as a centred band instead of stretching it). Strokes broadcast live
+ * and are periodically snapshotted so late joiners see the current picture. When
+ * the "조작"(select) tool is active the canvas ignores pointer events so the
+ * planner stays usable.
  */
 export default function DoodleBoard({ store }: { store: RoomStore }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -43,14 +70,15 @@ export default function DoodleBoard({ store }: { store: RoomStore }) {
     const ctx = ctxRef.current
     if (!canvas || !ctx) return
     const rect = canvas.getBoundingClientRect()
+    const f = fitRect(rect.width, rect.height)
     ctx.globalCompositeOperation = s.erase ? 'destination-out' : 'source-over'
     ctx.strokeStyle = s.color
     ctx.lineWidth = s.size
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
     ctx.beginPath()
-    ctx.moveTo(s.x0 * rect.width, s.y0 * rect.height)
-    ctx.lineTo(s.x1 * rect.width, s.y1 * rect.height)
+    ctx.moveTo(f.ox + s.x0 * f.fw, f.oy + s.y0 * f.fh)
+    ctx.lineTo(f.ox + s.x1 * f.fw, f.oy + s.y1 * f.fh)
     ctx.stroke()
     ctx.globalCompositeOperation = 'source-over'
   }
@@ -97,7 +125,8 @@ export default function DoodleBoard({ store }: { store: RoomStore }) {
         const img = new Image()
         img.onload = () => {
           const rect = canvas.getBoundingClientRect()
-          ctx.drawImage(img, 0, 0, rect.width, rect.height)
+          const f = fitRect(rect.width, rect.height)
+          ctx.drawImage(img, f.ox, f.oy, f.fw, f.fh)
           resolve()
         }
         img.onerror = () => resolve()
@@ -141,7 +170,11 @@ export default function DoodleBoard({ store }: { store: RoomStore }) {
 
   function norm(e: { clientX: number; clientY: number }) {
     const rect = canvasRef.current!.getBoundingClientRect()
-    return { x: (e.clientX - rect.left) / rect.width, y: (e.clientY - rect.top) / rect.height }
+    const f = fitRect(rect.width, rect.height)
+    return {
+      x: clamp01((e.clientX - rect.left - f.ox) / f.fw),
+      y: clamp01((e.clientY - rect.top - f.oy) / f.fh),
+    }
   }
 
   // Persist a downscaled PNG snapshot a moment after drawing settles.
@@ -150,11 +183,27 @@ export default function DoodleBoard({ store }: { store: RoomStore }) {
     snapTimer.current = setTimeout(() => {
       const canvas = canvasRef.current
       if (!canvas) return
-      const scale = Math.min(1, 1000 / canvas.width)
+      // Capture only the logical rectangle, normalized to the reference size, so
+      // the snapshot is device-independent (loads back into any device's fit rect).
+      const rect = canvas.getBoundingClientRect()
+      const dpr = rect.width ? canvas.width / rect.width : 1
+      const f = fitRect(rect.width, rect.height)
       const tmp = document.createElement('canvas')
-      tmp.width = Math.max(1, Math.round(canvas.width * scale))
-      tmp.height = Math.max(1, Math.round(canvas.height * scale))
-      tmp.getContext('2d')!.drawImage(canvas, 0, 0, tmp.width, tmp.height)
+      tmp.width = REF_SNAP_W
+      tmp.height = REF_SNAP_H
+      tmp
+        .getContext('2d')!
+        .drawImage(
+          canvas,
+          f.ox * dpr,
+          f.oy * dpr,
+          f.fw * dpr,
+          f.fh * dpr,
+          0,
+          0,
+          REF_SNAP_W,
+          REF_SNAP_H,
+        )
       store.saveSnapshot(tmp.toDataURL('image/png')).catch(() => {})
     }, SNAPSHOT_DELAY)
   }
