@@ -9,14 +9,11 @@ function fmt(day: string): string {
   return `${m}/${d}(${dow})`
 }
 
-/** Light yellow → deeper amber as the person's day-count grows (subtle). */
-function chipColor(count: number, max: number): string {
-  const t = max > 0 ? count / max : 0
-  const r = Math.round(255 - 13 * t)
-  const g = Math.round(247 - 47 * t)
-  const b = Math.round(204 - 114 * t)
-  return `rgb(${r}, ${g}, ${b})`
-}
+// Colour a date chip by how popular that date is: most-picked → orange,
+// second-most → yellow, the rest → light yellow.
+const TOP_COLOR = '#FCC26D' // 주황
+const SECOND_COLOR = '#FCE38A' // 노랑
+const REST_COLOR = '#FFF3C4' // 연노랑
 
 type Person = { voter: string; name: string; days: string[] }
 
@@ -36,7 +33,20 @@ export default function DateSummary({ dateVotes, voter }: { dateVotes: DateVote[
     return list.sort((a, b) => b.days.length - a.days.length || a.name.localeCompare(b.name))
   }, [dateVotes])
 
-  const maxDays = people.reduce((m, p) => Math.max(m, p.days.length), 1)
+  // Per-date popularity → chip colour tier (by how many people picked each date).
+  const colorOf = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const v of dateVotes) counts[v.day] = (counts[v.day] ?? 0) + 1
+    const distinct = [...new Set(Object.values(counts))].sort((a, b) => b - a)
+    const top = distinct[0]
+    const second = distinct[1]
+    return (day: string): string => {
+      const c = counts[day] ?? 0
+      if (c === top) return TOP_COLOR
+      if (c === second) return SECOND_COLOR
+      return REST_COLOR
+    }
+  }, [dateVotes])
 
   return (
     <section className="rounded-[24px] bg-white/90 p-4 shadow-[0_10px_28px_rgba(180,160,200,0.22)] backdrop-blur">
@@ -64,7 +74,7 @@ export default function DateSummary({ dateVotes, voter }: { dateVotes: DateVote[
                     <span
                       key={d}
                       className="rounded-full px-2 py-0.5 text-[11px] font-extrabold text-[#8a7530]"
-                      style={{ backgroundColor: chipColor(p.days.length, maxDays) }}
+                      style={{ backgroundColor: colorOf(d) }}
                     >
                       {fmt(d)}
                     </span>
