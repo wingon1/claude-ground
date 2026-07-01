@@ -9,8 +9,10 @@ const PALETTE = [
   { name: 'Yellow', color: '#FFD86B' },
   { name: 'Black', color: '#3D3A4B' },
 ]
-const PEN_SIZE = 4
-const ERASER_SIZE = 26
+// Stroke thickness as a FRACTION of the reference width, so lines scale with the
+// canvas and everyone sees the same relative thickness (small mobile pad or PC).
+const PEN_FRAC = 0.004
+const ERASER_FRAC = 0.026
 const SNAPSHOT_DELAY = 1200 // ms after drawing settles before persisting
 
 // Strokes live in a shared PC-proportioned logical rectangle (0..1 in both
@@ -54,14 +56,14 @@ function useIsMobile() {
 }
 
 /**
- * A full-screen doodle layer: the canvas covers the whole app so you can draw
- * anywhere — over the calendar and venues included. Strokes live in a shared
- * PC-proportioned reference rectangle (see REF_ASPECT), mapped onto each device
- * with a contain fit, so a drawing keeps the same shape everywhere (a phone
- * shows it as a centred band instead of stretching it). Strokes broadcast live
- * and are periodically snapshotted so late joiners see the current picture. When
- * the "조작"(select) tool is active the canvas ignores pointer events so the
- * planner stays usable.
+ * The doodle surface is a fixed 16:9 board so shapes & thickness stay identical
+ * for everyone: on desktop it is a contain-fit board centred in the viewport, on
+ * mobile a post-it opens a 16:9 panel. Stroke coordinates and thickness are
+ * stored relative to that reference rectangle, broadcast live, and periodically
+ * snapshotted so late joiners see the current picture. On resize the drawing is
+ * repainted from stored strokes (vectors) rather than stretching the bitmap, so
+ * it stays crisp. On desktop the "조작"(select) tool lets pointer events pass
+ * through to the planner.
  */
 export default function DoodleBoard({ store }: { store: RoomStore }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -69,6 +71,10 @@ export default function DoodleBoard({ store }: { store: RoomStore }) {
   const drawing = useRef(false)
   const last = useRef<{ x: number; y: number } | null>(null)
   const snapTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Kept so we can re-render crisply (as vectors) on resize instead of stretching
+  // the old bitmap (which blurs). snapshotImg is the pre-join base layer.
+  const strokesRef = useRef<Stroke[]>([])
+  const snapshotImgRef = useRef<HTMLImageElement | null>(null)
   const [tool, setTool] = useState<Tool>('select')
   const [color, setColor] = useState(PALETTE[0].color)
   const isMobile = useIsMobile()
@@ -92,7 +98,7 @@ export default function DoodleBoard({ store }: { store: RoomStore }) {
     const f = fitRect(rect.width, rect.height)
     ctx.globalCompositeOperation = s.erase ? 'destination-out' : 'source-over'
     ctx.strokeStyle = s.color
-    ctx.lineWidth = s.size
+    ctx.lineWidth = s.size * f.fw // s.size is a fraction of the reference width
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
     ctx.beginPath()
@@ -112,41 +118,54 @@ export default function DoodleBoard({ store }: { store: RoomStore }) {
     ctx.restore()
   }
 
+  // Redraw everything at the current resolution: the snapshot base, then every
+  // stroke as a vector. Called after a resize so lines stay crisp.
+  function repaint() {
+    const canvas = canvasRef.current
+    const ctx = ctxRef.current
+    if (!canvas || !ctx) return
+    clearLocal()
+    const img = snapshotImgRef.current
+    if (img) {
+      const rect = canvas.getBoundingClientRect()
+      const f = fitRect(rect.width, rect.height)
+      ctx.drawImage(img, f.ox, f.oy, f.fw, f.fh)
+    }
+    for (const s of strokesRef.current) draw(s)
+  }
+
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')!
     ctxRef.current = ctx
+    // Fresh render surface: rebuild from the snapshot + live strokes.
+    strokesRef.current = []
+    snapshotImgRef.current = null
 
-    // Resize the backing store to the element, preserving the current drawing
-    // by stretching the old pixels onto the new size.
+    // Resize the backing store to the element, then repaint everything as
+    // vectors at the new resolution (crisp, no bitmap stretching / blur).
     const fit = () => {
       const rect = canvas.getBoundingClientRect()
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
       const w = Math.max(1, Math.round(rect.width * dpr))
       const h = Math.max(1, Math.round(rect.height * dpr))
       if (w === canvas.width && h === canvas.height) return
-      const prev = document.createElement('canvas')
-      prev.width = canvas.width
-      prev.height = canvas.height
-      if (canvas.width && canvas.height) prev.getContext('2d')!.drawImage(canvas, 0, 0)
       canvas.width = w
       canvas.height = h
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      if (prev.width && prev.height)
-        ctx.drawImage(prev, 0, 0, prev.width, prev.height, 0, 0, rect.width, rect.height)
+      repaint()
     }
     fit()
     const ro = new ResizeObserver(fit)
     ro.observe(canvas)
 
-    const drawSnapshot = (dataUrl: string): Promise<void> =>
+    const loadSnapshot = (dataUrl: string): Promise<void> =>
       new Promise((resolve) => {
         const img = new Image()
         img.onload = () => {
-          const rect = canvas.getBoundingClientRect()
-          const f = fitRect(rect.width, rect.height)
-          ctx.drawImage(img, f.ox, f.oy, f.fw, f.fh)
+          snapshotImgRef.current = img
+          repaint()
           resolve()
         }
         img.onerror = () => resolve()
@@ -159,11 +178,18 @@ export default function DoodleBoard({ store }: { store: RoomStore }) {
       // Show the existing drawing first, then start receiving live strokes.
       const snap = await store.loadSnapshot().catch(() => null)
       if (cancelled) return
-      if (snap) await drawSnapshot(snap)
+      if (snap) await loadSnapshot(snap)
       if (cancelled) return
       disconnect = store.connectDoodle(
-        (s) => draw(s),
-        () => clearLocal(),
+        (s) => {
+          draw(s)
+          strokesRef.current.push(s)
+        },
+        () => {
+          strokesRef.current = []
+          snapshotImgRef.current = null
+          clearLocal()
+        },
       )
     })()
 
@@ -173,6 +199,7 @@ export default function DoodleBoard({ store }: { store: RoomStore }) {
       disconnect()
       if (snapTimer.current) clearTimeout(snapTimer.current)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store, showCanvas])
 
   function strokeFrom(x0: number, y0: number, x1: number, y1: number): Stroke {
@@ -183,7 +210,7 @@ export default function DoodleBoard({ store }: { store: RoomStore }) {
       x1,
       y1,
       color: erase ? '#000' : colorRef.current,
-      size: erase ? ERASER_SIZE : PEN_SIZE,
+      size: erase ? ERASER_FRAC : PEN_FRAC,
       erase,
     }
   }
@@ -237,6 +264,7 @@ export default function DoodleBoard({ store }: { store: RoomStore }) {
     last.current = p
     const s = strokeFrom(p.x, p.y, p.x, p.y) // a dot for a single tap
     draw(s)
+    strokesRef.current.push(s)
     store.sendStroke(s)
   }
 
@@ -250,6 +278,7 @@ export default function DoodleBoard({ store }: { store: RoomStore }) {
       const p = norm(ev)
       const s = strokeFrom(last.current.x, last.current.y, p.x, p.y)
       draw(s)
+      strokesRef.current.push(s)
       store.sendStroke(s)
       last.current = p
     }
@@ -335,19 +364,24 @@ export default function DoodleBoard({ store }: { store: RoomStore }) {
     onPointerCancel: onUp,
   }
 
-  // --- Desktop: full-screen canvas + floating toolbar ---
+  // --- Desktop: a fixed 16:9 board (contain-fit to the viewport) + toolbar ---
   if (!isMobile) {
     return (
       <>
-        <canvas
-          ref={canvasRef}
-          {...canvasHandlers}
-          className="absolute inset-0 z-20 h-full w-full touch-none"
-          style={{
-            pointerEvents: tool === 'select' ? 'none' : 'auto',
-            cursor: tool === 'eraser' ? 'cell' : 'crosshair',
-          }}
-        />
+        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
+          <canvas
+            ref={canvasRef}
+            {...canvasHandlers}
+            className="touch-none"
+            style={{
+              width: 'calc(100vh * 16 / 9)',
+              maxWidth: '100%',
+              aspectRatio: '16 / 9',
+              pointerEvents: tool === 'select' ? 'none' : 'auto',
+              cursor: tool === 'eraser' ? 'cell' : 'crosshair',
+            }}
+          />
+        </div>
         <div className="pointer-events-auto absolute left-1/2 top-16 z-30 flex max-w-[calc(100vw-1.5rem)] -translate-x-1/2 flex-nowrap items-center gap-1.5 rounded-[22px] bg-white/85 px-3 py-2 shadow-[0_8px_24px_rgba(180,160,200,0.28)] backdrop-blur">
           {toolbarContent(true)}
         </div>
