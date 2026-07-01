@@ -15,7 +15,6 @@ function ymd(y: number, m: number, d: number): string {
 function heatStyle(count: number, max: number): React.CSSProperties {
   if (count === 0) return { backgroundColor: '#FDFBF7' }
   const t = max > 0 ? count / max : 0
-  // Blend from soft lavender toward warm pink as votes grow.
   const r = Math.round(230 + t * 25)
   const g = Math.round(230 - t * 20)
   const b = Math.round(250 - t * 30)
@@ -23,22 +22,32 @@ function heatStyle(count: number, max: number): React.CSSProperties {
 }
 
 type Props = {
+  candidateDates: string[]
   dateVotes: DateVote[]
   voter: string
-  mode: VoteMode
-  onModeChange: (m: VoteMode) => void
+  voteMode: VoteMode
   onToggleDate: (day: string) => void
 }
 
 export default function CalendarVoting({
+  candidateDates,
   dateVotes,
   voter,
-  mode,
-  onModeChange,
+  voteMode,
   onToggleDate,
 }: Props) {
   const today = new Date()
-  const [view, setView] = useState({ y: today.getFullYear(), m: today.getMonth() })
+  const candidateSet = useMemo(() => new Set(candidateDates), [candidateDates])
+
+  // Start on the month of the earliest candidate date (fall back to today).
+  const [view, setView] = useState(() => {
+    const first = [...candidateDates].sort()[0]
+    if (first) {
+      const [y, m] = first.split('-').map(Number)
+      return { y, m: m - 1 }
+    }
+    return { y: today.getFullYear(), m: today.getMonth() }
+  })
 
   const { counts, mine, max } = useMemo(() => {
     const counts: Record<string, number> = {}
@@ -71,26 +80,9 @@ export default function CalendarVoting({
     <section className="rounded-[24px] bg-white/90 p-4 shadow-[0_10px_28px_rgba(180,160,200,0.22)] backdrop-blur">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-lg font-extrabold text-[#6b5b74]">📅 언제 만날까요?</h2>
-        {/* Single / Multiple toggle */}
-        <button
-          onClick={() => onModeChange(mode === 'single' ? 'multiple' : 'single')}
-          className="group flex items-center gap-2 rounded-full bg-[#E6E6FA] px-2 py-1 text-xs font-extrabold text-[#5f5580]"
-          title="투표 방식 전환"
-        >
-          <span className={mode === 'single' ? 'opacity-100' : 'opacity-40'}>하나만</span>
-          <span
-            className={`relative h-5 w-9 rounded-full transition ${
-              mode === 'multiple' ? 'bg-[#FFB3C6]' : 'bg-[#C9B8E8]'
-            }`}
-          >
-            <span
-              className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${
-                mode === 'multiple' ? 'left-[18px]' : 'left-0.5'
-              }`}
-            />
-          </span>
-          <span className={mode === 'multiple' ? 'opacity-100' : 'opacity-40'}>여러개</span>
-        </button>
+        <span className="rounded-full bg-[#E6E6FA] px-2.5 py-1 text-[11px] font-extrabold text-[#5f5580]">
+          {voteMode === 'single' ? '한 개만 투표' : '여러 개 투표'}
+        </span>
       </div>
 
       <div className="mb-2 flex items-center justify-between px-1">
@@ -126,9 +118,23 @@ export default function CalendarVoting({
         {cells.map((d, i) => {
           if (d === null) return <div key={`e${i}`} />
           const key = ymd(view.y, view.m, d)
+          const isCandidate = candidateSet.has(key)
           const count = counts[key] ?? 0
           const isMine = mine.has(key)
           const isToday = key === todayKey
+
+          // Non-candidate days are shown faint and are not votable.
+          if (!isCandidate) {
+            return (
+              <div
+                key={key}
+                className="relative grid aspect-square place-items-center rounded-2xl text-sm font-bold text-[#d8d0e0]"
+              >
+                {d}
+              </div>
+            )
+          }
+
           return (
             <button
               key={key}
@@ -139,7 +145,7 @@ export default function CalendarVoting({
                   ? '0 0 0 3px rgba(255,143,163,0.45), 0 4px 10px rgba(255,143,163,0.3)'
                   : count > 0
                     ? '0 2px 6px rgba(180,160,200,0.2)'
-                    : 'inset 0 0 0 100px rgba(0,0,0,0.015)',
+                    : '0 2px 8px rgba(180,160,200,0.28)',
               }}
               className={`relative aspect-square rounded-2xl text-sm font-bold transition hover:brightness-95 ${
                 isToday ? 'text-[#e2607a]' : 'text-[#6b5b74]'
@@ -157,7 +163,7 @@ export default function CalendarVoting({
       </div>
 
       <p className="mt-3 text-center text-xs font-semibold text-[#b3a8bf]">
-        {mode === 'single'
+        {voteMode === 'single'
           ? '가능한 날 하루를 골라주세요 🌸'
           : '가능한 날을 모두 눌러주세요 ✨'}
       </p>
