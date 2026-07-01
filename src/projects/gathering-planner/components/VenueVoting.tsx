@@ -6,6 +6,7 @@ type Props = {
   venueVotes: VenueVote[]
   voter: string
   onAdd: (name: string) => void
+  onDelete: (venueId: string) => void
   onToggleVote: (venueId: string) => void
 }
 
@@ -15,11 +16,37 @@ function looksLikeUrl(s: string): boolean {
   return /^(https?:\/\/|www\.)/i.test(s.trim())
 }
 
+function href(url: string): string {
+  return url.startsWith('http') ? url : `https://${url}`
+}
+
+/**
+ * A pasted map share (e.g. Naver) looks like:
+ *   [네이버지도]
+ *   가게 이름
+ *   주소 …
+ *   https://naver.me/xxxx
+ * Parse it into { title, address, url } so it renders nicely. Returns null for a
+ * plain single-line entry.
+ */
+function parseVenue(raw: string): { title: string; address: string; url: string | null } | null {
+  const lines = raw
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean)
+  if (lines.length <= 1) return null
+  const url = lines.find((l) => looksLikeUrl(l)) ?? null
+  const info = lines.filter((l) => l !== url && !/^\[.*\]$/.test(l))
+  if (info.length === 0) return null
+  return { title: info[0], address: info.slice(1).join(' '), url }
+}
+
 export default function VenueVoting({
   venues,
   venueVotes,
   voter,
   onAdd,
+  onDelete,
   onToggleVote,
 }: Props) {
   const [input, setInput] = useState('')
@@ -54,17 +81,23 @@ export default function VenueVoting({
       <h2 className="mb-3 text-lg font-extrabold text-[#6b5b74]">🍽️ 어디서 만날까요?</h2>
 
       <div className="mb-3 flex gap-2">
-        <input
+        <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && submit()}
-          placeholder="가게 이름이나 링크를 적어주세요…"
-          maxLength={80}
-          className="min-w-0 flex-1 rounded-2xl bg-[#FDFBF7] px-4 py-2.5 text-sm font-semibold text-[#6b5b74] shadow-inner outline-none placeholder:text-[#c8bdd0] focus:shadow-[0_0_0_3px_rgba(255,179,198,0.5)]"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault()
+              submit()
+            }
+          }}
+          placeholder="가게 이름·링크, 또는 지도 공유를 붙여넣기…"
+          maxLength={200}
+          rows={2}
+          className="min-w-0 flex-1 resize-none rounded-2xl bg-[#FDFBF7] px-4 py-2.5 text-sm font-semibold text-[#6b5b74] shadow-inner outline-none placeholder:text-[#c8bdd0] focus:shadow-[0_0_0_3px_rgba(255,179,198,0.5)]"
         />
         <button
           onClick={submit}
-          className="shrink-0 rounded-2xl bg-[#FFD1DC] px-4 py-2.5 text-sm font-extrabold text-[#7A4A56] transition hover:brightness-95 active:scale-95"
+          className="shrink-0 self-stretch rounded-2xl bg-[#FFD1DC] px-4 text-sm font-extrabold text-[#7A4A56] transition hover:brightness-95 active:scale-95"
         >
           추가
         </button>
@@ -79,16 +112,38 @@ export default function VenueVoting({
           {sorted.map((v, i) => {
             const count = counts[v.id] ?? 0
             const voted = mine.has(v.id)
+            const parsed = parseVenue(v.name)
             return (
               <li
                 key={v.id}
-                className="flex items-center gap-3 rounded-2xl p-3 shadow-[0_3px_10px_rgba(180,160,200,0.18)]"
+                className="flex items-center gap-2 rounded-2xl p-3 shadow-[0_3px_10px_rgba(180,160,200,0.18)]"
                 style={{ backgroundColor: CARD_TINTS[i % CARD_TINTS.length] + '99' }}
               >
                 <div className="min-w-0 flex-1">
-                  {looksLikeUrl(v.name) ? (
+                  {parsed ? (
+                    <>
+                      <div className="truncate text-sm font-extrabold text-[#6b5b74]">
+                        {parsed.title}
+                      </div>
+                      {parsed.address && (
+                        <div className="truncate text-[11px] font-semibold text-[#8a7f96]">
+                          {parsed.address}
+                        </div>
+                      )}
+                      {parsed.url && (
+                        <a
+                          href={href(parsed.url)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-0.5 inline-block text-[11px] font-extrabold text-[#5b7bd6] underline decoration-dotted"
+                        >
+                          🔗 지도 열기
+                        </a>
+                      )}
+                    </>
+                  ) : looksLikeUrl(v.name) ? (
                     <a
-                      href={v.name.startsWith('http') ? v.name : `https://${v.name}`}
+                      href={href(v.name)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="block truncate text-sm font-extrabold text-[#5b7bd6] underline decoration-dotted"
@@ -96,9 +151,7 @@ export default function VenueVoting({
                       🔗 {v.name}
                     </a>
                   ) : (
-                    <div className="truncate text-sm font-extrabold text-[#6b5b74]">
-                      {v.name}
-                    </div>
+                    <div className="truncate text-sm font-extrabold text-[#6b5b74]">{v.name}</div>
                   )}
                   <div className="truncate text-[11px] font-semibold text-[#a99bb5]">
                     {v.created_by} 님 추천
@@ -107,13 +160,23 @@ export default function VenueVoting({
 
                 <button
                   onClick={() => onToggleVote(v.id)}
-                  className={`flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-extrabold transition active:scale-90 ${
+                  className={`flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-sm font-extrabold transition active:scale-90 ${
                     voted
                       ? 'bg-[#FF8FA3] text-white shadow'
                       : 'bg-white/80 text-[#e2607a] hover:bg-white'
                   }`}
                 >
                   {voted ? '❤️' : '🤍'} {count}
+                </button>
+                <button
+                  onClick={() => {
+                    if (confirm('이 장소를 삭제할까요?')) onDelete(v.id)
+                  }}
+                  title="삭제"
+                  aria-label="삭제"
+                  className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white/60 text-xs font-extrabold text-[#b3a8bf] transition hover:bg-white hover:text-[#e2607a] active:scale-90"
+                >
+                  ✕
                 </button>
               </li>
             )

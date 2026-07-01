@@ -231,6 +231,7 @@ export default function GatheringPlanner() {
             venueVotes={state.venueVotes}
             voter={voter}
             onAdd={(name) => store.addVenue(name, nick)}
+            onDelete={(id) => store.deleteVenue(id)}
             onToggleVote={(id) => store.toggleVenueVote(id, voter)}
           />
           <DateSummary dateVotes={state.dateVotes} voter={voter} />
