@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import CalendarVoting from './components/CalendarVoting'
-import Cursors from './components/Cursors'
 import DateSummary from './components/DateSummary'
 import DoodleBoard from './components/DoodleBoard'
 import JoinRoom from './components/JoinRoom'
@@ -238,11 +237,8 @@ export default function GatheringPlanner() {
         </div>
       </div>
 
-      {/* Full-screen doodle canvas (z-20) + floating toolbar (z-30) */}
-      <DoodleBoard store={store} />
-
-      {/* Live cursors overlay (z-40, non-interactive) */}
-      <Cursors store={store} meId={voter} nick={nick} color={colorForId(voter)} />
+      {/* Doodle board (canvas + toolbar) with live cursors over its 16:9 area */}
+      <DoodleBoard store={store} meId={voter} nick={nick} color={colorForId(voter)} />
 
       {/* Header (topmost, but its bar lets drawing pass through) */}
       <header className="pointer-events-none absolute inset-x-0 top-0 z-40 flex items-center justify-between gap-2 px-4 py-3 sm:px-5">

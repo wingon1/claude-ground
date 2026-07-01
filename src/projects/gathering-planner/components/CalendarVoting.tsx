@@ -141,9 +141,8 @@ export default function CalendarVoting({
               onClick={() => onToggleDate(key)}
               style={{
                 ...heatStyle(count, max),
-                boxShadow: isMine
-                  ? '0 0 0 3px rgba(255,143,163,0.45), 0 4px 10px rgba(255,143,163,0.3)'
-                  : count > 0
+                boxShadow:
+                  count > 0
                     ? '0 2px 6px rgba(180,160,200,0.2)'
                     : '0 2px 8px rgba(180,160,200,0.28)',
               }}
@@ -152,11 +151,10 @@ export default function CalendarVoting({
               }`}
             >
               <span className="absolute left-1.5 top-1">{d}</span>
-              {count > 0 && (
-                <span className="absolute bottom-1 right-1 flex items-center gap-0.5 rounded-full bg-white/80 px-1 text-[10px] font-extrabold leading-4 text-[#e2607a] shadow-sm">
-                  ❤️{count}
-                </span>
-              )}
+              <span className="absolute bottom-1 right-1 flex items-center gap-0.5 rounded-full bg-white/80 px-1 text-[10px] font-extrabold leading-4 text-[#e2607a] shadow-sm">
+                {isMine ? '❤️' : '🤍'}
+                {count > 0 ? count : ''}
+              </span>
             </button>
           )
         })}

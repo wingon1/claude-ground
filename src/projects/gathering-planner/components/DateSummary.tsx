@@ -9,6 +9,15 @@ function fmt(day: string): string {
   return `${m}/${d}(${dow})`
 }
 
+/** Light yellow → deeper amber as the person's day-count grows (subtle). */
+function chipColor(count: number, max: number): string {
+  const t = max > 0 ? count / max : 0
+  const r = Math.round(255 - 13 * t)
+  const g = Math.round(247 - 47 * t)
+  const b = Math.round(204 - 114 * t)
+  return `rgb(${r}, ${g}, ${b})`
+}
+
 type Person = { voter: string; name: string; days: string[] }
 
 /** Bottom panel: who is available on which dates. */
@@ -23,13 +32,11 @@ export default function DateSummary({ dateVotes, voter }: { dateVotes: DateVote[
     }
     const list = [...map.values()]
     list.forEach((p) => p.days.sort())
-    // Me first, then by name.
-    return list.sort((a, b) => {
-      if (a.voter === voter) return -1
-      if (b.voter === voter) return 1
-      return a.name.localeCompare(b.name)
-    })
-  }, [dateVotes, voter])
+    // Most available days first.
+    return list.sort((a, b) => b.days.length - a.days.length || a.name.localeCompare(b.name))
+  }, [dateVotes])
+
+  const maxDays = people.reduce((m, p) => Math.max(m, p.days.length), 1)
 
   return (
     <section className="rounded-[24px] bg-white/90 p-4 shadow-[0_10px_28px_rgba(180,160,200,0.22)] backdrop-blur">
@@ -56,7 +63,8 @@ export default function DateSummary({ dateVotes, voter }: { dateVotes: DateVote[
                   {p.days.map((d) => (
                     <span
                       key={d}
-                      className="rounded-full bg-[#FFF2B2] px-2 py-0.5 text-[11px] font-extrabold text-[#8a7530]"
+                      className="rounded-full px-2 py-0.5 text-[11px] font-extrabold text-[#8a7530]"
+                      style={{ backgroundColor: chipColor(p.days.length, maxDays) }}
                     >
                       {fmt(d)}
                     </span>

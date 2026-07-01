@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { RoomStore, Stroke } from '../store'
 import { useIsMobile } from '../useIsMobile'
+import Cursors from './Cursors'
 
 // The cute 5-colour palette.
 const PALETTE = [
@@ -13,7 +14,7 @@ const PALETTE = [
 // Stroke thickness as a FRACTION of the reference width, so lines scale with the
 // canvas and everyone sees the same relative thickness (small mobile pad or PC).
 const PEN_FRAC = 0.004
-const ERASER_FRAC = 0.026
+const ERASER_FRAC = 0.052
 const SNAPSHOT_DELAY = 1200 // ms after drawing settles before persisting
 
 // Strokes live in a shared PC-proportioned logical rectangle (0..1 in both
@@ -52,7 +53,9 @@ type Tool = 'select' | 'pen' | 'eraser'
  * it stays crisp. On desktop the "조작"(select) tool lets pointer events pass
  * through to the planner.
  */
-export default function DoodleBoard({ store }: { store: RoomStore }) {
+type Props = { store: RoomStore; meId: string; nick: string; color: string }
+
+export default function DoodleBoard({ store, meId, nick, color: myColor }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null)
   const drawing = useRef(false)
@@ -364,6 +367,7 @@ export default function DoodleBoard({ store }: { store: RoomStore }) {
             cursor: tool === 'eraser' ? 'cell' : 'crosshair',
           }}
         />
+        <Cursors store={store} meId={meId} nick={nick} color={myColor} />
         <div className="pointer-events-auto absolute left-1/2 top-16 z-30 flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 flex-nowrap items-center gap-1.5 rounded-[22px] bg-white/85 px-3 py-2 shadow-[0_8px_24px_rgba(180,160,200,0.28)] backdrop-blur">
           {toolbarContent(true)}
         </div>
@@ -410,6 +414,8 @@ export default function DoodleBoard({ store }: { store: RoomStore }) {
                 className="absolute inset-0 h-full w-full touch-none"
                 style={{ cursor: tool === 'eraser' ? 'cell' : 'crosshair' }}
               />
+              {/* Others' cursors, mapped to this 16:9 pad (only visible here) */}
+              <Cursors store={store} meId={meId} nick={nick} color={myColor} />
             </div>
 
             <div className="flex flex-nowrap items-center justify-center gap-1.5 overflow-x-auto">
