@@ -13,6 +13,12 @@ function ymd(y: number, m: number, d: number): string {
   return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
 }
 
+function isWeekend(day: string): boolean {
+  const [y, m, d] = day.split('-').map(Number)
+  const dow = new Date(y, m - 1, d).getDay()
+  return dow === 0 || dow === 6
+}
+
 /** All 'YYYY-MM-DD' between a and b inclusive (order-independent). */
 function expandRange(a: string, b: string): string[] {
   const [lo, hi] = a <= b ? [a, b] : [b, a]
@@ -62,14 +68,14 @@ export default function RoomSetup({ onCreated }: Props) {
     else if (mode === 'range')
       days = range.start && range.end ? expandRange(range.start, range.end) : range.start ? [range.start] : []
     else days = [...list].sort()
-    return excludeHolidays ? days.filter((d) => !isHoliday(d)) : days
+    return excludeHolidays ? days.filter((d) => !isHoliday(d) && !isWeekend(d)) : days
   }, [mode, single, range, list, excludeHolidays])
 
   const candidateSet = useMemo(() => new Set(candidates), [candidates])
 
   function pick(key: string) {
     if (key < todayKey) return // no past days
-    if (excludeHolidays && isHoliday(key)) return // holidays excluded
+    if (excludeHolidays && (isHoliday(key) || isWeekend(key))) return // 공휴일·주말 제외
     if (mode === 'single') {
       setSingle((s) => (s === key ? null : key))
     } else if (mode === 'range') {
@@ -195,7 +201,7 @@ export default function RoomSetup({ onCreated }: Props) {
             onClick={() => setExcludeHolidays((v) => !v)}
             className="mb-2 flex w-full items-center justify-between rounded-2xl bg-[#FDFBF7] px-3 py-2 shadow-inner"
           >
-            <span className="text-xs font-extrabold text-[#7a6f86]">🎌 공휴일 제외하기</span>
+            <span className="text-xs font-extrabold text-[#7a6f86]">🎌 공휴일·주말 제외하기</span>
             <span
               className={`relative h-5 w-9 rounded-full transition ${
                 excludeHolidays ? 'bg-[#8FE3B0]' : 'bg-[#d8d0e0]'
@@ -243,25 +249,29 @@ export default function RoomSetup({ onCreated }: Props) {
                 const key = ymd(view.y, view.m, d)
                 const past = key < todayKey
                 const hol = holidayName(key)
+                const weekend = isWeekend(key)
                 const blockedHol = excludeHolidays && !!hol
-                const disabled = past || blockedHol
+                const blockedWknd = excludeHolidays && weekend && !hol
+                const disabled = past || blockedHol || blockedWknd
                 const on = candidateSet.has(key)
                 return (
                   <button
                     key={key}
                     disabled={disabled}
                     onClick={() => pick(key)}
-                    title={hol ?? undefined}
+                    title={hol ?? (blockedWknd ? '주말' : undefined)}
                     className={`aspect-square rounded-xl text-xs font-bold transition ${
                       past
                         ? 'cursor-not-allowed text-[#d8d0e0]'
                         : blockedHol
                           ? 'cursor-not-allowed bg-[#FFE1E6] text-[#e79aa8] line-through'
-                          : on
-                            ? 'bg-[#FF8FA3] text-white shadow-[0_3px_8px_rgba(255,143,163,0.5)]'
-                            : hol
-                              ? 'text-[#e79aa8] hover:bg-white'
-                              : 'text-[#6b5b74] hover:bg-white'
+                          : blockedWknd
+                            ? 'cursor-not-allowed text-[#d8d0e0] line-through'
+                            : on
+                              ? 'bg-[#FF8FA3] text-white shadow-[0_3px_8px_rgba(255,143,163,0.5)]'
+                              : hol
+                                ? 'text-[#e79aa8] hover:bg-white'
+                                : 'text-[#6b5b74] hover:bg-white'
                     }`}
                   >
                     {d}
