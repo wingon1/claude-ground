@@ -39,6 +39,20 @@ function fitRect(cw: number, ch: number) {
 
 type Tool = 'select' | 'pen' | 'eraser'
 
+/** True on small screens (Tailwind's `sm` breakpoint = 640px). */
+function useIsMobile() {
+  const [mobile, setMobile] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 639px)').matches,
+  )
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)')
+    const on = () => setMobile(mq.matches)
+    mq.addEventListener('change', on)
+    return () => mq.removeEventListener('change', on)
+  }, [])
+  return mobile
+}
+
 /**
  * A full-screen doodle layer: the canvas covers the whole app so you can draw
  * anywhere — over the calendar and venues included. Strokes live in a shared
@@ -57,6 +71,11 @@ export default function DoodleBoard({ store }: { store: RoomStore }) {
   const snapTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [tool, setTool] = useState<Tool>('select')
   const [color, setColor] = useState(PALETTE[0].color)
+  const isMobile = useIsMobile()
+  // On mobile the board is a post-it that opens a drawing panel; on desktop the
+  // canvas covers the whole screen. The canvas only exists when it should show.
+  const [open, setOpen] = useState(false)
+  const showCanvas = !isMobile || open
   const toolRef = useRef(tool)
   const colorRef = useRef(color)
   useEffect(() => {
@@ -94,13 +113,14 @@ export default function DoodleBoard({ store }: { store: RoomStore }) {
   }
 
   useEffect(() => {
-    const canvas = canvasRef.current!
+    const canvas = canvasRef.current
+    if (!canvas) return
     const ctx = canvas.getContext('2d')!
     ctxRef.current = ctx
 
     // Resize the backing store to the element, preserving the current drawing
     // by stretching the old pixels onto the new size.
-    function fit() {
+    const fit = () => {
       const rect = canvas.getBoundingClientRect()
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
       const w = Math.max(1, Math.round(rect.width * dpr))
@@ -153,7 +173,7 @@ export default function DoodleBoard({ store }: { store: RoomStore }) {
       disconnect()
       if (snapTimer.current) clearTimeout(snapTimer.current)
     }
-  }, [store])
+  }, [store, showCanvas])
 
   function strokeFrom(x0: number, y0: number, x1: number, y1: number): Stroke {
     const erase = toolRef.current === 'eraser'
@@ -261,78 +281,127 @@ export default function DoodleBoard({ store }: { store: RoomStore }) {
         : 'text-[#9a92a8] hover:bg-black/5'
     }`
 
-  return (
+  // Tool buttons + palette, shared by the desktop toolbar and the mobile panel.
+  // `withSelect` shows the "조작"(pass-through) tool — only useful on desktop.
+  const toolbarContent = (withSelect: boolean) => (
     <>
-      {/* Full-screen drawing surface */}
-      <canvas
-        ref={canvasRef}
-        onPointerDown={onDown}
-        onPointerMove={onMove}
-        onPointerUp={onUp}
-        onPointerCancel={onUp}
-        className="absolute inset-0 z-20 h-full w-full touch-none"
-        style={{
-          pointerEvents: tool === 'select' ? 'none' : 'auto',
-          cursor: tool === 'eraser' ? 'cell' : 'crosshair',
-        }}
-      />
-
-      {/* Floating toolbar — single horizontal row (scrolls sideways if narrow),
-          so the palette stays laid out horizontally on mobile too. */}
-      <div className="pointer-events-auto absolute bottom-5 left-1/2 z-30 flex max-w-[calc(100vw-1rem)] -translate-x-1/2 flex-nowrap items-center gap-1 overflow-x-auto rounded-[22px] bg-white/85 px-2.5 py-2 shadow-[0_8px_24px_rgba(180,160,200,0.28)] backdrop-blur sm:max-w-[calc(100vw-1.5rem)] sm:gap-1.5 sm:px-3 sm:top-16 sm:bottom-auto">
+      {withSelect && (
         <button
           onClick={() => setTool('select')}
           title="달력·장소를 누를 수 있어요 (그림은 안 그려짐)"
           className={pill(tool === 'select')}
         >
-          <span className="hidden sm:inline">✋ </span>조작
+          ✋ 조작
         </button>
-        <button
-          onClick={() => setTool('pen')}
-          title="펜으로 그려요"
-          className={pill(tool === 'pen')}
-        >
-          <span className="hidden sm:inline">✏️ </span>그리기
-        </button>
-        <button
-          onClick={() => setTool('eraser')}
-          title="그린 걸 지워요"
-          className={pill(tool === 'eraser')}
-        >
-          <span className="hidden sm:inline">🧽 </span>지우개
-        </button>
+      )}
+      <button onClick={() => setTool('pen')} title="펜으로 그려요" className={pill(tool === 'pen')}>
+        ✏️ 그리기
+      </button>
+      <button
+        onClick={() => setTool('eraser')}
+        title="그린 걸 지워요"
+        className={pill(tool === 'eraser')}
+      >
+        🧽 지우개
+      </button>
 
-        <span className="mx-0.5 h-6 w-px shrink-0 bg-black/10" />
+      <span className="mx-0.5 h-6 w-px shrink-0 bg-black/10" />
 
-        <div className="flex shrink-0 items-center gap-1.5">
-          {PALETTE.map((p) => (
-            <button
-              key={p.color}
-              title={p.name}
-              onClick={() => {
-                setColor(p.color)
-                setTool('pen')
-              }}
-              className={`h-6 w-6 shrink-0 rounded-full transition sm:h-7 sm:w-7 ${
-                color === p.color && tool !== 'eraser'
-                  ? 'scale-110 ring-2 ring-[#c9a9d6] ring-offset-2 ring-offset-white'
-                  : 'hover:scale-110'
-              }`}
-              style={{ backgroundColor: p.color }}
-            />
-          ))}
-        </div>
-
-        {/* 전체지우기 — 당분간 비활성화 (요청)
-        <span className="mx-0.5 h-6 w-px bg-black/10" />
-        <button
-          onClick={clearAll}
-          className="rounded-2xl px-3 py-1.5 text-sm font-extrabold text-[#8a7530] transition hover:bg-[#FFF2B2]"
-        >
-          🧹 전체지우기
-        </button>
-        */}
+      <div className="flex shrink-0 items-center gap-1.5">
+        {PALETTE.map((p) => (
+          <button
+            key={p.color}
+            title={p.name}
+            onClick={() => {
+              setColor(p.color)
+              setTool('pen')
+            }}
+            className={`h-7 w-7 shrink-0 rounded-full transition ${
+              color === p.color && tool !== 'eraser'
+                ? 'scale-110 ring-2 ring-[#c9a9d6] ring-offset-2 ring-offset-white'
+                : 'hover:scale-110'
+            }`}
+            style={{ backgroundColor: p.color }}
+          />
+        ))}
       </div>
+    </>
+  )
+
+  const canvasHandlers = {
+    onPointerDown: onDown,
+    onPointerMove: onMove,
+    onPointerUp: onUp,
+    onPointerCancel: onUp,
+  }
+
+  // --- Desktop: full-screen canvas + floating toolbar ---
+  if (!isMobile) {
+    return (
+      <>
+        <canvas
+          ref={canvasRef}
+          {...canvasHandlers}
+          className="absolute inset-0 z-20 h-full w-full touch-none"
+          style={{
+            pointerEvents: tool === 'select' ? 'none' : 'auto',
+            cursor: tool === 'eraser' ? 'cell' : 'crosshair',
+          }}
+        />
+        <div className="pointer-events-auto absolute left-1/2 top-16 z-30 flex max-w-[calc(100vw-1.5rem)] -translate-x-1/2 flex-nowrap items-center gap-1.5 rounded-[22px] bg-white/85 px-3 py-2 shadow-[0_8px_24px_rgba(180,160,200,0.28)] backdrop-blur">
+          {toolbarContent(true)}
+        </div>
+      </>
+    )
+  }
+
+  // --- Mobile: a post-it launcher that opens a drawing panel ---
+  return (
+    <>
+      {!open && (
+        <button
+          onClick={() => {
+            setTool('pen')
+            setOpen(true)
+          }}
+          aria-label="낙서장 열기"
+          className="pointer-events-auto absolute bottom-5 left-3 z-40 flex -rotate-6 flex-col items-center rounded-xl bg-[#FFF2B2] px-3 pb-3 pt-4 shadow-[0_10px_22px_rgba(190,170,120,0.45)] transition active:scale-95"
+        >
+          <span className="absolute -top-2 left-1/2 h-4 w-10 -translate-x-1/2 rotate-2 rounded-sm bg-white/70" />
+          <span className="text-2xl">🖍️</span>
+          <span className="mt-0.5 text-[11px] font-extrabold text-[#8a7530]">낙서장</span>
+        </button>
+      )}
+
+      {open && (
+        <div className="pointer-events-auto absolute inset-0 z-50 flex flex-col justify-end bg-black/30 backdrop-blur-sm">
+          <div className="flex flex-col gap-3 rounded-t-[28px] bg-[#FDFBF7] p-4 pb-5 shadow-[0_-10px_40px_rgba(120,100,140,0.3)]">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-extrabold text-[#6b5b74]">🖍️ 함께 낙서해요</h3>
+              <button
+                onClick={() => setOpen(false)}
+                className="rounded-full bg-white px-3 py-1.5 text-sm font-extrabold text-[#9a92a8] shadow-sm active:scale-95"
+              >
+                닫기 ✕
+              </button>
+            </div>
+
+            {/* 16:9 sketch pad — matches the shared reference so it lines up with PC */}
+            <div className="relative w-full overflow-hidden rounded-2xl bg-white shadow-inner" style={{ aspectRatio: '16 / 9' }}>
+              <canvas
+                ref={canvasRef}
+                {...canvasHandlers}
+                className="absolute inset-0 h-full w-full touch-none"
+                style={{ cursor: tool === 'eraser' ? 'cell' : 'crosshair' }}
+              />
+            </div>
+
+            <div className="flex flex-nowrap items-center justify-center gap-1.5 overflow-x-auto">
+              {toolbarContent(false)}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
