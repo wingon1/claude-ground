@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import CalendarVoting from './components/CalendarVoting'
 import Cursors from './components/Cursors'
+import DateSummary from './components/DateSummary'
 import DoodleBoard from './components/DoodleBoard'
 import JoinRoom from './components/JoinRoom'
 import RoomSetup from './components/RoomSetup'
@@ -197,7 +198,7 @@ export default function GatheringPlanner() {
             dateVotes={state.dateVotes}
             voter={voter}
             voteMode={room.voteMode}
-            onToggleDate={(day) => store.toggleDateVote(day, voter)}
+            onToggleDate={(day) => store.toggleDateVote(day, voter, nick)}
           />
           <VenueVoting
             venues={state.venues}
@@ -206,6 +207,7 @@ export default function GatheringPlanner() {
             onAdd={(name) => store.addVenue(name, nick)}
             onToggleVote={(id) => store.toggleVenueVote(id, voter)}
           />
+          <DateSummary dateVotes={state.dateVotes} voter={voter} />
         </div>
       </div>
 

@@ -56,6 +56,20 @@
   setup wizard, join screen, and room view (desktop + mobile) with drawing over
   the calendar. Cross-client realtime/cursors need a real Supabase instance.
 
+## Follow-up 2 (UX polish)
+- **하단 요약(DateSummary):** 참가자별로 고른 날짜를 칩으로 요약. 이를 위해
+  `gathering_date_votes.voter_name` 컬럼 추가(스키마 `add column if not exists`),
+  `toggleDateVote(day, voter, name)` 로 닉네임 기록.
+- **모바일 팔레트 가로 배치:** 툴바를 한 줄(`flex-nowrap`)로, 모바일은 툴 이모지를
+  숨겨 5색 팔레트가 한 줄에 다 보이도록.
+- **툴 라벨 명확화:** 손→조작, 펜→그리기 (+툴팁 설명).
+- **공휴일 제외:** `holidays.ts`(2026~2027 정적 표) + RoomSetup 토글(기본 ON).
+  켜면 후보에서 공휴일 제외 + 달력 취소선.
+- Verified: build + eslint clean; Playwright(REST mock)로 공휴일 취소선, 하단 요약,
+  새 툴 라벨, 모바일 팔레트 가로 표시 확인.
+- ⚠️ 기존 Supabase DB 는 `alter table public.gathering_date_votes add column if not
+  exists voter_name text;` 를 한 번 실행해야 요약 이름이 저장됨.
+
 ## Next
 - Optional: wire real Supabase keys via GitHub Actions secrets to enable
   cross-device realtime (app already falls back to local mode without them).
