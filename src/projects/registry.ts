@@ -57,6 +57,16 @@ export type Project = ReactProject | IframeProject | ExternalProject
  */
 export const projects: Project[] = [
   {
+    id: 'gathering-planner',
+    title: '🍱 회식 다이어리',
+    description:
+      '팀 회식/모임을 함께 정하는 실시간 협업 보드. 파스텔 히트맵 달력으로 날짜 투표, 하트로 장소 투표, 화면 전체에 모두가 함께 그리는 낙서 캔버스. Supabase Realtime(Postgres Changes + Broadcast) 전용 백엔드.',
+    emoji: '🍱',
+    tags: ['react', 'supabase', 'realtime', 'canvas', 'mobile'],
+    kind: 'react',
+    load: () => import('./gathering-planner'),
+  },
+  {
     id: 'cozy-island',
     title: '🏝️ 코지 아일랜드',
     description:
