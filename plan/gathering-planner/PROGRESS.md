@@ -70,6 +70,14 @@
 - ⚠️ 기존 Supabase DB 는 `alter table public.gathering_date_votes add column if not
   exists voter_name text;` 를 한 번 실행해야 요약 이름이 저장됨.
 
+## Follow-up 3 (presence)
+- **접속자 표시:** Supabase Realtime **Presence** 를 방 채널에 추가. 각 클라이언트가
+  `{id,nick,color}` 를 track, presence sync 로 접속자 목록 갱신.
+- `OnlineUsers.tsx` — 헤더에 다른 접속자 닉네임 카드를 겹친 스택으로 표시(최대 3 + "+N").
+  모바일에선 초대링크를 아이콘만 표시해 공간 확보.
+- 스키마 변경 없음(Presence 는 DB 미사용). build + eslint clean; 목 데이터로 스택
+  스타일 확인 후 실데이터 연결.
+
 ## Next
 - Optional: wire real Supabase keys via GitHub Actions secrets to enable
   cross-device realtime (app already falls back to local mode without them).
