@@ -177,108 +177,20 @@ function createSupabaseStore(): PlannerStore {
 let doodleChannel: RealtimeChannel | null = null
 
 // ---------------------------------------------------------------------------
-// Local backend (localStorage + BroadcastChannel)
-// ---------------------------------------------------------------------------
-
-const LS_KEY = 'gathering.state.v1'
-const BC_STATE = 'gathering_state'
-const BC_DOODLE = 'gathering_doodle_local'
-
-function readLocal(): PlannerState {
-  if (typeof localStorage === 'undefined') return { ...emptyState }
-  try {
-    const raw = localStorage.getItem(LS_KEY)
-    if (!raw) return { ...emptyState }
-    const s = JSON.parse(raw) as PlannerState
-    return {
-      venues: s.venues ?? [],
-      venueVotes: s.venueVotes ?? [],
-      dateVotes: s.dateVotes ?? [],
-    }
-  } catch {
-    return { ...emptyState }
-  }
-}
-
-function createLocalStore(): PlannerStore {
-  const listeners = new Set<(s: PlannerState) => void>()
-  const stateBus =
-    typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel(BC_STATE) : null
-  const doodleBus =
-    typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel(BC_DOODLE) : null
-
-  function write(s: PlannerState) {
-    if (typeof localStorage !== 'undefined') localStorage.setItem(LS_KEY, JSON.stringify(s))
-    listeners.forEach((cb) => cb(s))
-    stateBus?.postMessage('changed')
-  }
-
-  stateBus?.addEventListener('message', () => {
-    const s = readLocal()
-    listeners.forEach((cb) => cb(s))
-  })
-
-  return {
-    online: false,
-    async load() {
-      return readLocal()
-    },
-    subscribe(cb) {
-      listeners.add(cb)
-      return () => listeners.delete(cb)
-    },
-    async addVenue(name, nickname) {
-      const s = readLocal()
-      s.venues.push({
-        id: 'v' + Date.now() + Math.random().toString(36).slice(2, 6),
-        name,
-        created_by: nickname,
-        created_at: new Date().toISOString(),
-      })
-      write(s)
-    },
-    async toggleVenueVote(venueId, voter) {
-      const s = readLocal()
-      const i = s.venueVotes.findIndex((v) => v.venue_id === venueId && v.voter === voter)
-      if (i >= 0) s.venueVotes.splice(i, 1)
-      else s.venueVotes.push({ venue_id: venueId, voter })
-      write(s)
-    },
-    async toggleDateVote(day, voter, mode) {
-      const s = readLocal()
-      const i = s.dateVotes.findIndex((d) => d.day === day && d.voter === voter)
-      if (i >= 0) {
-        s.dateVotes.splice(i, 1)
-      } else {
-        if (mode === 'single') s.dateVotes = s.dateVotes.filter((d) => d.voter !== voter)
-        s.dateVotes.push({ day, voter })
-      }
-      write(s)
-    },
-    connectDoodle(onStroke, onClear) {
-      const handler = (e: MessageEvent) => {
-        const msg = e.data as { type: string; stroke?: Stroke }
-        if (msg.type === 'stroke' && msg.stroke) onStroke(msg.stroke)
-        else if (msg.type === 'clear') onClear()
-      }
-      doodleBus?.addEventListener('message', handler)
-      return () => doodleBus?.removeEventListener('message', handler)
-    },
-    sendStroke(s) {
-      doodleBus?.postMessage({ type: 'stroke', stroke: s })
-    },
-    sendClear() {
-      doodleBus?.postMessage({ type: 'clear' })
-    },
-  }
-}
-
-// ---------------------------------------------------------------------------
 
 let store: PlannerStore | null = null
 
-/** The active store, chosen by whether Supabase keys were provided at build. */
+/**
+ * The Supabase-backed store. There is intentionally NO local fallback: this app
+ * is Supabase-only, so when keys are absent this throws and the UI shows a
+ * configuration error instead of silently running in a disconnected mode.
+ */
 export function getStore(): PlannerStore {
-  if (!store) store = hasSupabase ? createSupabaseStore() : createLocalStore()
+  if (!hasSupabase) {
+    throw new Error(
+      'Supabase 키가 설정되지 않았습니다. VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY 를 설정하세요.',
+    )
+  }
+  if (!store) store = createSupabaseStore()
   return store
 }

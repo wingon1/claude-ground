@@ -50,7 +50,7 @@ export default function VenueVoting({
   }
 
   return (
-    <section className="rounded-[24px] bg-white/85 p-4 shadow-[0_8px_24px_rgba(180,160,200,0.16)] ring-1 ring-[#f0e8df]">
+    <section className="rounded-[24px] bg-white/90 p-4 shadow-[0_10px_28px_rgba(180,160,200,0.22)] backdrop-blur">
       <h2 className="mb-3 text-lg font-extrabold text-[#6b5b74]">🍽️ 어디서 만날까요?</h2>
 
       <div className="mb-3 flex gap-2">
@@ -60,7 +60,7 @@ export default function VenueVoting({
           onKeyDown={(e) => e.key === 'Enter' && submit()}
           placeholder="가게 이름이나 링크를 적어주세요…"
           maxLength={80}
-          className="min-w-0 flex-1 rounded-2xl bg-[#FDFBF7] px-4 py-2.5 text-sm font-semibold text-[#6b5b74] outline-none ring-1 ring-[#efe7de] placeholder:text-[#c8bdd0] focus:ring-2 focus:ring-[#FFB3C6]"
+          className="min-w-0 flex-1 rounded-2xl bg-[#FDFBF7] px-4 py-2.5 text-sm font-semibold text-[#6b5b74] shadow-inner outline-none placeholder:text-[#c8bdd0] focus:shadow-[0_0_0_3px_rgba(255,179,198,0.5)]"
         />
         <button
           onClick={submit}
@@ -82,8 +82,8 @@ export default function VenueVoting({
             return (
               <li
                 key={v.id}
-                className="flex items-center gap-3 rounded-2xl p-3 ring-1 ring-[#efe7de]"
-                style={{ backgroundColor: CARD_TINTS[i % CARD_TINTS.length] + '66' }}
+                className="flex items-center gap-3 rounded-2xl p-3 shadow-[0_3px_10px_rgba(180,160,200,0.18)]"
+                style={{ backgroundColor: CARD_TINTS[i % CARD_TINTS.length] + '99' }}
               >
                 <div className="min-w-0 flex-1">
                   {looksLikeUrl(v.name) ? (

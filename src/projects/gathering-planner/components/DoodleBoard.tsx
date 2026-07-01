@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { getStore, type Stroke } from '../store'
 
-// The cute 5-colour palette. Eraser paints the paper colour (#FFFFFF).
+// The cute 5-colour palette. Eraser paints the paper colour (#FDFBF7).
 const PALETTE = [
   { name: 'Red', color: '#FF8FA3' },
   { name: 'Blue', color: '#8FB8FF' },
@@ -11,6 +11,8 @@ const PALETTE = [
 ]
 const PEN_SIZE = 4
 const ERASER_SIZE = 26
+
+type Tool = 'select' | 'pen' | 'eraser'
 
 function drawSegment(ctx: CanvasRenderingContext2D, s: Stroke) {
   ctx.strokeStyle = s.color
@@ -23,12 +25,18 @@ function drawSegment(ctx: CanvasRenderingContext2D, s: Stroke) {
   ctx.stroke()
 }
 
+/**
+ * A full-screen doodle layer: the canvas covers the whole app so you can draw
+ * anywhere — over the calendar and venues included. The floating toolbar sits
+ * above it. When the "select" tool is active the canvas ignores pointer events
+ * so the planner underneath stays clickable.
+ */
 export default function DoodleBoard() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null)
   const drawing = useRef(false)
   const last = useRef<{ x: number; y: number } | null>(null)
-  const [tool, setTool] = useState<'pen' | 'eraser'>('pen')
+  const [tool, setTool] = useState<Tool>('select')
   const [color, setColor] = useState(PALETTE[0].color)
   const toolRef = useRef(tool)
   const colorRef = useRef(color)
@@ -37,8 +45,6 @@ export default function DoodleBoard() {
 
   const store = getStore()
 
-  // Set up the canvas backing store to match its CSS size (crisp on retina),
-  // and connect the realtime doodle channel.
   useEffect(() => {
     const canvas = canvasRef.current!
     const ctx = canvas.getContext('2d')!
@@ -76,26 +82,26 @@ export default function DoodleBoard() {
     ctx.restore()
   }
 
-  function pointFromEvent(e: React.PointerEvent) {
-    const rect = canvasRef.current!.getBoundingClientRect()
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top }
+  function strokeStyleNow(x0: number, y0: number, x1: number, y1: number): Stroke {
+    return {
+      x0,
+      y0,
+      x1,
+      y1,
+      color: toolRef.current === 'eraser' ? '#FDFBF7' : colorRef.current,
+      size: toolRef.current === 'eraser' ? ERASER_SIZE : PEN_SIZE,
+    }
   }
 
   function onDown(e: React.PointerEvent) {
+    if (toolRef.current === 'select') return
     e.preventDefault()
     canvasRef.current!.setPointerCapture(e.pointerId)
     drawing.current = true
-    last.current = pointFromEvent(e)
-    // A dot for a single tap.
-    const p = last.current
-    const s: Stroke = {
-      x0: p.x,
-      y0: p.y,
-      x1: p.x,
-      y1: p.y,
-      color: toolRef.current === 'eraser' ? '#FFFFFF' : colorRef.current,
-      size: toolRef.current === 'eraser' ? ERASER_SIZE : PEN_SIZE,
-    }
+    const rect = canvasRef.current!.getBoundingClientRect()
+    const p = { x: e.clientX - rect.left, y: e.clientY - rect.top }
+    last.current = p
+    const s = strokeStyleNow(p.x, p.y, p.x, p.y) // a dot for a single tap
     drawSegment(ctxRef.current!, s)
     store.sendStroke(s)
   }
@@ -112,14 +118,7 @@ export default function DoodleBoard() {
     for (const ev of events.length ? events : [e.nativeEvent]) {
       const x = ev.clientX - rect.left
       const y = ev.clientY - rect.top
-      const s: Stroke = {
-        x0: last.current.x,
-        y0: last.current.y,
-        x1: x,
-        y1: y,
-        color: toolRef.current === 'eraser' ? '#FFFFFF' : colorRef.current,
-        size: toolRef.current === 'eraser' ? ERASER_SIZE : PEN_SIZE,
-      }
+      const s = strokeStyleNow(last.current.x, last.current.y, x, y)
       drawSegment(ctxRef.current!, s)
       store.sendStroke(s)
       last.current = { x, y }
@@ -141,32 +140,42 @@ export default function DoodleBoard() {
     store.sendClear()
   }
 
+  const pill = (active: boolean) =>
+    `rounded-2xl px-3 py-1.5 text-sm font-extrabold transition ${
+      active
+        ? 'bg-[#FFD1DC] text-[#7A4A56] shadow-[0_2px_6px_rgba(200,120,150,0.35)]'
+        : 'text-[#9a92a8] hover:bg-black/5'
+    }`
+
   return (
-    <div className="flex h-full w-full flex-col gap-3">
-      {/* Floating toolbar */}
-      <div className="flex flex-wrap items-center gap-2 rounded-[20px] bg-white/80 px-3 py-2 shadow-[0_6px_20px_rgba(180,160,200,0.18)] backdrop-blur">
-        <button
-          onClick={() => setTool('pen')}
-          className={`rounded-2xl px-3 py-1.5 text-sm font-extrabold transition ${
-            tool === 'pen'
-              ? 'bg-[#FFD1DC] text-[#7A4A56] shadow-inner'
-              : 'bg-[#FDFBF7] text-[#9a92a8] hover:bg-[#F3EFEA]'
-          }`}
-        >
-          ✏️ Pen
+    <>
+      {/* Full-screen drawing surface */}
+      <canvas
+        ref={canvasRef}
+        onPointerDown={onDown}
+        onPointerMove={onMove}
+        onPointerUp={onUp}
+        onPointerCancel={onUp}
+        className="absolute inset-0 z-20 h-full w-full touch-none"
+        style={{
+          pointerEvents: tool === 'select' ? 'none' : 'auto',
+          cursor: tool === 'eraser' ? 'cell' : 'crosshair',
+        }}
+      />
+
+      {/* Floating toolbar (always above the canvas & planner) */}
+      <div className="pointer-events-auto absolute bottom-5 left-1/2 z-30 flex max-w-[calc(100vw-1.5rem)] -translate-x-1/2 flex-wrap items-center justify-center gap-1.5 rounded-[22px] bg-white/85 px-3 py-2 shadow-[0_8px_24px_rgba(180,160,200,0.28)] backdrop-blur sm:bottom-auto sm:top-16">
+        <button onClick={() => setTool('select')} className={pill(tool === 'select')}>
+          👆 손
         </button>
-        <button
-          onClick={() => setTool('eraser')}
-          className={`rounded-2xl px-3 py-1.5 text-sm font-extrabold transition ${
-            tool === 'eraser'
-              ? 'bg-[#B9F2E5] text-[#356055] shadow-inner'
-              : 'bg-[#FDFBF7] text-[#9a92a8] hover:bg-[#F3EFEA]'
-          }`}
-        >
-          🧽 Eraser
+        <button onClick={() => setTool('pen')} className={pill(tool === 'pen')}>
+          ✏️ 펜
+        </button>
+        <button onClick={() => setTool('eraser')} className={pill(tool === 'eraser')}>
+          🧽 지우개
         </button>
 
-        <span className="mx-1 h-6 w-px bg-black/10" />
+        <span className="mx-0.5 h-6 w-px bg-black/10" />
 
         <div className="flex items-center gap-1.5">
           {PALETTE.map((p) => (
@@ -178,8 +187,8 @@ export default function DoodleBoard() {
                 setTool('pen')
               }}
               className={`h-7 w-7 rounded-full transition ${
-                color === p.color && tool === 'pen'
-                  ? 'ring-2 ring-offset-2 ring-[#c9a9d6] scale-110'
+                color === p.color && tool !== 'eraser'
+                  ? 'scale-110 ring-2 ring-[#c9a9d6] ring-offset-2 ring-offset-white'
                   : 'hover:scale-110'
               }`}
               style={{ backgroundColor: p.color }}
@@ -187,39 +196,15 @@ export default function DoodleBoard() {
           ))}
         </div>
 
-        <span className="mx-1 h-6 w-px bg-black/10" />
+        <span className="mx-0.5 h-6 w-px bg-black/10" />
 
         <button
           onClick={clearAll}
-          className="rounded-2xl bg-[#FFF2B2] px-3 py-1.5 text-sm font-extrabold text-[#8a7530] transition hover:brightness-95"
+          className="rounded-2xl px-3 py-1.5 text-sm font-extrabold text-[#8a7530] transition hover:bg-[#FFF2B2]"
         >
-          🧹 Clear All
+          🧹 전체지우기
         </button>
       </div>
-
-      {/* Sketch paper */}
-      <div className="relative flex-1 overflow-hidden rounded-[24px] bg-white shadow-[0_10px_30px_rgba(180,160,200,0.22)] ring-1 ring-[#efe7de]">
-        {/* faint paper lines */}
-        <div
-          className="pointer-events-none absolute inset-0 opacity-[0.5]"
-          style={{
-            backgroundImage:
-              'repeating-linear-gradient(#f4f0ea, #f4f0ea 1px, transparent 1px, transparent 28px)',
-          }}
-        />
-        <canvas
-          ref={canvasRef}
-          onPointerDown={onDown}
-          onPointerMove={onMove}
-          onPointerUp={onUp}
-          onPointerCancel={onUp}
-          className="relative h-full w-full touch-none"
-          style={{ cursor: tool === 'eraser' ? 'cell' : 'crosshair' }}
-        />
-        <div className="pointer-events-none absolute bottom-3 right-4 text-xs font-bold text-[#cbb8c8]">
-          ✍️ 함께 그려요
-        </div>
-      </div>
-    </div>
+    </>
   )
 }

@@ -68,7 +68,7 @@ export default function CalendarVoting({
   const todayKey = ymd(today.getFullYear(), today.getMonth(), today.getDate())
 
   return (
-    <section className="rounded-[24px] bg-white/85 p-4 shadow-[0_8px_24px_rgba(180,160,200,0.16)] ring-1 ring-[#f0e8df]">
+    <section className="rounded-[24px] bg-white/90 p-4 shadow-[0_10px_28px_rgba(180,160,200,0.22)] backdrop-blur">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-lg font-extrabold text-[#6b5b74]">📅 언제 만날까요?</h2>
         {/* Single / Multiple toggle */}
@@ -133,10 +133,17 @@ export default function CalendarVoting({
             <button
               key={key}
               onClick={() => onToggleDate(key)}
-              style={heatStyle(count, max)}
+              style={{
+                ...heatStyle(count, max),
+                boxShadow: isMine
+                  ? '0 0 0 3px rgba(255,143,163,0.45), 0 4px 10px rgba(255,143,163,0.3)'
+                  : count > 0
+                    ? '0 2px 6px rgba(180,160,200,0.2)'
+                    : 'inset 0 0 0 100px rgba(0,0,0,0.015)',
+              }}
               className={`relative aspect-square rounded-2xl text-sm font-bold transition hover:brightness-95 ${
-                isMine ? 'ring-2 ring-[#FF8FA3]' : 'ring-1 ring-[#efe7de]'
-              } ${isToday ? 'text-[#e2607a]' : 'text-[#6b5b74]'}`}
+                isToday ? 'text-[#e2607a]' : 'text-[#6b5b74]'
+              }`}
             >
               <span className="absolute left-1.5 top-1">{d}</span>
               {count > 0 && (

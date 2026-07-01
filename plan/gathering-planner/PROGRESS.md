@@ -25,6 +25,20 @@
 - Playwright render (local backend): desktop split + mobile stack both correct;
   doodle stroke draws, venue add works, calendar renders. No page/JS errors.
 
+## Follow-up (revision)
+- **Borderless UI:** removed outline `ring-*` borders across cards/inputs/cells;
+  sections now read via soft drop-shadows + subtle bg tints. Only kept the ring
+  on the selected palette colour; "my date" uses a soft pink glow shadow.
+- **Full-screen doodle:** canvas is now a full-viewport layer (z-20) you can draw
+  over everything, calendar included. Added a `손`(select) tool that makes the
+  canvas click-through so the planner beneath stays usable; `펜/지우개` capture.
+  Toolbar floats top-center on desktop, bottom-center on mobile.
+- **Supabase-only:** removed the localStorage/BroadcastChannel fallback entirely.
+  `getStore()` throws when keys are absent; the app shows a `연결 설정이 필요해요`
+  config screen instead of running disconnected.
+- Verified: build + eslint clean; Playwright confirms drawing over the calendar
+  on desktop & mobile, and the config-error screen when keys are absent.
+
 ## Next
 - Optional: wire real Supabase keys via GitHub Actions secrets to enable
   cross-device realtime (app already falls back to local mode without them).
