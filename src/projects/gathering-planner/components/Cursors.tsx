@@ -20,6 +20,7 @@ const SEND_MS = 40 // throttle: ~25 updates/sec
 export default function Cursors({ store, meId, nick, color }: Props) {
   const [cursors, setCursors] = useState<Record<string, Live>>({})
   const lastSent = useRef(0)
+  const boxRef = useRef<HTMLDivElement>(null)
 
   // Receive remote cursors; prune the ones that went quiet.
   useEffect(() => {
@@ -53,14 +54,15 @@ export default function Cursors({ store, meId, nick, color }: Props) {
     function onMove(e: PointerEvent) {
       const now = performance.now()
       if (now - lastSent.current < SEND_MS) return
+      // Normalize to the 16:9 stage (this overlay), not the window, so cursors
+      // line up for everyone. Ignore movement outside the stage.
+      const rect = boxRef.current?.getBoundingClientRect()
+      if (!rect || rect.width === 0 || rect.height === 0) return
+      const x = (e.clientX - rect.left) / rect.width
+      const y = (e.clientY - rect.top) / rect.height
+      if (x < 0 || x > 1 || y < 0 || y > 1) return
       lastSent.current = now
-      store.sendCursor({
-        id: meId,
-        nick,
-        color,
-        x: e.clientX / window.innerWidth,
-        y: e.clientY / window.innerHeight,
-      })
+      store.sendCursor({ id: meId, nick, color, x, y })
     }
     window.addEventListener('pointermove', onMove)
     const announceLeave = () => store.sendCursorLeave(meId)
@@ -73,7 +75,7 @@ export default function Cursors({ store, meId, nick, color }: Props) {
   }, [store, meId, nick, color])
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-40 overflow-hidden">
+    <div ref={boxRef} className="pointer-events-none absolute inset-0 z-40 overflow-hidden">
       {Object.values(cursors).map((c) => (
         <div
           key={c.id}

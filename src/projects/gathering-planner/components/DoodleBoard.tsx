@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { RoomStore, Stroke } from '../store'
+import { useIsMobile } from '../useIsMobile'
 
 // The cute 5-colour palette.
 const PALETTE = [
@@ -41,24 +42,10 @@ function fitRect(cw: number, ch: number) {
 
 type Tool = 'select' | 'pen' | 'eraser'
 
-/** True on small screens (Tailwind's `sm` breakpoint = 640px). */
-function useIsMobile() {
-  const [mobile, setMobile] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 639px)').matches,
-  )
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 639px)')
-    const on = () => setMobile(mq.matches)
-    mq.addEventListener('change', on)
-    return () => mq.removeEventListener('change', on)
-  }, [])
-  return mobile
-}
-
 /**
- * The doodle surface is a fixed 16:9 board so shapes & thickness stay identical
- * for everyone: on desktop it is a contain-fit board anchored top-left (empty
- * space falls on the right / bottom), on mobile a post-it opens a 16:9 panel. Stroke coordinates and thickness are
+ * Everyone draws in the same 16:9 space so shapes & thickness stay identical: on
+ * desktop the whole app is a fixed 16:9 stage and the canvas fills it; on mobile
+ * a post-it opens a 16:9 panel. Stroke coordinates and thickness are
  * stored relative to that reference rectangle, broadcast live, and periodically
  * snapshotted so late joiners see the current picture. On resize the drawing is
  * repainted from stored strokes (vectors) rather than stretching the bitmap, so
@@ -364,25 +351,20 @@ export default function DoodleBoard({ store }: { store: RoomStore }) {
     onPointerCancel: onUp,
   }
 
-  // --- Desktop: a fixed 16:9 board (contain-fit to the viewport) + toolbar ---
+  // --- Desktop: canvas fills the (already 16:9) app stage + floating toolbar ---
   if (!isMobile) {
     return (
       <>
-        <div className="pointer-events-none absolute inset-0 z-20 flex items-start justify-start">
-          <canvas
-            ref={canvasRef}
-            {...canvasHandlers}
-            className="touch-none"
-            style={{
-              width: 'calc(100vh * 16 / 9)',
-              maxWidth: '100%',
-              aspectRatio: '16 / 9',
-              pointerEvents: tool === 'select' ? 'none' : 'auto',
-              cursor: tool === 'eraser' ? 'cell' : 'crosshair',
-            }}
-          />
-        </div>
-        <div className="pointer-events-auto absolute left-1/2 top-16 z-30 flex max-w-[calc(100vw-1.5rem)] -translate-x-1/2 flex-nowrap items-center gap-1.5 rounded-[22px] bg-white/85 px-3 py-2 shadow-[0_8px_24px_rgba(180,160,200,0.28)] backdrop-blur">
+        <canvas
+          ref={canvasRef}
+          {...canvasHandlers}
+          className="absolute inset-0 z-20 h-full w-full touch-none"
+          style={{
+            pointerEvents: tool === 'select' ? 'none' : 'auto',
+            cursor: tool === 'eraser' ? 'cell' : 'crosshair',
+          }}
+        />
+        <div className="pointer-events-auto absolute left-1/2 top-16 z-30 flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 flex-nowrap items-center gap-1.5 rounded-[22px] bg-white/85 px-3 py-2 shadow-[0_8px_24px_rgba(180,160,200,0.28)] backdrop-blur">
           {toolbarContent(true)}
         </div>
       </>
