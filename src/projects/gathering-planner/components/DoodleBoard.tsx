@@ -15,7 +15,8 @@ const PALETTE = [
 // canvas and everyone sees the same relative thickness (small mobile pad or PC).
 const PEN_FRAC = 0.004
 const ERASER_FRAC = 0.052
-const SNAPSHOT_DELAY = 1200 // ms after drawing settles before persisting
+const SNAPSHOT_DELAY = 1000 // ms after drawing settles before persisting
+const AUTOSAVE_MS = 4000 // periodic safety save while there are unsaved strokes
 
 // Strokes live in a shared PC-proportioned logical rectangle (0..1 in both
 // axes, aspect = REF_ASPECT). Each device maps that rectangle onto its canvas
@@ -65,6 +66,7 @@ export default function DoodleBoard({ store, meId, nick, color: myColor }: Props
   // the old bitmap (which blurs). snapshotImg is the pre-join base layer.
   const strokesRef = useRef<Stroke[]>([])
   const snapshotImgRef = useRef<HTMLImageElement | null>(null)
+  const dirtyRef = useRef(false) // unsaved local strokes since the last snapshot
   const [tool, setTool] = useState<Tool>('select')
   const [color, setColor] = useState(PALETTE[0].color)
   const isMobile = useIsMobile()
@@ -124,6 +126,36 @@ export default function DoodleBoard({ store, meId, nick, color: myColor }: Props
     for (const s of strokesRef.current) draw(s)
   }
 
+  // Capture only the logical 16:9 rectangle, normalized to the reference size,
+  // so the snapshot is device-independent (loads back into any device's fit rect).
+  const captureSnapshot = (): string | null => {
+    const canvas = canvasRef.current
+    if (!canvas) return null
+    const rect = canvas.getBoundingClientRect()
+    if (!rect.width || !rect.height) return null
+    const dpr = canvas.width / rect.width
+    const f = fitRect(rect.width, rect.height)
+    const tmp = document.createElement('canvas')
+    tmp.width = REF_SNAP_W
+    tmp.height = REF_SNAP_H
+    tmp
+      .getContext('2d')!
+      .drawImage(canvas, f.ox * dpr, f.oy * dpr, f.fw * dpr, f.fh * dpr, 0, 0, REF_SNAP_W, REF_SNAP_H)
+    return tmp.toDataURL('image/png')
+  }
+
+  // Persist the current drawing now (store.saveSnapshot retries on failure).
+  const saveNow = () => {
+    if (snapTimer.current) {
+      clearTimeout(snapTimer.current)
+      snapTimer.current = null
+    }
+    if (!dirtyRef.current) return
+    dirtyRef.current = false
+    const data = captureSnapshot()
+    if (data) store.saveSnapshot(data).catch(() => {})
+  }
+
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -162,32 +194,42 @@ export default function DoodleBoard({ store, meId, nick, color: myColor }: Props
         img.src = dataUrl
       })
 
+    // Connect first so the channel subscribes ASAP (early strokes aren't
+    // dropped). The repaint model composes snapshot + strokes regardless of
+    // arrival order, so a snapshot loading afterwards still lands correctly.
+    const disconnect = store.connectDoodle(
+      (s) => {
+        draw(s)
+        strokesRef.current.push(s)
+      },
+      () => {
+        strokesRef.current = []
+        snapshotImgRef.current = null
+        dirtyRef.current = false
+        clearLocal()
+      },
+    )
+
     let cancelled = false
-    let disconnect = () => {}
     ;(async () => {
-      // Show the existing drawing first, then start receiving live strokes.
       const snap = await store.loadSnapshot().catch(() => null)
-      if (cancelled) return
-      if (snap) await loadSnapshot(snap)
-      if (cancelled) return
-      disconnect = store.connectDoodle(
-        (s) => {
-          draw(s)
-          strokesRef.current.push(s)
-        },
-        () => {
-          strokesRef.current = []
-          snapshotImgRef.current = null
-          clearLocal()
-        },
-      )
+      if (cancelled || !snap) return
+      await loadSnapshot(snap)
     })()
+
+    // Autosave in case the pointer never lifts / the tab is closed abruptly.
+    const autosave = setInterval(saveNow, AUTOSAVE_MS)
+    // Flush when the tab is backgrounded (fires reliably before unload).
+    const onHide = () => document.visibilityState === 'hidden' && saveNow()
+    document.addEventListener('visibilitychange', onHide)
 
     return () => {
       cancelled = true
       ro.disconnect()
       disconnect()
-      if (snapTimer.current) clearTimeout(snapTimer.current)
+      clearInterval(autosave)
+      document.removeEventListener('visibilitychange', onHide)
+      saveNow() // flush unsaved work (e.g. closing the mobile panel)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store, showCanvas])
@@ -214,35 +256,10 @@ export default function DoodleBoard({ store, meId, nick, color: myColor }: Props
     }
   }
 
-  // Persist a downscaled PNG snapshot a moment after drawing settles.
+  // Persist a snapshot a moment after drawing settles.
   function scheduleSnapshot() {
     if (snapTimer.current) clearTimeout(snapTimer.current)
-    snapTimer.current = setTimeout(() => {
-      const canvas = canvasRef.current
-      if (!canvas) return
-      // Capture only the logical rectangle, normalized to the reference size, so
-      // the snapshot is device-independent (loads back into any device's fit rect).
-      const rect = canvas.getBoundingClientRect()
-      const dpr = rect.width ? canvas.width / rect.width : 1
-      const f = fitRect(rect.width, rect.height)
-      const tmp = document.createElement('canvas')
-      tmp.width = REF_SNAP_W
-      tmp.height = REF_SNAP_H
-      tmp
-        .getContext('2d')!
-        .drawImage(
-          canvas,
-          f.ox * dpr,
-          f.oy * dpr,
-          f.fw * dpr,
-          f.fh * dpr,
-          0,
-          0,
-          REF_SNAP_W,
-          REF_SNAP_H,
-        )
-      store.saveSnapshot(tmp.toDataURL('image/png')).catch(() => {})
-    }, SNAPSHOT_DELAY)
+    snapTimer.current = setTimeout(saveNow, SNAPSHOT_DELAY)
   }
 
   function onDown(e: React.PointerEvent) {
@@ -255,6 +272,7 @@ export default function DoodleBoard({ store, meId, nick, color: myColor }: Props
     const s = strokeFrom(p.x, p.y, p.x, p.y) // a dot for a single tap
     draw(s)
     strokesRef.current.push(s)
+    dirtyRef.current = true
     store.sendStroke(s)
   }
 
@@ -269,6 +287,7 @@ export default function DoodleBoard({ store, meId, nick, color: myColor }: Props
       const s = strokeFrom(last.current.x, last.current.y, p.x, p.y)
       draw(s)
       strokesRef.current.push(s)
+      dirtyRef.current = true
       store.sendStroke(s)
       last.current = p
     }
@@ -399,7 +418,10 @@ export default function DoodleBoard({ store, meId, nick, color: myColor }: Props
             <div className="flex items-center justify-between">
               <h3 className="text-base font-extrabold text-[#6b5b74]">🖍️ 함께 낙서해요</h3>
               <button
-                onClick={() => setOpen(false)}
+                onClick={() => {
+                  saveNow() // persist before the canvas unmounts
+                  setOpen(false)
+                }}
                 className="rounded-full bg-white px-3 py-1.5 text-sm font-extrabold text-[#9a92a8] shadow-sm active:scale-95"
               >
                 닫기 ✕

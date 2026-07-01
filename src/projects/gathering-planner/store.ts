@@ -191,6 +191,10 @@ function createRoomStore(room: Room): RoomStore {
   let rt: RealtimeChannel | null = null
   let rtSubscribed = false
   let presenceMe: Presence | null = null
+  // Strokes/clears sent before the channel is SUBSCRIBED (or during a
+  // reconnect) are queued and flushed once it is ready, so live drawing isn't
+  // silently dropped.
+  const outbox: { event: string; payload: unknown }[] = []
 
   function presenceUsers(ch: RealtimeChannel): Presence[] {
     const state = ch.presenceState() as Record<string, Array<Partial<Presence>>>
@@ -276,10 +280,25 @@ function createRoomStore(room: Room): RoomStore {
         if (status === 'SUBSCRIBED') {
           rtSubscribed = true
           if (presenceMe) ch.track(presenceMe)
+          // Flush anything queued while we were offline / connecting.
+          while (outbox.length) {
+            const m = outbox.shift()!
+            ch.send({ type: 'broadcast', event: m.event, payload: m.payload })
+          }
+        } else {
+          // CLOSED / CHANNEL_ERROR / TIMED_OUT → queue until we're back.
+          rtSubscribed = false
         }
       })
     rt = ch
     return ch
+  }
+
+  // Send a broadcast that must be delivered (stroke/clear): queue if not ready.
+  function rtSend(event: string, payload: unknown) {
+    const ch = ensureRt()
+    if (rtSubscribed) ch.send({ type: 'broadcast', event, payload })
+    else if (outbox.length < 5000) outbox.push({ event, payload })
   }
 
   return {
@@ -343,10 +362,10 @@ function createRoomStore(room: Room): RoomStore {
       }
     },
     sendStroke(s) {
-      ensureRt().send({ type: 'broadcast', event: 'stroke', payload: s })
+      rtSend('stroke', s)
     },
     sendClear() {
-      ensureRt().send({ type: 'broadcast', event: 'clear', payload: {} })
+      rtSend('clear', {})
     },
 
     connectCursors(onCursor, onLeave) {
@@ -359,10 +378,13 @@ function createRoomStore(room: Room): RoomStore {
       }
     },
     sendCursor(c) {
-      ensureRt().send({ type: 'broadcast', event: 'cursor', payload: c })
+      // Cursors are ephemeral — drop (don't queue) while not connected.
+      const ch = ensureRt()
+      if (rtSubscribed) ch.send({ type: 'broadcast', event: 'cursor', payload: c })
     },
     sendCursorLeave(id) {
-      ensureRt().send({ type: 'broadcast', event: 'leave', payload: { id } })
+      const ch = ensureRt()
+      if (rtSubscribed) ch.send({ type: 'broadcast', event: 'leave', payload: { id } })
     },
 
     connectPresence(me, onChange) {
@@ -384,7 +406,12 @@ function createRoomStore(room: Room): RoomStore {
       return (data?.doodle_snapshot as string | null) ?? null
     },
     async saveSnapshot(dataUrl) {
-      await sb.from(T_ROOMS).update({ doodle_snapshot: dataUrl }).eq('id', roomId)
+      // Retry a few times so a transient network blip doesn't lose the drawing.
+      for (let i = 0; i < 3; i++) {
+        const { error } = await sb.from(T_ROOMS).update({ doodle_snapshot: dataUrl }).eq('id', roomId)
+        if (!error) return
+        await new Promise((r) => setTimeout(r, 400 * (i + 1)))
+      }
     },
   }
 }
