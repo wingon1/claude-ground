@@ -151,10 +151,16 @@ export default function CalendarVoting({
               }`}
             >
               <span className="absolute left-1.5 top-1">{d}</span>
-              <span className="absolute bottom-1 right-1 flex items-center gap-0.5 rounded-full bg-white/80 px-1 text-[10px] font-extrabold leading-4 text-[#e2607a] shadow-sm">
-                {isMine ? '❤️' : '🤍'}
-                {count > 0 ? count : ''}
-              </span>
+              {count > 0 && (
+                <span
+                  className={`absolute bottom-1 right-1 flex items-center gap-0.5 rounded-full bg-white/80 px-1 text-[10px] font-extrabold leading-4 shadow-sm ${
+                    isMine ? 'text-[#e2607a]' : 'text-[#9a92a8]'
+                  }`}
+                >
+                  {isMine ? '❤️' : '🤍'}
+                  {count}
+                </span>
+              )}
             </button>
           )
         })}
