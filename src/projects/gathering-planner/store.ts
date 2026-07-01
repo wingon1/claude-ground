@@ -10,6 +10,7 @@
 // any change and recompute" — trivially correct and easy to reason about.
 
 import type { RealtimeChannel } from '@supabase/supabase-js'
+import { getDeviceId } from './identity'
 import { getSupabase, hasSupabase } from './supabaseClient'
 
 export type Venue = {
@@ -41,6 +42,9 @@ export type Stroke = {
 
 // Cursor position is normalized (0..1) over the viewport.
 export type Cursor = { id: string; nick: string; color: string; x: number; y: number }
+
+// A connected participant (Realtime Presence).
+export type Presence = { id: string; nick: string; color: string }
 
 export type DateMode = 'single' | 'range' | 'list'
 export type VoteMode = 'single' | 'multiple'
@@ -155,6 +159,9 @@ export interface RoomStore {
   sendCursor(c: Cursor): void
   sendCursorLeave(id: string): void
 
+  /** Presence: track myself and observe who is connected. Returns unsubscribe. */
+  connectPresence(me: Presence, onChange: (users: Presence[]) => void): () => void
+
   /** Doodle snapshot persistence for late joiners. */
   loadSnapshot(): Promise<string | null>
   saveSnapshot(dataUrl: string): Promise<void>
@@ -178,9 +185,27 @@ function createRoomStore(room: Room): RoomStore {
   const clearHandlers = new Set<() => void>()
   const cursorHandlers = new Set<(c: Cursor) => void>()
   const leaveHandlers = new Set<(id: string) => void>()
+  const presenceHandlers = new Set<(users: Presence[]) => void>()
 
   let dbSubscribed = false
   let rt: RealtimeChannel | null = null
+  let rtSubscribed = false
+  let presenceMe: Presence | null = null
+
+  function presenceUsers(ch: RealtimeChannel): Presence[] {
+    const state = ch.presenceState() as Record<string, Array<Partial<Presence>>>
+    const out: Presence[] = []
+    const seen = new Set<string>()
+    for (const metas of Object.values(state)) {
+      for (const m of metas) {
+        if (m.id && !seen.has(m.id)) {
+          seen.add(m.id)
+          out.push({ id: m.id, nick: m.nick ?? '익명', color: m.color ?? '#c9b8e8' })
+        }
+      }
+    }
+    return out
+  }
 
   async function fetchAll(): Promise<PlannerState> {
     const [venues, venueVotes, dateVotes] = await Promise.all([
@@ -227,10 +252,12 @@ function createRoomStore(room: Room): RoomStore {
       .subscribe()
   }
 
-  // One broadcast channel per room shared by doodle strokes and cursors.
+  // One channel per room shared by doodle strokes, cursors, and presence.
   function ensureRt(): RealtimeChannel {
     if (rt) return rt
-    const ch = sb.channel(`gathering_rt:${roomId}`, { config: { broadcast: { self: false } } })
+    const ch = sb.channel(`gathering_rt:${roomId}`, {
+      config: { broadcast: { self: false }, presence: { key: getDeviceId() } },
+    })
     ch.on('broadcast', { event: 'stroke' }, ({ payload }) =>
       strokeHandlers.forEach((h) => h(payload as Stroke)),
     )
@@ -241,7 +268,16 @@ function createRoomStore(room: Room): RoomStore {
       .on('broadcast', { event: 'leave' }, ({ payload }) =>
         leaveHandlers.forEach((h) => h((payload as { id: string }).id)),
       )
-      .subscribe()
+      .on('presence', { event: 'sync' }, () => {
+        const users = presenceUsers(ch)
+        presenceHandlers.forEach((h) => h(users))
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          rtSubscribed = true
+          if (presenceMe) ch.track(presenceMe)
+        }
+      })
     rt = ch
     return ch
   }
@@ -327,6 +363,20 @@ function createRoomStore(room: Room): RoomStore {
     },
     sendCursorLeave(id) {
       ensureRt().send({ type: 'broadcast', event: 'leave', payload: { id } })
+    },
+
+    connectPresence(me, onChange) {
+      presenceMe = me
+      presenceHandlers.add(onChange)
+      const ch = ensureRt()
+      if (rtSubscribed) {
+        ch.track(me)
+        onChange(presenceUsers(ch))
+      }
+      return () => {
+        presenceHandlers.delete(onChange)
+        ch.untrack()
+      }
     },
 
     async loadSnapshot() {

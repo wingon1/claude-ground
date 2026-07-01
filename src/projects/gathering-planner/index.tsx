@@ -4,6 +4,7 @@ import Cursors from './components/Cursors'
 import DateSummary from './components/DateSummary'
 import DoodleBoard from './components/DoodleBoard'
 import JoinRoom from './components/JoinRoom'
+import OnlineUsers from './components/OnlineUsers'
 import RoomSetup from './components/RoomSetup'
 import VenueVoting from './components/VenueVoting'
 import { colorForId, getDeviceId, getNickname } from './identity'
@@ -88,9 +89,15 @@ function ShareButton() {
           /* clipboard blocked */
         }
       }}
-      className="rounded-full bg-[#B9F2E5] px-2.5 py-1.5 text-[11px] font-extrabold text-[#2f7466] shadow-[0_4px_14px_rgba(180,160,200,0.22)] transition hover:brightness-95 active:scale-95"
+      className="shrink-0 whitespace-nowrap rounded-full bg-[#B9F2E5] px-2.5 py-1.5 text-[11px] font-extrabold text-[#2f7466] shadow-[0_4px_14px_rgba(180,160,200,0.22)] transition hover:brightness-95 active:scale-95"
     >
-      {copied ? '복사됨 ✓' : '🔗 초대링크'}
+      {copied ? (
+        '복사됨 ✓'
+      ) : (
+        <>
+          🔗<span className="hidden sm:inline"> 초대링크</span>
+        </>
+      )}
     </button>
   )
 }
@@ -228,9 +235,10 @@ export default function GatheringPlanner() {
             {room.name}
           </h1>
         </div>
-        <div className="pointer-events-auto flex shrink-0 items-center gap-2">
+        <div className="pointer-events-auto flex min-w-0 shrink items-center gap-2">
+          <OnlineUsers store={store} me={{ id: voter, nick, color: colorForId(voter) }} />
           <ShareButton />
-          <span className="rounded-full bg-[#E6E6FA] px-2.5 py-1.5 text-[11px] font-extrabold text-[#5f5580] shadow-[0_4px_14px_rgba(180,160,200,0.22)]">
+          <span className="shrink-0 rounded-full bg-[#E6E6FA] px-2.5 py-1.5 text-[11px] font-extrabold text-[#5f5580] shadow-[0_4px_14px_rgba(180,160,200,0.22)]">
             {nick}
           </span>
         </div>
