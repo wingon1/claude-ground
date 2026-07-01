@@ -185,11 +185,12 @@ export default function GatheringPlanner() {
 
   const store = getRoomStore(room)
 
-  // The whole app is a fixed 16:9 "stage" on desktop (anchored top-left); the
-  // space outside it is a truly empty backdrop — nothing shows there and you
-  // can't draw. On mobile the stage just fills the screen.
+  // The whole app is a fixed 16:9 "stage" on desktop, centred so the empty
+  // backdrop is split evenly (top/bottom on a tall window, left/right on a wide
+  // one). Nothing shows in the backdrop and you can't draw there. On mobile the
+  // stage just fills the screen.
   return (
-    <div className="relative h-full w-full overflow-hidden bg-[#E7E2DA]">
+    <div className="relative flex h-full w-full items-center justify-center overflow-hidden bg-[#E7E2DA]">
       <div
         className="relative overflow-hidden bg-[#FDFBF7] text-[#6b5b74]"
         style={
