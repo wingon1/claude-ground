@@ -9,6 +9,7 @@ import RoomSetup from './components/RoomSetup'
 import VenueVoting from './components/VenueVoting'
 import { colorForId, getDeviceId, getNickname } from './identity'
 import { emptyState, fetchRoom, getRoomStore, hasSupabase, type PlannerState, type Room } from './store'
+import { useIsMobile } from './useIsMobile'
 
 /** Inject the cute rounded fonts once (self-contained; no index.html edits). */
 function useFonts() {
@@ -113,6 +114,7 @@ export default function GatheringPlanner() {
   const [room, setRoom] = useState<Room | null>(null)
   const [loadErr, setLoadErr] = useState<'notfound' | 'error' | null>(null)
   const [state, setState] = useState<PlannerState>(emptyState)
+  const isMobile = useIsMobile()
 
   // Track the room code in the URL hash.
   useEffect(() => {
@@ -183,19 +185,27 @@ export default function GatheringPlanner() {
 
   const store = getRoomStore(room)
 
+  // The whole app is a fixed 16:9 "stage" on desktop (anchored top-left); the
+  // space outside it is a truly empty backdrop — nothing shows there and you
+  // can't draw. On mobile the stage just fills the screen.
   return (
-    <div
-      className="relative h-full w-full overflow-hidden bg-[#FDFBF7] text-[#6b5b74]"
-      style={fontStyle}
-    >
-      {/* Paper background lines (full bleed) */}
+    <div className="relative h-full w-full overflow-hidden bg-[#E7E2DA]">
       <div
-        className="pointer-events-none absolute inset-0 z-0 opacity-60"
-        style={{
-          backgroundImage:
-            'repeating-linear-gradient(#f4f0ea, #f4f0ea 1px, transparent 1px, transparent 30px)',
-        }}
-      />
+        className="relative overflow-hidden bg-[#FDFBF7] text-[#6b5b74]"
+        style={
+          isMobile
+            ? { ...fontStyle, height: '100%', width: '100%' }
+            : { ...fontStyle, width: 'calc(100vh * 16 / 9)', maxWidth: '100%', aspectRatio: '16 / 9' }
+        }
+      >
+        {/* Paper background lines */}
+        <div
+          className="pointer-events-none absolute inset-0 z-0 opacity-60"
+          style={{
+            backgroundImage:
+              'repeating-linear-gradient(#f4f0ea, #f4f0ea 1px, transparent 1px, transparent 30px)',
+          }}
+        />
 
       {/* Planner layer — sits beneath the canvas so you can doodle over it. */}
       <div className="absolute inset-0 z-10 overflow-y-auto">
@@ -243,6 +253,7 @@ export default function GatheringPlanner() {
           </span>
         </div>
       </header>
+      </div>
     </div>
   )
 }
