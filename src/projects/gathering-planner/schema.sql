@@ -47,14 +47,20 @@ create table if not exists public.gathering_venue_votes (
 );
 
 -- 날짜 투표. (room, day, voter) 당 1표. (single 모드는 클라이언트가 강제) -----
+-- voter_name = 표시용 닉네임(누가 골랐는지 요약에 사용).
 create table if not exists public.gathering_date_votes (
   id         bigint generated always as identity primary key,
   room_id    text        not null references public.gathering_rooms (id) on delete cascade,
   day        date        not null,
   voter      text        not null,
+  voter_name text,
   created_at timestamptz not null default now(),
   unique (room_id, day, voter)
 );
+
+-- 이미 테이블이 있는 경우를 위한 컬럼 추가(재실행 안전).
+alter table public.gathering_date_votes
+  add column if not exists voter_name text;
 
 create index if not exists gathering_venues_room_idx
   on public.gathering_venues (room_id);

@@ -206,7 +206,7 @@ export default function DoodleBoard({ store }: { store: RoomStore }) {
   // }
 
   const pill = (active: boolean) =>
-    `rounded-2xl px-3 py-1.5 text-sm font-extrabold transition ${
+    `shrink-0 whitespace-nowrap rounded-2xl px-2.5 py-1.5 text-sm font-extrabold transition sm:px-3 ${
       active
         ? 'bg-[#FFD1DC] text-[#7A4A56] shadow-[0_2px_6px_rgba(200,120,150,0.35)]'
         : 'text-[#9a92a8] hover:bg-black/5'
@@ -228,21 +228,34 @@ export default function DoodleBoard({ store }: { store: RoomStore }) {
         }}
       />
 
-      {/* Floating toolbar (always above the canvas & planner) */}
-      <div className="pointer-events-auto absolute bottom-5 left-1/2 z-30 flex max-w-[calc(100vw-1.5rem)] -translate-x-1/2 flex-wrap items-center justify-center gap-1.5 rounded-[22px] bg-white/85 px-3 py-2 shadow-[0_8px_24px_rgba(180,160,200,0.28)] backdrop-blur sm:bottom-auto sm:top-16">
-        <button onClick={() => setTool('select')} className={pill(tool === 'select')}>
-          👆 손
+      {/* Floating toolbar — single horizontal row (scrolls sideways if narrow),
+          so the palette stays laid out horizontally on mobile too. */}
+      <div className="pointer-events-auto absolute bottom-5 left-1/2 z-30 flex max-w-[calc(100vw-1rem)] -translate-x-1/2 flex-nowrap items-center gap-1 overflow-x-auto rounded-[22px] bg-white/85 px-2.5 py-2 shadow-[0_8px_24px_rgba(180,160,200,0.28)] backdrop-blur sm:max-w-[calc(100vw-1.5rem)] sm:gap-1.5 sm:px-3 sm:top-16 sm:bottom-auto">
+        <button
+          onClick={() => setTool('select')}
+          title="달력·장소를 누를 수 있어요 (그림은 안 그려짐)"
+          className={pill(tool === 'select')}
+        >
+          <span className="hidden sm:inline">✋ </span>조작
         </button>
-        <button onClick={() => setTool('pen')} className={pill(tool === 'pen')}>
-          ✏️ 펜
+        <button
+          onClick={() => setTool('pen')}
+          title="펜으로 그려요"
+          className={pill(tool === 'pen')}
+        >
+          <span className="hidden sm:inline">✏️ </span>그리기
         </button>
-        <button onClick={() => setTool('eraser')} className={pill(tool === 'eraser')}>
-          🧽 지우개
+        <button
+          onClick={() => setTool('eraser')}
+          title="그린 걸 지워요"
+          className={pill(tool === 'eraser')}
+        >
+          <span className="hidden sm:inline">🧽 </span>지우개
         </button>
 
-        <span className="mx-0.5 h-6 w-px bg-black/10" />
+        <span className="mx-0.5 h-6 w-px shrink-0 bg-black/10" />
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex shrink-0 items-center gap-1.5">
           {PALETTE.map((p) => (
             <button
               key={p.color}
@@ -251,7 +264,7 @@ export default function DoodleBoard({ store }: { store: RoomStore }) {
                 setColor(p.color)
                 setTool('pen')
               }}
-              className={`h-7 w-7 rounded-full transition ${
+              className={`h-6 w-6 shrink-0 rounded-full transition sm:h-7 sm:w-7 ${
                 color === p.color && tool !== 'eraser'
                   ? 'scale-110 ring-2 ring-[#c9a9d6] ring-offset-2 ring-offset-white'
                   : 'hover:scale-110'

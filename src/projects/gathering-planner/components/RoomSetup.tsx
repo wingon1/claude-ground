@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { holidayName, isHoliday } from '../holidays'
 import { setNickname } from '../identity'
 import { createRoom, type DateMode, type Room, type VoteMode } from '../store'
 
@@ -47,6 +48,7 @@ export default function RoomSetup({ onCreated }: Props) {
     end: null,
   })
   const [list, setList] = useState<Set<string>>(new Set())
+  const [excludeHolidays, setExcludeHolidays] = useState(true)
 
   const today = new Date()
   const todayKey = ymd(today.getFullYear(), today.getMonth(), today.getDate())
@@ -55,18 +57,19 @@ export default function RoomSetup({ onCreated }: Props) {
   const [err, setErr] = useState<string | null>(null)
 
   const candidates = useMemo(() => {
-    if (mode === 'single') return single ? [single] : []
-    if (mode === 'range') {
-      if (range.start && range.end) return expandRange(range.start, range.end)
-      return range.start ? [range.start] : []
-    }
-    return [...list].sort()
-  }, [mode, single, range, list])
+    let days: string[]
+    if (mode === 'single') days = single ? [single] : []
+    else if (mode === 'range')
+      days = range.start && range.end ? expandRange(range.start, range.end) : range.start ? [range.start] : []
+    else days = [...list].sort()
+    return excludeHolidays ? days.filter((d) => !isHoliday(d)) : days
+  }, [mode, single, range, list, excludeHolidays])
 
   const candidateSet = useMemo(() => new Set(candidates), [candidates])
 
   function pick(key: string) {
     if (key < todayKey) return // no past days
+    if (excludeHolidays && isHoliday(key)) return // holidays excluded
     if (mode === 'single') {
       setSingle((s) => (s === key ? null : key))
     } else if (mode === 'range') {
@@ -187,6 +190,25 @@ export default function RoomSetup({ onCreated }: Props) {
             {MODES.find((m) => m.key === mode)!.hint}
           </p>
 
+          {/* 공휴일 제외 토글 */}
+          <button
+            onClick={() => setExcludeHolidays((v) => !v)}
+            className="mb-2 flex w-full items-center justify-between rounded-2xl bg-[#FDFBF7] px-3 py-2 shadow-inner"
+          >
+            <span className="text-xs font-extrabold text-[#7a6f86]">🎌 공휴일 제외하기</span>
+            <span
+              className={`relative h-5 w-9 rounded-full transition ${
+                excludeHolidays ? 'bg-[#8FE3B0]' : 'bg-[#d8d0e0]'
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${
+                  excludeHolidays ? 'left-[18px]' : 'left-0.5'
+                }`}
+              />
+            </span>
+          </button>
+
           <div className="rounded-2xl bg-[#FDFBF7] p-3 shadow-inner">
             <div className="mb-1 flex items-center justify-between px-1">
               <button
@@ -220,18 +242,26 @@ export default function RoomSetup({ onCreated }: Props) {
                 if (d === null) return <div key={`e${i}`} />
                 const key = ymd(view.y, view.m, d)
                 const past = key < todayKey
+                const hol = holidayName(key)
+                const blockedHol = excludeHolidays && !!hol
+                const disabled = past || blockedHol
                 const on = candidateSet.has(key)
                 return (
                   <button
                     key={key}
-                    disabled={past}
+                    disabled={disabled}
                     onClick={() => pick(key)}
+                    title={hol ?? undefined}
                     className={`aspect-square rounded-xl text-xs font-bold transition ${
                       past
                         ? 'cursor-not-allowed text-[#d8d0e0]'
-                        : on
-                          ? 'bg-[#FF8FA3] text-white shadow-[0_3px_8px_rgba(255,143,163,0.5)]'
-                          : 'text-[#6b5b74] hover:bg-white'
+                        : blockedHol
+                          ? 'cursor-not-allowed bg-[#FFE1E6] text-[#e79aa8] line-through'
+                          : on
+                            ? 'bg-[#FF8FA3] text-white shadow-[0_3px_8px_rgba(255,143,163,0.5)]'
+                            : hol
+                              ? 'text-[#e79aa8] hover:bg-white'
+                              : 'text-[#6b5b74] hover:bg-white'
                     }`}
                   >
                     {d}

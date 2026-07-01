@@ -19,7 +19,7 @@ export type Venue = {
   created_at: string
 }
 export type VenueVote = { venue_id: string; voter: string }
-export type DateVote = { day: string; voter: string } // day = 'YYYY-MM-DD'
+export type DateVote = { day: string; voter: string; name?: string } // day = 'YYYY-MM-DD'
 
 export type PlannerState = {
   venues: Venue[]
@@ -143,7 +143,7 @@ export interface RoomStore {
 
   addVenue(name: string, nickname: string): Promise<void>
   toggleVenueVote(venueId: string, voter: string): Promise<void>
-  toggleDateVote(day: string, voter: string): Promise<void>
+  toggleDateVote(day: string, voter: string, name: string): Promise<void>
 
   /** Doodle strokes/clear over the room broadcast channel. Returns unsubscribe. */
   connectDoodle(onStroke: (s: Stroke) => void, onClear: () => void): () => void
@@ -190,7 +190,7 @@ function createRoomStore(room: Room): RoomStore {
         .eq('room_id', roomId)
         .order('created_at'),
       sb.from(T_VENUE_VOTES).select('venue_id,voter').eq('room_id', roomId),
-      sb.from(T_DATE_VOTES).select('day,voter').eq('room_id', roomId),
+      sb.from(T_DATE_VOTES).select('day,voter,voter_name').eq('room_id', roomId),
     ])
     return {
       venues: (venues.data ?? []).map((v) => ({
@@ -203,7 +203,11 @@ function createRoomStore(room: Room): RoomStore {
         venue_id: String(v.venue_id),
         voter: v.voter,
       })),
-      dateVotes: (dateVotes.data ?? []).map((d) => ({ day: d.day, voter: d.voter })),
+      dateVotes: (dateVotes.data ?? []).map((d) => ({
+        day: d.day,
+        voter: d.voter,
+        name: d.voter_name ?? undefined,
+      })),
     }
   }
 
@@ -273,7 +277,7 @@ function createRoomStore(room: Room): RoomStore {
       }
       await reloadAndNotify()
     },
-    async toggleDateVote(day, voter) {
+    async toggleDateVote(day, voter, name) {
       const existing = await sb
         .from(T_DATE_VOTES)
         .select('id')
@@ -288,7 +292,7 @@ function createRoomStore(room: Room): RoomStore {
           // Single choice: this voter can hold only one date in this room.
           await sb.from(T_DATE_VOTES).delete().eq('room_id', roomId).eq('voter', voter)
         }
-        await sb.from(T_DATE_VOTES).insert({ room_id: roomId, day, voter })
+        await sb.from(T_DATE_VOTES).insert({ room_id: roomId, day, voter, voter_name: name })
       }
       await reloadAndNotify()
     },
