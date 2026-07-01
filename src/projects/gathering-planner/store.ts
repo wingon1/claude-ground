@@ -146,6 +146,7 @@ export interface RoomStore {
   subscribe(cb: (s: PlannerState) => void): () => void
 
   addVenue(name: string, nickname: string): Promise<void>
+  deleteVenue(venueId: string): Promise<void>
   toggleVenueVote(venueId: string, voter: string): Promise<void>
   toggleDateVote(day: string, voter: string, name: string): Promise<void>
 
@@ -315,6 +316,11 @@ function createRoomStore(room: Room): RoomStore {
       const { error } = await sb
         .from(T_VENUES)
         .insert({ room_id: roomId, name, created_by: nickname })
+      if (error) throw error
+      await reloadAndNotify()
+    },
+    async deleteVenue(venueId) {
+      const { error } = await sb.from(T_VENUES).delete().eq('room_id', roomId).eq('id', venueId)
       if (error) throw error
       await reloadAndNotify()
     },

@@ -89,6 +89,8 @@ drop policy if exists "gathering venues read" on public.gathering_venues;
 create policy "gathering venues read" on public.gathering_venues for select using (true);
 drop policy if exists "gathering venues insert" on public.gathering_venues;
 create policy "gathering venues insert" on public.gathering_venues for insert with check (true);
+drop policy if exists "gathering venues delete" on public.gathering_venues;
+create policy "gathering venues delete" on public.gathering_venues for delete using (true);
 
 drop policy if exists "gathering vvotes read" on public.gathering_venue_votes;
 create policy "gathering vvotes read" on public.gathering_venue_votes for select using (true);
